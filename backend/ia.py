@@ -12,8 +12,8 @@ import anthropic
 from config import settings
 from models import Estudiante, Grupo, Mensaje
 
-# Cliente de Anthropic (usa CLAUDE_API_KEY del .env)
-client = anthropic.Anthropic(api_key=settings.CLAUDE_API_KEY)
+# Cliente async de Anthropic (usa CLAUDE_API_KEY del .env)
+client = anthropic.AsyncAnthropic(api_key=settings.CLAUDE_API_KEY)
 
 
 # ============================================================
@@ -116,13 +116,13 @@ async def generar_respuesta(
     # Llamar a Claude con streaming
     respuesta_completa = ""
 
-    with client.messages.stream(
+    async with client.messages.stream(
         model=settings.CLAUDE_MODEL,
         max_tokens=2048,
         system=system_prompt,
         messages=messages,
     ) as stream:
-        for chunk in stream.text_stream:
+        async for chunk in stream.text_stream:
             respuesta_completa += chunk
             await on_chunk(chunk)
 
