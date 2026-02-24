@@ -43,7 +43,10 @@ class ApiClient {
                 const error = await response.text();
                 throw new Error(error || `Error ${response.status}`);
             }
-            
+
+            // 204 No Content (DELETE) — no body to parse
+            if (response.status === 204) return null;
+
             return await response.json();
         } catch (error) {
             console.error('API Error:', error);
@@ -232,6 +235,43 @@ class ApiClient {
 
     async deleteCalificacion(grupoId, calId) {
         return this.request(`/api/grupos/${grupoId}/calificaciones/${calId}`, {
+            method: 'DELETE'
+        });
+    }
+
+    // Upsert: crear o actualizar nota por (estudiante, columna, periodo)
+    async upsertCalificacion(grupoId, idEstudiante, idColumna, valor, periodo = 1) {
+        return this.request(`/api/grupos/${grupoId}/calificaciones/upsert`, {
+            method: 'POST',
+            body: JSON.stringify({ id_estudiante: idEstudiante, id_columna: idColumna, valor, periodo })
+        });
+    }
+
+    // ==========================================
+    // COLUMNAS DE EVALUACIÓN (libro de notas)
+    // ==========================================
+
+    async getColumnas(grupoId, periodo = null) {
+        const qs = periodo !== null ? `?periodo=${periodo}` : '';
+        return this.request(`/api/grupos/${grupoId}/columnas${qs}`);
+    }
+
+    async createColumna(grupoId, data) {
+        return this.request(`/api/grupos/${grupoId}/columnas`, {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+    }
+
+    async updateColumna(grupoId, colId, data) {
+        return this.request(`/api/grupos/${grupoId}/columnas/${colId}`, {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        });
+    }
+
+    async deleteColumna(grupoId, colId) {
+        return this.request(`/api/grupos/${grupoId}/columnas/${colId}`, {
             method: 'DELETE'
         });
     }

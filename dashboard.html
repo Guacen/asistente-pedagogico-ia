@@ -47,8 +47,8 @@
                 <!-- Uso de plan -->
                 <div id="plan-usage" class="bg-blue-50 p-3 rounded-lg text-sm">
                     <div class="flex justify-between items-center mb-2">
-                        <span class="font-semibold text-blue-900">Plan Free</span>
-                        <a href="cuenta.html" class="text-blue-600 text-xs hover:underline">Upgrade</a>
+                        <span id="plan-label" class="font-semibold text-blue-900">Plan Free</span>
+                        <a id="upgrade-link" href="cuenta.html" class="text-blue-600 text-xs hover:underline">Upgrade</a>
                     </div>
                     <div class="text-blue-700">
                         <i class="fas fa-comments mr-1"></i>
@@ -288,18 +288,37 @@
         // Renderizar uso del plan
         function renderPlanUsage() {
             if (!subscription) return;
-            
-            const mensajesUsados = subscription.uso_actual.mensajes_ia_este_mes || 0;
-            const mensajesLimite = subscription.limites.mensajes_ia_mes || 10;
-            const porcentaje = (mensajesUsados / mensajesLimite) * 100;
-            
+
+            const mensajesUsados = subscription.mensajes_usados_mes || 0;
+            const rawLimite = subscription.mensajes_limite_mes || 10;
+            const esPro = subscription.plan === 'pro';
+            const mensajesLimiteDisplay = (esPro || rawLimite >= 999999) ? '∞' : rawLimite;
+            const porcentaje = (esPro || rawLimite >= 999999) ? 0 : (mensajesUsados / rawLimite) * 100;
+
+            // Etiqueta del plan en sidebar
+            const planLabel = document.getElementById('plan-label');
+            const upgradeLink = document.getElementById('upgrade-link');
+            const planUsageBox = document.getElementById('plan-usage');
+
+            if (esPro) {
+                planLabel.textContent = '⭐ Plan Pro';
+                planLabel.classList.remove('text-blue-900');
+                planLabel.classList.add('text-purple-800');
+                planUsageBox.classList.remove('bg-blue-50');
+                planUsageBox.classList.add('bg-purple-50');
+                upgradeLink.classList.add('hidden');
+            } else {
+                planLabel.textContent = 'Plan Free';
+                upgradeLink.classList.remove('hidden');
+            }
+
             document.getElementById('messages-used').textContent = mensajesUsados;
-            document.getElementById('messages-limit').textContent = mensajesLimite === Infinity ? '∞' : mensajesLimite;
+            document.getElementById('messages-limit').textContent = mensajesLimiteDisplay;
             document.getElementById('usage-bar').style.width = `${Math.min(porcentaje, 100)}%`;
-            
-            // En estadísticas también
+
+            // En estadísticas del main también
             document.getElementById('mensajes-usados').textContent = mensajesUsados;
-            document.getElementById('mensajes-limite').textContent = mensajesLimite === Infinity ? '∞' : mensajesLimite;
+            document.getElementById('mensajes-limite').textContent = mensajesLimiteDisplay;
         }
         
         // Actualizar estadísticas

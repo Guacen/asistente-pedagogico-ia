@@ -9,10 +9,11 @@ from sqlalchemy.orm import Session
 from auth import get_current_docente
 from config import settings
 from database import get_db
-from models import Archivo, Calificacion, Estudiante, Grupo, Mensaje, Nota
+from models import Archivo, Calificacion, EvaluacionColumna, Estudiante, Grupo, Mensaje, Nota
 from schemas import (
-    ArchivoOut, CalificacionCreate, CalificacionOut, CalificacionUpdate,
+    ArchivoOut, CalificacionCreate, CalificacionOut, CalificacionUpdate, CalificacionUpsert,
     EstudianteCreate, EstudianteOut, EstudianteUpdate,
+    EvaluacionColumnaCreate, EvaluacionColumnaOut, EvaluacionColumnaUpdate,
     GrupoCreate, GrupoOut, GrupoUpdate, NotaCreate, NotaOut,
 )
 
@@ -340,6 +341,132 @@ def delete_calificacion(
     if not cal:
         raise HTTPException(status_code=404, detail="Calificación no encontrada")
     db.delete(cal)
+    db.commit()
+
+
+@router.post("/grupos/{grupo_id}/calificaciones/upsert", response_model=CalificacionOut)
+def upsert_calificacion(
+    grupo_id: str,
+    data: CalificacionUpsert,
+    docente=Depends(get_current_docente),
+    db: Session = Depends(get_db),
+):
+    """Crea o actualiza la nota de un estudiante en una columna de evaluación."""
+    _get_grupo_or_404(grupo_id, docente.id_docente, db)
+
+    # Verificar que el estudiante pertenece al grupo
+    est = db.query(Estudiante).filter(
+        Estudiante.id_estudiante == data.id_estudiante,
+        Estudiante.id_grupo == grupo_id,
+    ).first()
+    if not est:
+        raise HTTPException(status_code=404, detail="Estudiante no encontrado en este grupo")
+
+    # Verificar que la columna pertenece al grupo
+    col = db.query(EvaluacionColumna).filter(
+        EvaluacionColumna.id_columna == data.id_columna,
+        EvaluacionColumna.id_grupo == grupo_id,
+    ).first()
+    if not col:
+        raise HTTPException(status_code=404, detail="Columna no encontrada en este grupo")
+
+    # Buscar calificación existente para esta combinación
+    cal = db.query(Calificacion).filter(
+        Calificacion.id_estudiante == data.id_estudiante,
+        Calificacion.id_columna == data.id_columna,
+        Calificacion.periodo == data.periodo,
+    ).first()
+
+    if cal:
+        cal.valor = data.valor
+    else:
+        cal = Calificacion(
+            id_grupo=grupo_id,
+            id_estudiante=data.id_estudiante,
+            id_columna=data.id_columna,
+            periodo=data.periodo,
+            tipo=col.tipo,
+            descripcion=col.nombre,
+            valor=data.valor,
+            porcentaje=col.porcentaje,
+        )
+        db.add(cal)
+
+    db.commit()
+    db.refresh(cal)
+    return cal
+
+
+# ============================================================
+# COLUMNAS DE EVALUACIÓN
+# ============================================================
+
+@router.get("/grupos/{grupo_id}/columnas", response_model=List[EvaluacionColumnaOut])
+def list_columnas(
+    grupo_id: str,
+    periodo: int = None,
+    docente=Depends(get_current_docente),
+    db: Session = Depends(get_db),
+):
+    _get_grupo_or_404(grupo_id, docente.id_docente, db)
+    q = db.query(EvaluacionColumna).filter(EvaluacionColumna.id_grupo == grupo_id)
+    if periodo is not None:
+        q = q.filter(EvaluacionColumna.periodo == periodo)
+    return q.order_by(EvaluacionColumna.periodo, EvaluacionColumna.orden).all()
+
+
+@router.post("/grupos/{grupo_id}/columnas", response_model=EvaluacionColumnaOut, status_code=201)
+def create_columna(
+    grupo_id: str,
+    data: EvaluacionColumnaCreate,
+    docente=Depends(get_current_docente),
+    db: Session = Depends(get_db),
+):
+    _get_grupo_or_404(grupo_id, docente.id_docente, db)
+    col = EvaluacionColumna(id_grupo=grupo_id, **data.model_dump())
+    db.add(col)
+    db.commit()
+    db.refresh(col)
+    return col
+
+
+@router.put("/grupos/{grupo_id}/columnas/{col_id}", response_model=EvaluacionColumnaOut)
+def update_columna(
+    grupo_id: str,
+    col_id: str,
+    data: EvaluacionColumnaUpdate,
+    docente=Depends(get_current_docente),
+    db: Session = Depends(get_db),
+):
+    _get_grupo_or_404(grupo_id, docente.id_docente, db)
+    col = db.query(EvaluacionColumna).filter(
+        EvaluacionColumna.id_columna == col_id,
+        EvaluacionColumna.id_grupo == grupo_id,
+    ).first()
+    if not col:
+        raise HTTPException(status_code=404, detail="Columna no encontrada")
+    for field, value in data.model_dump(exclude_none=True).items():
+        setattr(col, field, value)
+    db.commit()
+    db.refresh(col)
+    return col
+
+
+@router.delete("/grupos/{grupo_id}/columnas/{col_id}", status_code=204)
+def delete_columna(
+    grupo_id: str,
+    col_id: str,
+    docente=Depends(get_current_docente),
+    db: Session = Depends(get_db),
+):
+    _get_grupo_or_404(grupo_id, docente.id_docente, db)
+    col = db.query(EvaluacionColumna).filter(
+        EvaluacionColumna.id_columna == col_id,
+        EvaluacionColumna.id_grupo == grupo_id,
+    ).first()
+    if not col:
+        raise HTTPException(status_code=404, detail="Columna no encontrada")
+    db.delete(col)
     db.commit()
 
 
