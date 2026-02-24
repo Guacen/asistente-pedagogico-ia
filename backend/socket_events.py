@@ -34,7 +34,7 @@ sio = socketio.AsyncServer(
 )
 
 # Mapa sid → docente_id (para saber quién está conectado)
-_sesiones: dict[str, str] = {}
+_sesiones: dict = {}
 
 
 # ============================================================

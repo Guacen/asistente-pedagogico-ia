@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -60,7 +61,7 @@ def get_current_docente(
     return docente
 
 
-def verify_token_for_socket(token: str, db: Session) -> Docente | None:
+def verify_token_for_socket(token: str, db: Session) -> Optional[Docente]:
     """Verifica token JWT para conexiones WebSocket."""
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
