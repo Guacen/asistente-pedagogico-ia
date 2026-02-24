@@ -127,3 +127,36 @@ async def generar_respuesta(
             await on_chunk(chunk)
 
     return respuesta_completa
+
+
+# ============================================================
+# MENSAJE DE BIENVENIDA / INICIALIZACIÓN DE CONTEXTO
+# ============================================================
+
+async def generar_mensaje_bienvenida(grupo: Grupo, estudiantes: List[Estudiante]) -> tuple:
+    """
+    Genera un mensaje inicial de bienvenida cuando se crea un grupo.
+    Claude recibe el contexto completo del grupo y responde con
+    sugerencias pedagógicas iniciales. Retorna (msg_docente, msg_ia).
+    """
+    system_prompt = construir_system_prompt(grupo, estudiantes)
+    piar_count = len([e for e in estudiantes if e.tiene_piar])
+
+    msg_docente = (
+        f"Acabo de crear el grupo **{grupo.nombre_grupo}** para la asignatura de "
+        f"**{grupo.asignatura}**, grado **{grupo.grado}**, año {grupo.anio_lectivo} "
+        f"(período {grupo.periodo_actual}). "
+        f"El grupo tiene {grupo.cantidad_estudiantes} estudiantes"
+        + (f", de los cuales {piar_count} tienen PIAR." if piar_count else ".")
+        + " Por favor preséntate brevemente y dame 3 sugerencias concretas para "
+        "comenzar a planear mis primeras clases con este grupo de forma inclusiva."
+    )
+
+    response = await client.messages.create(
+        model=settings.CLAUDE_MODEL,
+        max_tokens=800,
+        system=system_prompt,
+        messages=[{"role": "user", "content": msg_docente}],
+    )
+
+    return msg_docente, response.content[0].text

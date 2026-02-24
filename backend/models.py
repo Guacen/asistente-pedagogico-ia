@@ -79,6 +79,7 @@ class Grupo(Base):
     mensajes = relationship("Mensaje", back_populates="grupo", cascade="all, delete")
     notas = relationship("Nota", back_populates="grupo", cascade="all, delete")
     archivos = relationship("Archivo", back_populates="grupo", cascade="all, delete")
+    calificaciones = relationship("Calificacion", back_populates="grupo", cascade="all, delete")
 
 
 class Estudiante(Base):
@@ -94,6 +95,7 @@ class Estudiante(Base):
     fecha_agregado = Column(DateTime, default=datetime.utcnow)
 
     grupo = relationship("Grupo", back_populates="estudiantes")
+    calificaciones = relationship("Calificacion", back_populates="estudiante", cascade="all, delete")
 
 
 class Mensaje(Base):
@@ -117,6 +119,23 @@ class Nota(Base):
     fecha_creacion = Column(DateTime, default=datetime.utcnow)
 
     grupo = relationship("Grupo", back_populates="notas")
+
+
+class Calificacion(Base):
+    __tablename__ = "calificaciones"
+
+    id_calificacion = Column(String(36), primary_key=True, default=new_uuid)
+    id_estudiante = Column(String(36), ForeignKey("estudiantes.id_estudiante"), nullable=False)
+    id_grupo = Column(String(36), ForeignKey("grupos.id_grupo"), nullable=False)
+    periodo = Column(Integer, nullable=False, default=1)
+    tipo = Column(String(50))        # taller, parcial, quiz, examen, tarea, proyecto, oral
+    descripcion = Column(String(200))
+    valor = Column(Float)            # 0.0 – 5.0
+    porcentaje = Column(Float)       # peso de la nota (0 – 100)
+    fecha = Column(DateTime, default=datetime.utcnow)
+
+    estudiante = relationship("Estudiante", back_populates="calificaciones")
+    grupo = relationship("Grupo", back_populates="calificaciones")
 
 
 class Archivo(Base):

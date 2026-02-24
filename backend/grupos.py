@@ -9,9 +9,10 @@ from sqlalchemy.orm import Session
 from auth import get_current_docente
 from config import settings
 from database import get_db
-from models import Archivo, Estudiante, Grupo, Nota
+from models import Archivo, Calificacion, Estudiante, Grupo, Mensaje, Nota
 from schemas import (
-    ArchivoOut, EstudianteCreate, EstudianteOut, EstudianteUpdate,
+    ArchivoOut, CalificacionCreate, CalificacionOut, CalificacionUpdate,
+    EstudianteCreate, EstudianteOut, EstudianteUpdate,
     GrupoCreate, GrupoOut, GrupoUpdate, NotaCreate, NotaOut,
 )
 
@@ -228,6 +229,117 @@ def delete_nota(
     if not nota:
         raise HTTPException(status_code=404, detail="Nota no encontrada")
     db.delete(nota)
+    db.commit()
+
+
+# ============================================================
+# INICIALIZAR CONTEXTO IA
+# ============================================================
+
+@router.post("/grupos/{grupo_id}/inicializar-ia")
+async def inicializar_ia(
+    grupo_id: str,
+    docente=Depends(get_current_docente),
+    db: Session = Depends(get_db),
+):
+    """
+    Genera un mensaje de bienvenida personalizado de Claude cuando se crea
+    el grupo. Solo actúa si el grupo aún no tiene mensajes guardados.
+    """
+    from ia import generar_mensaje_bienvenida
+
+    grupo = _get_grupo_or_404(grupo_id, docente.id_docente, db)
+    estudiantes = db.query(Estudiante).filter(Estudiante.id_grupo == grupo_id).all()
+
+    # No duplicar si ya hay historial
+    count = db.query(Mensaje).filter(Mensaje.id_grupo == grupo_id).count()
+    if count > 0:
+        return {"mensaje": "El contexto ya fue inicializado"}
+
+    msg_docente, msg_ia = await generar_mensaje_bienvenida(grupo, estudiantes)
+
+    db.add(Mensaje(id_grupo=grupo_id, remitente="docente",  contenido=msg_docente))
+    db.add(Mensaje(id_grupo=grupo_id, remitente="sistema",  contenido=msg_ia))
+    db.commit()
+
+    return {"mensaje": "Contexto inicializado", "bienvenida": msg_ia}
+
+
+# ============================================================
+# CALIFICACIONES
+# ============================================================
+
+@router.get("/grupos/{grupo_id}/calificaciones", response_model=List[CalificacionOut])
+def list_calificaciones(
+    grupo_id: str,
+    docente=Depends(get_current_docente),
+    db: Session = Depends(get_db),
+):
+    _get_grupo_or_404(grupo_id, docente.id_docente, db)
+    return db.query(Calificacion).filter(Calificacion.id_grupo == grupo_id).all()
+
+
+@router.post("/grupos/{grupo_id}/calificaciones", response_model=CalificacionOut, status_code=201)
+def create_calificacion(
+    grupo_id: str,
+    data: CalificacionCreate,
+    docente=Depends(get_current_docente),
+    db: Session = Depends(get_db),
+):
+    _get_grupo_or_404(grupo_id, docente.id_docente, db)
+    # Verificar que el estudiante pertenece al grupo
+    est = db.query(Estudiante).filter(
+        Estudiante.id_estudiante == data.id_estudiante,
+        Estudiante.id_grupo == grupo_id,
+    ).first()
+    if not est:
+        raise HTTPException(status_code=404, detail="Estudiante no encontrado en este grupo")
+
+    cal = Calificacion(id_grupo=grupo_id, **data.model_dump())
+    db.add(cal)
+    db.commit()
+    db.refresh(cal)
+    return cal
+
+
+@router.put("/grupos/{grupo_id}/calificaciones/{cal_id}", response_model=CalificacionOut)
+def update_calificacion(
+    grupo_id: str,
+    cal_id: str,
+    data: CalificacionUpdate,
+    docente=Depends(get_current_docente),
+    db: Session = Depends(get_db),
+):
+    _get_grupo_or_404(grupo_id, docente.id_docente, db)
+    cal = db.query(Calificacion).filter(
+        Calificacion.id_calificacion == cal_id,
+        Calificacion.id_grupo == grupo_id,
+    ).first()
+    if not cal:
+        raise HTTPException(status_code=404, detail="Calificación no encontrada")
+
+    for field, value in data.model_dump(exclude_none=True).items():
+        setattr(cal, field, value)
+    db.commit()
+    db.refresh(cal)
+    return cal
+
+
+@router.delete("/grupos/{grupo_id}/calificaciones/{cal_id}", status_code=204)
+def delete_calificacion(
+    grupo_id: str,
+    cal_id: str,
+    docente=Depends(get_current_docente),
+    db: Session = Depends(get_db),
+):
+    _get_grupo_or_404(grupo_id, docente.id_docente, db)
+    cal = db.query(Calificacion).filter(
+        Calificacion.id_calificacion == cal_id,
+        Calificacion.id_grupo == grupo_id,
+    ).first()
+    if not cal:
+        raise HTTPException(status_code=404, detail="Calificación no encontrada")
+    db.delete(cal)
     db.commit()
 
 

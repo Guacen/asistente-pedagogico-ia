@@ -164,6 +164,40 @@ class ArchivoOut(BaseModel):
 
 
 # ============================================================
+# CALIFICACIONES
+# ============================================================
+
+class CalificacionCreate(BaseModel):
+    id_estudiante: str
+    periodo: int = 1
+    tipo: Optional[str] = None
+    descripcion: Optional[str] = None
+    valor: Optional[float] = None
+    porcentaje: Optional[float] = None
+
+
+class CalificacionUpdate(BaseModel):
+    tipo: Optional[str] = None
+    descripcion: Optional[str] = None
+    valor: Optional[float] = None
+    porcentaje: Optional[float] = None
+
+
+class CalificacionOut(BaseModel):
+    id_calificacion: str
+    id_estudiante: str
+    id_grupo: str
+    periodo: int
+    tipo: Optional[str]
+    descripcion: Optional[str]
+    valor: Optional[float]
+    porcentaje: Optional[float]
+    fecha: datetime
+
+    model_config = {"from_attributes": True}
+
+
+# ============================================================
 # SUSCRIPCIONES
 # ============================================================
 

@@ -201,6 +201,42 @@ class ApiClient {
     }
     
     // ==========================================
+    // INICIALIZAR IA
+    // ==========================================
+
+    async inicializarContextoIA(grupoId) {
+        return this.request(`/api/grupos/${grupoId}/inicializar-ia`, { method: 'POST' });
+    }
+
+    // ==========================================
+    // CALIFICACIONES
+    // ==========================================
+
+    async getCalificaciones(grupoId) {
+        return this.request(`/api/grupos/${grupoId}/calificaciones`);
+    }
+
+    async createCalificacion(grupoId, data) {
+        return this.request(`/api/grupos/${grupoId}/calificaciones`, {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+    }
+
+    async updateCalificacion(grupoId, calId, data) {
+        return this.request(`/api/grupos/${grupoId}/calificaciones/${calId}`, {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        });
+    }
+
+    async deleteCalificacion(grupoId, calId) {
+        return this.request(`/api/grupos/${grupoId}/calificaciones/${calId}`, {
+            method: 'DELETE'
+        });
+    }
+
+    // ==========================================
     // SUSCRIPCIONES
     // ==========================================
     
