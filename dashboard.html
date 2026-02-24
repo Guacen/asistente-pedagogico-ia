@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Asistente Pedagógico</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/main.css">
+</head>
+<body class="bg-gray-50">
+    
+    <!-- Layout principal -->
+    <div class="flex h-screen overflow-hidden">
+        
+        <!-- SIDEBAR -->
+        <aside class="w-64 bg-white border-r border-gray-200 flex flex-col">
+            <!-- Header del sidebar -->
+            <div class="p-4 border-b">
+                <div class="flex items-center">
+                    <i class="fas fa-graduation-cap text-2xl text-blue-600"></i>
+                    <span class="ml-2 font-bold text-lg">Asistente IA</span>
+                </div>
+            </div>
+            
+            <!-- Lista de grupos -->
+            <div class="flex-1 overflow-y-auto p-4">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-semibold text-gray-700">Mis Grupos</h3>
+                    <button onclick="window.location.href='grupos.html?action=nuevo'" class="text-blue-600 hover:text-blue-700">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                </div>
+                
+                <!-- Grupos dinámicos -->
+                <div id="grupos-list" class="space-y-2">
+                    <!-- Se llenan dinámicamente -->
+                    <div class="text-center text-gray-500 py-8">
+                        <i class="fas fa-spinner fa-spin text-2xl"></i>
+                        <p class="mt-2">Cargando grupos...</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Footer del sidebar -->
+            <div class="p-4 border-t space-y-2">
+                <!-- Uso de plan -->
+                <div id="plan-usage" class="bg-blue-50 p-3 rounded-lg text-sm">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="font-semibold text-blue-900">Plan Free</span>
+                        <a href="cuenta.html" class="text-blue-600 text-xs hover:underline">Upgrade</a>
+                    </div>
+                    <div class="text-blue-700">
+                        <i class="fas fa-comments mr-1"></i>
+                        <span id="messages-used">0</span>/<span id="messages-limit">10</span> mensajes
+                    </div>
+                    <div class="mt-2 bg-blue-200 rounded-full h-2">
+                        <div id="usage-bar" class="bg-blue-600 h-2 rounded-full" style="width: 0%"></div>
+                    </div>
+                </div>
+                
+                <!-- Botones de acción -->
+                <button onclick="window.location.href='grupos.html'" class="w-full bg-gray-100 text-gray-700 py-2 rounded-lg hover:bg-gray-200 flex items-center justify-center">
+                    <i class="fas fa-users mr-2"></i>
+                    Gestionar Grupos
+                </button>
+            </div>
+        </aside>
+        
+        <!-- CONTENIDO PRINCIPAL -->
+        <div class="flex-1 flex flex-col">
+            
+            <!-- Header -->
+            <header class="bg-white border-b px-6 py-4">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h1 class="text-2xl font-bold text-gray-900">Dashboard</h1>
+                        <p class="text-gray-600">Bienvenido de nuevo, <span id="user-name">Docente</span></p>
+                    </div>
+                    
+                    <!-- Usuario dropdown -->
+                    <div class="relative">
+                        <button id="user-menu-btn" class="flex items-center space-x-2 hover:bg-gray-100 px-3 py-2 rounded-lg">
+                            <div class="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold">
+                                <span id="user-initial">D</span>
+                            </div>
+                            <i class="fas fa-chevron-down text-gray-600"></i>
+                        </button>
+                        
+                        <!-- Dropdown menu -->
+                        <div id="user-menu" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border py-2">
+                            <a href="cuenta.html" class="block px-4 py-2 hover:bg-gray-100">
+                                <i class="fas fa-user mr-2"></i>
+                                Mi Cuenta
+                            </a>
+                            <a href="cuenta.html" class="block px-4 py-2 hover:bg-gray-100">
+                                <i class="fas fa-credit-card mr-2"></i>
+                                Suscripción
+                            </a>
+                            <hr class="my-2">
+                            <button onclick="logout()" class="w-full text-left px-4 py-2 hover:bg-gray-100 text-red-600">
+                                <i class="fas fa-sign-out-alt mr-2"></i>
+                                Cerrar Sesión
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </header>
+            
+            <!-- Área de contenido -->
+            <main class="flex-1 overflow-y-auto p-6">
+                
+                <!-- Resumen rápido -->
+                <div class="grid md:grid-cols-3 gap-6 mb-8">
+                    <!-- Card 1 -->
+                    <div class="bg-white p-6 rounded-lg shadow">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-gray-600 text-sm font-medium">Total Grupos</h3>
+                            <i class="fas fa-users text-blue-600 text-2xl"></i>
+                        </div>
+                        <p class="text-3xl font-bold text-gray-900" id="total-grupos">0</p>
+                    </div>
+                    
+                    <!-- Card 2 -->
+                    <div class="bg-white p-6 rounded-lg shadow">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-gray-600 text-sm font-medium">Estudiantes</h3>
+                            <i class="fas fa-user-graduate text-green-600 text-2xl"></i>
+                        </div>
+                        <p class="text-3xl font-bold text-gray-900" id="total-estudiantes">0</p>
+                    </div>
+                    
+                    <!-- Card 3 -->
+                    <div class="bg-white p-6 rounded-lg shadow">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-gray-600 text-sm font-medium">Mensajes este mes</h3>
+                            <i class="fas fa-comments text-purple-600 text-2xl"></i>
+                        </div>
+                        <p class="text-3xl font-bold text-gray-900">
+                            <span id="mensajes-usados">0</span>/<span id="mensajes-limite">10</span>
+                        </p>
+                    </div>
+                </div>
+                
+                <!-- Acciones rápidas -->
+                <div class="mb-8">
+                    <h2 class="text-xl font-bold text-gray-900 mb-4">Acciones Rápidas</h2>
+                    
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <button onclick="window.location.href='grupos.html?action=nuevo'" class="bg-white p-6 rounded-lg shadow hover:shadow-lg transition-shadow text-left">
+                            <i class="fas fa-plus-circle text-3xl text-blue-600 mb-3"></i>
+                            <h3 class="font-semibold text-lg mb-2">Crear Nuevo Grupo</h3>
+                            <p class="text-gray-600 text-sm">Agrega un nuevo grupo de estudiantes para comenzar a trabajar</p>
+                        </button>
+                        
+                        <button onclick="openFirstGroup()" class="bg-white p-6 rounded-lg shadow hover:shadow-lg transition-shadow text-left">
+                            <i class="fas fa-comments text-3xl text-green-600 mb-3"></i>
+                            <h3 class="font-semibold text-lg mb-2">Iniciar Chat</h3>
+                            <p class="text-gray-600 text-sm">Conversa con la IA sobre tu planificación didáctica</p>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Grupos recientes -->
+                <div>
+                    <h2 class="text-xl font-bold text-gray-900 mb-4">Mis Grupos</h2>
+                    
+                    <div id="grupos-grid" class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <!-- Se llenan dinámicamente -->
+                    </div>
+                    
+                    <!-- Mensaje si no hay grupos -->
+                    <div id="no-grupos-message" class="hidden text-center py-12">
+                        <i class="fas fa-inbox text-6xl text-gray-300 mb-4"></i>
+                        <p class="text-gray-600 mb-4">Aún no has creado ningún grupo</p>
+                        <button onclick="window.location.href='grupos.html?action=nuevo'" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700">
+                            Crear Mi Primer Grupo
+                        </button>
+                    </div>
+                </div>
+                
+            </main>
+            
+        </div>
+    </div>
+    
+    <!-- Scripts -->
+    <script src="js/config.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/grupos.js"></script>
+    
+    <script>
+        // Verificar autenticación
+        if (!api.getToken()) {
+            window.location.href = 'login.html';
+        }
+        
+        // Variables globales
+        let grupos = [];
+        let user = null;
+        let subscription = null;
+        
+        // Cargar datos al iniciar
+        async function cargarDatos() {
+            try {
+                // Cargar usuario
+                user = await api.getMe();
+                document.getElementById('user-name').textContent = user.nombre_completo.split(' ')[0];
+                document.getElementById('user-initial').textContent = user.nombre_completo.charAt(0).toUpperCase();
+                
+                // Cargar grupos
+                grupos = await api.getGrupos();
+                renderGrupos();
+                renderSidebar();
+                
+                // Cargar suscripción
+                subscription = await api.getSubscription();
+                renderPlanUsage();
+                
+                // Actualizar estadísticas
+                actualizarEstadisticas();
+                
+            } catch (error) {
+                console.error('Error cargando datos:', error);
+                if (error.message.includes('401')) {
+                    window.location.href = 'login.html';
+                }
+            }
+        }
+        
+        // Renderizar grupos en el grid principal
+        function renderGrupos() {
+            const gruposGrid = document.getElementById('grupos-grid');
+            const noGruposMsg = document.getElementById('no-grupos-message');
+            
+            if (grupos.length === 0) {
+                gruposGrid.classList.add('hidden');
+                noGruposMsg.classList.remove('hidden');
+                return;
+            }
+            
+            gruposGrid.classList.remove('hidden');
+            noGruposMsg.classList.add('hidden');
+            
+            gruposGrid.innerHTML = grupos.map(grupo => `
+                <div class="bg-white p-6 rounded-lg shadow hover:shadow-lg transition-shadow cursor-pointer" onclick="window.location.href='chat.html?id=${grupo.id_grupo}'">
+                    <div class="flex items-center mb-4">
+                        <i class="fas ${grupo.asignatura === 'álgebra' ? 'fa-square-root-alt' : 'fa-flask'} text-3xl ${grupo.asignatura === 'álgebra' ? 'text-blue-600' : 'text-green-600'}"></i>
+                        <div class="ml-3">
+                            <h3 class="font-semibold text-lg">${grupo.nombre_grupo}</h3>
+                            <p class="text-sm text-gray-600">${grupo.grado} • ${grupo.asignatura}</p>
+                        </div>
+                    </div>
+                    <div class="text-sm text-gray-600">
+                        <i class="fas fa-users mr-2"></i>${grupo.cantidad_estudiantes} estudiantes
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        // Renderizar sidebar
+        function renderSidebar() {
+            const gruposList = document.getElementById('grupos-list');
+            
+            if (grupos.length === 0) {
+                gruposList.innerHTML = `
+                    <div class="text-center text-gray-500 py-4 text-sm">
+                        No tienes grupos aún
+                    </div>
+                `;
+                return;
+            }
+            
+            gruposList.innerHTML = grupos.map(grupo => `
+                <a href="chat.html?id=${grupo.id_grupo}" class="block p-3 rounded-lg hover:bg-gray-100 transition-colors">
+                    <div class="flex items-center">
+                        <i class="fas ${grupo.asignatura === 'álgebra' ? 'fa-book' : 'fa-flask'} text-lg ${grupo.asignatura === 'álgebra' ? 'text-blue-600' : 'text-green-600'}"></i>
+                        <div class="ml-3 flex-1 min-w-0">
+                            <p class="font-medium text-sm truncate">${grupo.nombre_grupo}</p>
+                            <p class="text-xs text-gray-600">${grupo.grado} • ${grupo.cantidad_estudiantes} est.</p>
+                        </div>
+                    </div>
+                </a>
+            `).join('');
+        }
+        
+        // Renderizar uso del plan
+        function renderPlanUsage() {
+            if (!subscription) return;
+            
+            const mensajesUsados = subscription.uso_actual.mensajes_ia_este_mes || 0;
+            const mensajesLimite = subscription.limites.mensajes_ia_mes || 10;
+            const porcentaje = (mensajesUsados / mensajesLimite) * 100;
+            
+            document.getElementById('messages-used').textContent = mensajesUsados;
+            document.getElementById('messages-limit').textContent = mensajesLimite === Infinity ? '∞' : mensajesLimite;
+            document.getElementById('usage-bar').style.width = `${Math.min(porcentaje, 100)}%`;
+            
+            // En estadísticas también
+            document.getElementById('mensajes-usados').textContent = mensajesUsados;
+            document.getElementById('mensajes-limite').textContent = mensajesLimite === Infinity ? '∞' : mensajesLimite;
+        }
+        
+        // Actualizar estadísticas
+        function actualizarEstadisticas() {
+            document.getElementById('total-grupos').textContent = grupos.length;
+            
+            const totalEstudiantes = grupos.reduce((sum, grupo) => sum + grupo.cantidad_estudiantes, 0);
+            document.getElementById('total-estudiantes').textContent = totalEstudiantes;
+        }
+        
+        // Abrir primer grupo
+        function openFirstGroup() {
+            if (grupos.length > 0) {
+                window.location.href = `chat.html?id=${grupos[0].id_grupo}`;
+            } else {
+                alert('Primero crea un grupo');
+            }
+        }
+        
+        // Toggle user menu
+        document.getElementById('user-menu-btn').addEventListener('click', () => {
+            document.getElementById('user-menu').classList.toggle('hidden');
+        });
+        
+        // Cerrar menu al hacer click fuera
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('#user-menu-btn') && !e.target.closest('#user-menu')) {
+                document.getElementById('user-menu').classList.add('hidden');
+            }
+        });
+        
+        // Logout
+        function logout() {
+            api.removeToken();
+            localStorage.removeItem('user');
+            window.location.href = 'login.html';
+        }
+        
+        // Cargar datos al iniciar
+        cargarDatos();
+    </script>
+</body>
+</html>

@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestionar Grupos - Asistente Pedagógico IA</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- CSS Custom -->
+    <link rel="stylesheet" href="css/main.css">
+</head>
+<body class="bg-gray-50">
+    
+    <!-- Layout principal -->
+    <div class="min-h-screen">
+        
+        <!-- Header -->
+        <header class="bg-white shadow-sm sticky top-0 z-10">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <a href="dashboard.html" class="text-gray-600 hover:text-gray-900">
+                            <i class="fas fa-arrow-left text-xl"></i>
+                        </a>
+                        <div>
+                            <h1 class="text-2xl font-bold text-gray-900">Mis Grupos</h1>
+                            <p class="text-sm text-gray-600">Gestiona tus grupos de estudiantes</p>
+                        </div>
+                    </div>
+                    
+                    <button 
+                        onclick="abrirModalNuevoGrupo()"
+                        class="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors flex items-center shadow-lg"
+                    >
+                        <i class="fas fa-plus mr-2"></i>
+                        Nuevo Grupo
+                    </button>
+                </div>
+            </div>
+        </header>
+        
+        <!-- Contenido principal -->
+        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            
+            <!-- Tabs -->
+            <div class="mb-6">
+                <div class="border-b border-gray-200">
+                    <nav class="-mb-px flex space-x-8">
+                        <button 
+                            onclick="cambiarTab('grupos')"
+                            id="tab-grupos"
+                            class="tab-button border-b-2 border-blue-600 py-4 px-1 text-sm font-medium text-blue-600"
+                        >
+                            <i class="fas fa-users mr-2"></i>
+                            Grupos
+                        </button>
+                        <button 
+                            onclick="cambiarTab('estudiantes')"
+                            id="tab-estudiantes"
+                            class="tab-button border-b-2 border-transparent py-4 px-1 text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                        >
+                            <i class="fas fa-user-graduate mr-2"></i>
+                            Estudiantes
+                        </button>
+                    </nav>
+                </div>
+            </div>
+            
+            <!-- Tab Content: Grupos -->
+            <div id="content-grupos" class="tab-content">
+                
+                <!-- Filtros -->
+                <div class="bg-white rounded-lg shadow p-4 mb-6">
+                    <div class="grid md:grid-cols-4 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Buscar</label>
+                            <input 
+                                type="text" 
+                                id="search-grupos"
+                                placeholder="Nombre del grupo..."
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                oninput="filtrarGrupos()"
+                            >
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Grado</label>
+                            <select 
+                                id="filter-grado"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                onchange="filtrarGrupos()"
+                            >
+                                <option value="">Todos</option>
+                                <option value="8°">8°</option>
+                                <option value="9°">9°</option>
+                                <option value="10°">10°</option>
+                                <option value="11°">11°</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Asignatura</label>
+                            <select 
+                                id="filter-asignatura"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                onchange="filtrarGrupos()"
+                            >
+                                <option value="">Todas</option>
+                                <option value="álgebra">Álgebra</option>
+                                <option value="física">Física</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Año</label>
+                            <select 
+                                id="filter-año"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                onchange="filtrarGrupos()"
+                            >
+                                <option value="">Todos</option>
+                                <option value="2026" selected>2026</option>
+                                <option value="2025">2025</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Grid de grupos -->
+                <div id="grupos-grid" class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- Se llenan dinámicamente -->
+                    <div class="col-span-full text-center py-12">
+                        <i class="fas fa-spinner fa-spin text-4xl text-gray-400 mb-4"></i>
+                        <p class="text-gray-600">Cargando grupos...</p>
+                    </div>
+                </div>
+                
+                <!-- Mensaje vacío -->
+                <div id="empty-grupos" class="hidden text-center py-12">
+                    <i class="fas fa-inbox text-6xl text-gray-300 mb-4"></i>
+                    <p class="text-xl text-gray-600 mb-2">No tienes grupos aún</p>
+                    <p class="text-gray-500 mb-6">Crea tu primer grupo para comenzar</p>
+                    <button 
+                        onclick="abrirModalNuevoGrupo()"
+                        class="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700"
+                    >
+                        <i class="fas fa-plus mr-2"></i>
+                        Crear Primer Grupo
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Tab Content: Estudiantes -->
+            <div id="content-estudiantes" class="tab-content hidden">
+                
+                <!-- Seleccionar grupo -->
+                <div class="bg-white rounded-lg shadow p-4 mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Selecciona un grupo</label>
+                    <select 
+                        id="select-grupo-estudiantes"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        onchange="cargarEstudiantesGrupo(this.value)"
+                    >
+                        <option value="">-- Selecciona un grupo --</option>
+                    </select>
+                </div>
+                
+                <!-- Tabla de estudiantes -->
+                <div id="estudiantes-container" class="bg-white rounded-lg shadow overflow-hidden hidden">
+                    <div class="p-4 border-b flex justify-between items-center">
+                        <h3 class="font-semibold text-lg">Estudiantes</h3>
+                        <button 
+                            onclick="abrirModalNuevoEstudiante()"
+                            class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center"
+                        >
+                            <i class="fas fa-user-plus mr-2"></i>
+                            Agregar Estudiante
+                        </button>
+                    </div>
+                    
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Código/Nombre
+                                    </th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Género
+                                    </th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        PIAR
+                                    </th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Acciones
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody id="estudiantes-table-body" class="bg-white divide-y divide-gray-200">
+                                <!-- Se llena dinámicamente -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- Mensaje vacío estudiantes -->
+                <div id="empty-estudiantes" class="text-center py-12">
+                    <i class="fas fa-user-graduate text-6xl text-gray-300 mb-4"></i>
+                    <p class="text-gray-600">Selecciona un grupo para ver sus estudiantes</p>
+                </div>
+            </div>
+            
+        </main>
+    </div>
+    
+    <!-- ============================================ -->
+    <!-- MODAL: NUEVO/EDITAR GRUPO -->
+    <!-- ============================================ -->
+    <div id="modal-grupo" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div class="p-6">
+                <!-- Header -->
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-gray-900" id="modal-grupo-title">Nuevo Grupo</h2>
+                    <button onclick="cerrarModalGrupo()" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times text-2xl"></i>
+                    </button>
+                </div>
+                
+                <!-- Formulario -->
+                <form id="form-grupo" class="space-y-4">
+                    <input type="hidden" id="grupo-id">
+                    
+                    <!-- Nombre del grupo -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Nombre del Grupo <span class="text-red-600">*</span>
+                        </label>
+                        <input 
+                            type="text" 
+                            id="grupo-nombre"
+                            required
+                            placeholder="Ej: 9°A, 10°2 Mañana"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        >
+                    </div>
+                    
+                    <!-- Grado y Asignatura -->
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Grado <span class="text-red-600">*</span>
+                            </label>
+                            <select 
+                                id="grupo-grado"
+                                required
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            >
+                                <option value="">Selecciona...</option>
+                                <option value="8°">8°</option>
+                                <option value="9°">9°</option>
+                                <option value="10°">10°</option>
+                                <option value="11°">11°</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Asignatura <span class="text-red-600">*</span>
+                            </label>
+                            <select 
+                                id="grupo-asignatura"
+                                required
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            >
+                                <option value="">Selecciona...</option>
+                                <option value="álgebra">Álgebra</option>
+                                <option value="física">Física</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- Año lectivo y Período -->
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Año Lectivo <span class="text-red-600">*</span>
+                            </label>
+                            <input 
+                                type="number" 
+                                id="grupo-año"
+                                required
+                                value="2026"
+                                min="2020"
+                                max="2030"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            >
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Período Actual <span class="text-red-600">*</span>
+                            </label>
+                            <select 
+                                id="grupo-periodo"
+                                required
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            >
+                                <option value="1">Período 1</option>
+                                <option value="2">Período 2</option>
+                                <option value="3">Período 3</option>
+                                <option value="4">Período 4</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- Cantidad de estudiantes -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Cantidad de Estudiantes <span class="text-red-600">*</span>
+                        </label>
+                        <input 
+                            type="number" 
+                            id="grupo-cantidad"
+                            required
+                            min="1"
+                            max="50"
+                            placeholder="Ej: 32"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        >
+                        <p class="text-xs text-gray-500 mt-1">Puedes agregar estudiantes individuales después</p>
+                    </div>
+                    
+                    <!-- Recursos disponibles -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Recursos Disponibles
+                        </label>
+                        <div class="grid grid-cols-2 gap-3">
+                            <label class="flex items-center">
+                                <input type="checkbox" id="recurso-laboratorio" class="mr-2 h-4 w-4 text-blue-600 rounded">
+                                <span class="text-sm">Laboratorio de Física</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" id="recurso-informatica" class="mr-2 h-4 w-4 text-blue-600 rounded">
+                                <span class="text-sm">Sala de Informática</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" id="recurso-internet" class="mr-2 h-4 w-4 text-blue-600 rounded">
+                                <span class="text-sm">Internet Estable</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" id="recurso-proyector" class="mr-2 h-4 w-4 text-blue-600 rounded">
+                                <span class="text-sm">Proyector</span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Botones -->
+                    <div class="flex justify-end space-x-3 pt-4">
+                        <button 
+                            type="button"
+                            onclick="cerrarModalGrupo()"
+                            class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                        >
+                            Cancelar
+                        </button>
+                        <button 
+                            type="submit"
+                            id="btn-guardar-grupo"
+                            class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center"
+                        >
+                            <span id="btn-guardar-text">Crear Grupo</span>
+                            <i id="btn-guardar-spinner" class="fas fa-spinner fa-spin ml-2 hidden"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- ============================================ -->
+    <!-- MODAL: NUEVO/EDITAR ESTUDIANTE -->
+    <!-- ============================================ -->
+    <div id="modal-estudiante" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <div class="p-6">
+                <!-- Header -->
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-gray-900" id="modal-estudiante-title">Nuevo Estudiante</h2>
+                    <button onclick="cerrarModalEstudiante()" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times text-2xl"></i>
+                    </button>
+                </div>
+                
+                <!-- Formulario -->
+                <form id="form-estudiante" class="space-y-4">
+                    <input type="hidden" id="estudiante-id">
+                    <input type="hidden" id="estudiante-grupo-id">
+                    
+                    <!-- Código/Nombre -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Código o Nombre del Estudiante <span class="text-red-600">*</span>
+                        </label>
+                        <input 
+                            type="text" 
+                            id="estudiante-codigo"
+                            required
+                            placeholder="Ej: EST-001, Estudiante A"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        >
+                        <p class="text-xs text-gray-500 mt-1">
+                            Por privacidad, usa códigos o seudónimos en vez de nombres reales
+                        </p>
+                    </div>
+                    
+                    <!-- Género -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Género</label>
+                        <select 
+                            id="estudiante-genero"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        >
+                            <option value="">No especifica</option>
+                            <option value="masculino">Masculino</option>
+                            <option value="femenino">Femenino</option>
+                            <option value="otro">Otro</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Tiene PIAR -->
+                    <div>
+                        <label class="flex items-center">
+                            <input 
+                                type="checkbox" 
+                                id="estudiante-piar"
+                                class="mr-2 h-4 w-4 text-blue-600 rounded"
+                                onchange="togglePiarFields()"
+                            >
+                            <span class="text-sm font-medium text-gray-700">
+                                Este estudiante tiene PIAR (Plan Individual de Ajustes Razonables)
+                            </span>
+                        </label>
+                    </div>
+                    
+                    <!-- Campos PIAR (ocultos por defecto) -->
+                    <div id="piar-fields" class="hidden space-y-3 pl-6 border-l-2 border-yellow-400">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Diagnóstico</label>
+                            <input 
+                                type="text" 
+                                id="estudiante-diagnostico"
+                                placeholder="Ej: Dislexia, TEA, Discapacidad visual"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            >
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Ajustes Necesarios</label>
+                            <textarea 
+                                id="estudiante-ajustes"
+                                rows="3"
+                                placeholder="Ej: Tiempo adicional 50%, Evaluación oral, Uso de calculadora..."
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            ></textarea>
+                        </div>
+                    </div>
+                    
+                    <!-- Botones -->
+                    <div class="flex justify-end space-x-3 pt-4">
+                        <button 
+                            type="button"
+                            onclick="cerrarModalEstudiante()"
+                            class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                        >
+                            Cancelar
+                        </button>
+                        <button 
+                            type="submit"
+                            id="btn-guardar-estudiante"
+                            class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center"
+                        >
+                            <span id="btn-guardar-est-text">Agregar Estudiante</span>
+                            <i id="btn-guardar-est-spinner" class="fas fa-spinner fa-spin ml-2 hidden"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Scripts -->
+    <script src="js/config.js"></script>
+    <script src="js/api.js"></script>
+    
+    <script>
+        // Verificar autenticación
+        if (!api.getToken()) {
+            window.location.href = 'login.html';
+        }
+        
+        // Variables globales
+        let grupos = [];
+        let grupoSeleccionado = null;
+        
+        // ==========================================
+        // CARGAR DATOS
+        // ==========================================
+        
+        async function cargarGrupos() {
+            try {
+                grupos = await api.getGrupos();
+                renderGrupos();
+                poblarSelectGrupos();
+            } catch (error) {
+                console.error('Error cargando grupos:', error);
+                alert('Error al cargar grupos');
+            }
+        }
+        
+        // ==========================================
+        // RENDERIZAR GRUPOS
+        // ==========================================
+        
+        function renderGrupos() {
+            const grid = document.getElementById('grupos-grid');
+            const empty = document.getElementById('empty-grupos');
+            
+            if (grupos.length === 0) {
+                grid.classList.add('hidden');
+                empty.classList.remove('hidden');
+                return;
+            }
+            
+            grid.classList.remove('hidden');
+            empty.classList.add('hidden');
+            
+            grid.innerHTML = grupos.map(grupo => `
+                <div class="bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow overflow-hidden">
+                    <div class="p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="flex items-center">
+                                <div class="w-12 h-12 bg-${grupo.asignatura === 'álgebra' ? 'blue' : 'green'}-100 rounded-lg flex items-center justify-center mr-3">
+                                    <i class="fas fa-${grupo.asignatura === 'álgebra' ? 'square-root-alt' : 'flask'} text-2xl text-${grupo.asignatura === 'álgebra' ? 'blue' : 'green'}-600"></i>
+                                </div>
+                                <div>
+                                    <h3 class="font-bold text-lg">${grupo.nombre_grupo}</h3>
+                                    <p class="text-sm text-gray-600">${grupo.grado} • ${grupo.asignatura}</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="space-y-2 mb-4">
+                            <div class="flex items-center text-sm text-gray-600">
+                                <i class="fas fa-users w-5"></i>
+                                <span>${grupo.cantidad_estudiantes} estudiantes</span>
+                            </div>
+                            <div class="flex items-center text-sm text-gray-600">
+                                <i class="fas fa-calendar w-5"></i>
+                                <span>${grupo.año_lectivo} • Período ${grupo.periodo_actual}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="flex space-x-2">
+                            <a href="chat.html?id=${grupo.id_grupo}" class="flex-1 bg-blue-600 text-white py-2 rounded-lg text-center hover:bg-blue-700 transition-colors">
+                                <i class="fas fa-comments mr-1"></i>
+                                Chat
+                            </a>
+                            <button onclick="editarGrupo('${grupo.id_grupo}')" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button onclick="eliminarGrupo('${grupo.id_grupo}', '${grupo.nombre_grupo}')" class="px-4 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        // ==========================================
+        // FILTRAR GRUPOS
+        // ==========================================
+        
+        function filtrarGrupos() {
+            const search = document.getElementById('search-grupos').value.toLowerCase();
+            const grado = document.getElementById('filter-grado').value;
+            const asignatura = document.getElementById('filter-asignatura').value;
+            const año = document.getElementById('filter-año').value;
+            
+            const gruposFiltrados = grupos.filter(grupo => {
+                return (
+                    grupo.nombre_grupo.toLowerCase().includes(search) &&
+                    (grado === '' || grupo.grado === grado) &&
+                    (asignatura === '' || grupo.asignatura === asignatura) &&
+                    (año === '' || grupo.año_lectivo.toString() === año)
+                );
+            });
+            
+            const grid = document.getElementById('grupos-grid');
+            
+            if (gruposFiltrados.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-span-full text-center py-12">
+                        <i class="fas fa-search text-6xl text-gray-300 mb-4"></i>
+                        <p class="text-gray-600">No se encontraron grupos con esos filtros</p>
+                    </div>
+                `;
+            } else {
+                // Renderizar solo los filtrados (temporal)
+                const gruposOriginales = grupos;
+                grupos = gruposFiltrados;
+                renderGrupos();
+                grupos = gruposOriginales;
+            }
+        }
+        
+        // ==========================================
+        // TABS
+        // ==========================================
+        
+        function cambiarTab(tab) {
+            // Actualizar botones
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.classList.remove('border-blue-600', 'text-blue-600');
+                btn.classList.add('border-transparent', 'text-gray-500');
+            });
+            
+            document.getElementById(`tab-${tab}`).classList.add('border-blue-600', 'text-blue-600');
+            document.getElementById(`tab-${tab}`).classList.remove('border-transparent', 'text-gray-500');
+            
+            // Mostrar contenido
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.add('hidden');
+            });
+            
+            document.getElementById(`content-${tab}`).classList.remove('hidden');
+        }
+        
+        // ==========================================
+        // MODAL GRUPO
+        // ==========================================
+        
+        function abrirModalNuevoGrupo() {
+            document.getElementById('modal-grupo-title').textContent = 'Nuevo Grupo';
+            document.getElementById('form-grupo').reset();
+            document.getElementById('grupo-id').value = '';
+            document.getElementById('btn-guardar-text').textContent = 'Crear Grupo';
+            document.getElementById('modal-grupo').classList.remove('hidden');
+        }
+        
+        function cerrarModalGrupo() {
+            document.getElementById('modal-grupo').classList.add('hidden');
+        }
+        
+        async function editarGrupo(grupoId) {
+            try {
+                const grupo = await api.getGrupo(grupoId);
+                
+                document.getElementById('modal-grupo-title').textContent = 'Editar Grupo';
+                document.getElementById('grupo-id').value = grupo.id_grupo;
+                document.getElementById('grupo-nombre').value = grupo.nombre_grupo;
+                document.getElementById('grupo-grado').value = grupo.grado;
+                document.getElementById('grupo-asignatura').value = grupo.asignatura;
+                document.getElementById('grupo-año').value = grupo.año_lectivo;
+                document.getElementById('grupo-periodo').value = grupo.periodo_actual;
+                document.getElementById('grupo-cantidad').value = grupo.cantidad_estudiantes;
+                
+                // Recursos
+                if (grupo.recursos_disponibles) {
+                    document.getElementById('recurso-laboratorio').checked = grupo.recursos_disponibles.laboratorio_fisica || false;
+                    document.getElementById('recurso-informatica').checked = grupo.recursos_disponibles.sala_informatica || false;
+                    document.getElementById('recurso-internet').checked = grupo.recursos_disponibles.internet_estable || false;
+                    document.getElementById('recurso-proyector').checked = grupo.recursos_disponibles.proyector || false;
+                }
+                
+                document.getElementById('btn-guardar-text').textContent = 'Guardar Cambios';
+                document.getElementById('modal-grupo').classList.remove('hidden');
+                
+            } catch (error) {
+                alert('Error al cargar datos del grupo');
+            }
+        }
+        
+        // Enviar formulario grupo
+        document.getElementById('form-grupo').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const grupoId = document.getElementById('grupo-id').value;
+            const data = {
+                nombre_grupo: document.getElementById('grupo-nombre').value,
+                grado: document.getElementById('grupo-grado').value,
+                asignatura: document.getElementById('grupo-asignatura').value,
+                año_lectivo: parseInt(document.getElementById('grupo-año').value),
+                periodo_actual: parseInt(document.getElementById('grupo-periodo').value),
+                cantidad_estudiantes: parseInt(document.getElementById('grupo-cantidad').value),
+                recursos_disponibles: {
+                    laboratorio_fisica: document.getElementById('recurso-laboratorio').checked,
+                    sala_informatica: document.getElementById('recurso-informatica').checked,
+                    internet_estable: document.getElementById('recurso-internet').checked,
+                    proyector: document.getElementById('recurso-proyector').checked
+                }
+            };
+            
+            const btn = document.getElementById('btn-guardar-grupo');
+            const btnText = document.getElementById('btn-guardar-text');
+            const spinner = document.getElementById('btn-guardar-spinner');
+            
+            btn.disabled = true;
+            spinner.classList.remove('hidden');
+            
+            try {
+                if (grupoId) {
+                    await api.updateGrupo(grupoId, data);
+                } else {
+                    await api.createGrupo(data);
+                }
+                
+                cerrarModalGrupo();
+                await cargarGrupos();
+                
+            } catch (error) {
+                alert('Error: ' + error.message);
+            } finally {
+                btn.disabled = false;
+                spinner.classList.add('hidden');
+            }
+        });
+        
+        // Eliminar grupo
+        async function eliminarGrupo(grupoId, nombreGrupo) {
+            if (!confirm(`¿Estás seguro de eliminar el grupo "${nombreGrupo}"? Esta acción no se puede deshacer.`)) {
+                return;
+            }
+            
+            try {
+                await api.deleteGrupo(grupoId);
+                await cargarGrupos();
+            } catch (error) {
+                alert('Error al eliminar grupo: ' + error.message);
+            }
+        }
+        
+        // ==========================================
+        // ESTUDIANTES
+        // ==========================================
+        
+        function poblarSelectGrupos() {
+            const select = document.getElementById('select-grupo-estudiantes');
+            select.innerHTML = '<option value="">-- Selecciona un grupo --</option>' + 
+                grupos.map(g => `<option value="${g.id_grupo}">${g.nombre_grupo} (${g.grado} ${g.asignatura})</option>`).join('');
+        }
+        
+        async function cargarEstudiantesGrupo(grupoId) {
+            if (!grupoId) {
+                document.getElementById('estudiantes-container').classList.add('hidden');
+                document.getElementById('empty-estudiantes').classList.remove('hidden');
+                return;
+            }
+            
+            grupoSeleccionado = grupoId;
+            
+            try {
+                const estudiantes = await api.getEstudiantes(grupoId);
+                
+                document.getElementById('estudiantes-container').classList.remove('hidden');
+                document.getElementById('empty-estudiantes').classList.add('hidden');
+                
+                const tbody = document.getElementById('estudiantes-table-body');
+                
+                if (estudiantes.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="4" class="px-6 py-12 text-center text-gray-500">
+                                No hay estudiantes agregados aún
+                            </td>
+                        </tr>
+                    `;
+                } else {
+                    tbody.innerHTML = estudiantes.map(est => `
+                        <tr>
+                            <td class="px-6 py-4">
+                                <div class="flex items-center">
+                                    <div class="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center mr-3">
+                                        <i class="fas fa-user text-gray-600"></i>
+                                    </div>
+                                    <span class="font-medium">${est.codigo_estudiante}</span>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4">
+                                ${est.genero || 'No especifica'}
+                            </td>
+                            <td class="px-6 py-4">
+                                ${est.tiene_piar ? '<span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-xs">Sí</span>' : '<span class="text-gray-400">No</span>'}
+                            </td>
+                            <td class="px-6 py-4">
+                                <button onclick="editarEstudiante('${est.id_estudiante}')" class="text-blue-600 hover:text-blue-800 mr-3">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button onclick="eliminarEstudiante('${est.id_estudiante}', '${est.codigo_estudiante}')" class="text-red-600 hover:text-red-800">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `).join('');
+                }
+                
+            } catch (error) {
+                alert('Error al cargar estudiantes');
+            }
+        }
+        
+        function abrirModalNuevoEstudiante() {
+            if (!grupoSeleccionado) {
+                alert('Primero selecciona un grupo');
+                return;
+            }
+            
+            document.getElementById('modal-estudiante-title').textContent = 'Nuevo Estudiante';
+            document.getElementById('form-estudiante').reset();
+            document.getElementById('estudiante-id').value = '';
+            document.getElementById('estudiante-grupo-id').value = grupoSeleccionado;
+            document.getElementById('piar-fields').classList.add('hidden');
+            document.getElementById('modal-estudiante').classList.remove('hidden');
+        }
+        
+        function cerrarModalEstudiante() {
+            document.getElementById('modal-estudiante').classList.add('hidden');
+        }
+        
+        function togglePiarFields() {
+            const checked = document.getElementById('estudiante-piar').checked;
+            const fields = document.getElementById('piar-fields');
+            
+            if (checked) {
+                fields.classList.remove('hidden');
+            } else {
+                fields.classList.add('hidden');
+            }
+        }
+        
+        // Enviar formulario estudiante
+        document.getElementById('form-estudiante').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const estudianteId = document.getElementById('estudiante-id').value;
+            const grupoId = document.getElementById('estudiante-grupo-id').value || grupoSeleccionado;
+            
+            const data = {
+                codigo_estudiante: document.getElementById('estudiante-codigo').value,
+                genero: document.getElementById('estudiante-genero').value || null,
+                tiene_piar: document.getElementById('estudiante-piar').checked
+            };
+            
+            if (data.tiene_piar) {
+                data.diagnostico = document.getElementById('estudiante-diagnostico').value;
+                data.ajustes = document.getElementById('estudiante-ajustes').value;
+            }
+            
+            const btn = document.getElementById('btn-guardar-estudiante');
+            const spinner = document.getElementById('btn-guardar-est-spinner');
+            
+            btn.disabled = true;
+            spinner.classList.remove('hidden');
+            
+            try {
+                if (estudianteId) {
+                    await api.updateEstudiante(grupoId, estudianteId, data);
+                } else {
+                    await api.createEstudiante(grupoId, data);
+                }
+                
+                cerrarModalEstudiante();
+                await cargarEstudiantesGrupo(grupoId);
+                
+            } catch (error) {
+                alert('Error: ' + error.message);
+            } finally {
+                btn.disabled = false;
+                spinner.classList.add('hidden');
+            }
+        });
+        
+        async function eliminarEstudiante(estudianteId, codigo) {
+            if (!confirm(`¿Eliminar estudiante "${codigo}"?`)) return;
+            
+            try {
+                await api.deleteEstudiante(grupoSeleccionado, estudianteId);
+                await cargarEstudiantesGrupo(grupoSeleccionado);
+            } catch (error) {
+                alert('Error al eliminar');
+            }
+        }
+        
+        // ==========================================
+        // INICIALIZAR
+        // ==========================================
+        
+        cargarGrupos();
+    </script>
+</body>
+</html>

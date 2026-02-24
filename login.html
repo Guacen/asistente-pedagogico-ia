@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iniciar Sesión - Asistente Pedagógico</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/main.css">
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen flex items-center justify-center p-4">
+    
+    <div class="max-w-md w-full">
+        <!-- Card -->
+        <div class="bg-white rounded-lg shadow-xl p-8">
+            <!-- Logo -->
+            <div class="text-center mb-8">
+                <i class="fas fa-graduation-cap text-5xl text-blue-600 mb-4"></i>
+                <h1 class="text-3xl font-bold text-gray-900">Asistente Pedagógico</h1>
+                <p class="text-gray-600 mt-2">Inicia sesión para continuar</p>
+            </div>
+            
+            <!-- Alerta de error -->
+            <div id="error-alert" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+                <p id="error-message"></p>
+            </div>
+            
+            <!-- Formulario -->
+            <form id="login-form">
+                <div class="space-y-4">
+                    <!-- Email -->
+                    <div>
+                        <label for="email" class="block text-sm font-medium text-gray-700 mb-2">
+                            Email
+                        </label>
+                        <input 
+                            type="email" 
+                            id="email" 
+                            name="email"
+                            required
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="tu@email.com"
+                        >
+                    </div>
+                    
+                    <!-- Contraseña -->
+                    <div>
+                        <label for="password" class="block text-sm font-medium text-gray-700 mb-2">
+                            Contraseña
+                        </label>
+                        <input 
+                            type="password" 
+                            id="password" 
+                            name="password"
+                            required
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="••••••••"
+                        >
+                    </div>
+                    
+                    <!-- Recordar sesión -->
+                    <div class="flex items-center">
+                        <input 
+                            type="checkbox" 
+                            id="remember" 
+                            class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        >
+                        <label for="remember" class="ml-2 block text-sm text-gray-700">
+                            Recordar sesión
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Botón de enviar -->
+                <button 
+                    type="submit" 
+                    id="submit-btn"
+                    class="w-full mt-6 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center"
+                >
+                    <span id="btn-text">Iniciar Sesión</span>
+                    <i id="btn-spinner" class="fas fa-spinner fa-spin ml-2 hidden"></i>
+                </button>
+            </form>
+            
+            <!-- Enlaces adicionales -->
+            <div class="mt-6 text-center space-y-2">
+                <p class="text-sm text-gray-600">
+                    ¿Olvidaste tu contraseña? 
+                    <a href="#" class="text-blue-600 hover:underline">Recupérala aquí</a>
+                </p>
+                
+                <p class="text-sm text-gray-600">
+                    ¿No tienes cuenta? 
+                    <a href="registro.html" class="text-blue-600 hover:underline font-semibold">Regístrate gratis</a>
+                </p>
+            </div>
+        </div>
+        
+        <!-- Volver al inicio -->
+        <div class="mt-4 text-center">
+            <a href="index.html" class="text-blue-600 hover:underline">
+                <i class="fas fa-arrow-left mr-2"></i>
+                Volver al inicio
+            </a>
+        </div>
+    </div>
+    
+    <!-- Scripts -->
+    <script src="js/config.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/auth.js"></script>
+    
+    <script>
+        // Manejo del formulario de login
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            const submitBtn = document.getElementById('submit-btn');
+            const btnText = document.getElementById('btn-text');
+            const btnSpinner = document.getElementById('btn-spinner');
+            const errorAlert = document.getElementById('error-alert');
+            const errorMessage = document.getElementById('error-message');
+            
+            // Deshabilitar botón
+            submitBtn.disabled = true;
+            btnText.textContent = 'Iniciando sesión...';
+            btnSpinner.classList.remove('hidden');
+            errorAlert.classList.add('hidden');
+            
+            try {
+                // Llamar a la API
+                const response = await api.login(email, password);
+                
+                // Guardar usuario en localStorage
+                const user = await api.getMe();
+                localStorage.setItem('user', JSON.stringify(user));
+                
+                // Redirigir al dashboard
+                window.location.href = 'dashboard.html';
+                
+            } catch (error) {
+                // Mostrar error
+                errorMessage.textContent = error.message || 'Error al iniciar sesión. Verifica tus credenciales.';
+                errorAlert.classList.remove('hidden');
+                
+                // Re-habilitar botón
+                submitBtn.disabled = false;
+                btnText.textContent = 'Iniciar Sesión';
+                btnSpinner.classList.add('hidden');
+            }
+        });
+        
+        // Verificar si ya está autenticado
+        if (api.getToken()) {
+            window.location.href = 'dashboard.html';
+        }
+    </script>
+</body>
+</html>
