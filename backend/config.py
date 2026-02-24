@@ -3,7 +3,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     # Base de datos
-    DATABASE_URL: str = "postgresql://postgres:password@localhost:5432/asistente_pedagogico"
+    # Desarrollo local: SQLite (no requiere instalación)
+    # Producción (Railway): postgresql://user:pass@host:5432/db
+    DATABASE_URL: str = "sqlite:///./asistente_pedagogico.db"
 
     # JWT
     SECRET_KEY: str = "cambia-esta-clave-en-produccion"
