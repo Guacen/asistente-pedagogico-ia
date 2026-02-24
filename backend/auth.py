@@ -23,12 +23,17 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 # UTILIDADES JWT
 # ============================================================
 
+def _truncate_password(password: str) -> str:
+    """bcrypt acepta máximo 72 bytes — truncar para evitar ValueError."""
+    return password.encode("utf-8")[:72].decode("utf-8", errors="ignore")
+
+
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    return pwd_context.hash(_truncate_password(password))
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return pwd_context.verify(plain, hashed)
+    return pwd_context.verify(_truncate_password(plain), hashed)
 
 
 def create_access_token(data: dict) -> str:
