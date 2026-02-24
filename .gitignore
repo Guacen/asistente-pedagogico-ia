@@ -20,3 +20,4 @@
 
 # Node (si se usa en el futuro)
 node_modules/
+backend/asistente_pedagogico.db
