@@ -3,10 +3,11 @@
 // ============================================
 
 const CONFIG = {
-    // URL de tu backend FastAPI
-    // Cambiar según tu servidor (Railway, Render, VPS, etc.)
-    API_URL: 'https://tu-backend.railway.app',  // CAMBIAR ESTO
-    WS_URL: 'wss://tu-backend.railway.app',     // CAMBIAR ESTO
+    // URL del backend FastAPI
+    // Se detecta automáticamente desde el origen de la página.
+    // Funciona en desarrollo (localhost:8000) y producción (Railway/Hostinger) sin cambios.
+    API_URL: window.location.origin,
+    WS_URL: window.location.origin.replace(/^http/, 'ws'),
     
     // Stripe Public Key (para pagos)
     STRIPE_PUBLIC_KEY: 'pk_test_...', // CAMBIAR ESTO
