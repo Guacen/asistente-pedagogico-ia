@@ -1,0 +1,22 @@
+# Claude Code internals
+.claude/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Editor
+.vscode/
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# Env files
+.env
+.env.local
+
+# Node (si se usa en el futuro)
+node_modules/
