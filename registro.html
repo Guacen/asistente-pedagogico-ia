@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crear Cuenta - Asistente Pedagógico IA</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- CSS Custom -->
+    <link rel="stylesheet" href="css/main.css">
+    
+    <style>
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .slide-up { animation: slideUp 0.5s ease-out; }
+        .strength-meter { height: 4px; border-radius: 2px; transition: all 0.3s; }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 min-h-screen flex items-center justify-center p-4">
+    
+    <div class="max-w-md w-full slide-up">
+        
+        <!-- Card principal -->
+        <div class="bg-white rounded-2xl shadow-2xl p-8">
+            
+            <!-- Logo y título -->
+            <div class="text-center mb-8">
+                <i class="fas fa-graduation-cap text-6xl text-blue-600 mb-4"></i>
+                <h1 class="text-3xl font-bold text-gray-900 mb-2">Crear Cuenta</h1>
+                <p class="text-gray-600">Únete a cientos de docentes que ya usan IA</p>
+            </div>
+            
+            <!-- Alerta de error -->
+            <div id="error-alert" class="hidden bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 flex items-start">
+                <i class="fas fa-exclamation-circle mt-0.5 mr-2"></i>
+                <div>
+                    <p class="font-semibold">Error</p>
+                    <p id="error-message" class="text-sm"></p>
+                </div>
+            </div>
+            
+            <!-- Alerta de éxito -->
+            <div id="success-alert" class="hidden bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-4 flex items-start">
+                <i class="fas fa-check-circle mt-0.5 mr-2"></i>
+                <div>
+                    <p class="font-semibold">¡Cuenta creada!</p>
+                    <p class="text-sm">Redirigiendo al dashboard...</p>
+                </div>
+            </div>
+            
+            <!-- Formulario -->
+            <form id="registro-form" class="space-y-4">
+                
+                <!-- Nombre completo -->
+                <div>
+                    <label for="nombre" class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-user text-gray-400 mr-2"></i>
+                        Nombre Completo
+                    </label>
+                    <input 
+                        type="text" 
+                        id="nombre" 
+                        required
+                        minlength="3"
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="Ej: Jorge Eduardo Londoño"
+                    >
+                    <p id="nombre-error" class="text-red-600 text-xs mt-1 hidden"></p>
+                </div>
+                
+                <!-- Email -->
+                <div>
+                    <label for="email" class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-envelope text-gray-400 mr-2"></i>
+                        Correo Electrónico
+                    </label>
+                    <input 
+                        type="email" 
+                        id="email" 
+                        required
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="tu@email.com"
+                    >
+                    <p id="email-error" class="text-red-600 text-xs mt-1 hidden"></p>
+                </div>
+                
+                <!-- Contraseña -->
+                <div>
+                    <label for="password" class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-lock text-gray-400 mr-2"></i>
+                        Contraseña
+                    </label>
+                    <div class="relative">
+                        <input 
+                            type="password" 
+                            id="password" 
+                            required
+                            minlength="8"
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-12"
+                            placeholder="Mínimo 8 caracteres"
+                        >
+                        <button 
+                            type="button" 
+                            onclick="togglePassword('password')"
+                            class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        >
+                            <i class="fas fa-eye" id="password-eye"></i>
+                        </button>
+                    </div>
+                    
+                    <!-- Indicador de fuerza -->
+                    <div class="mt-2">
+                        <div class="flex gap-1 mb-1">
+                            <div id="strength-bar-1" class="flex-1 strength-meter bg-gray-200"></div>
+                            <div id="strength-bar-2" class="flex-1 strength-meter bg-gray-200"></div>
+                            <div id="strength-bar-3" class="flex-1 strength-meter bg-gray-200"></div>
+                            <div id="strength-bar-4" class="flex-1 strength-meter bg-gray-200"></div>
+                        </div>
+                        <p id="strength-text" class="text-xs text-gray-500">Mínimo 8 caracteres</p>
+                    </div>
+                    <p id="password-error" class="text-red-600 text-xs mt-1 hidden"></p>
+                </div>
+                
+                <!-- Confirmar contraseña -->
+                <div>
+                    <label for="password-confirm" class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-lock text-gray-400 mr-2"></i>
+                        Confirmar Contraseña
+                    </label>
+                    <div class="relative">
+                        <input 
+                            type="password" 
+                            id="password-confirm" 
+                            required
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-12"
+                            placeholder="Repite tu contraseña"
+                        >
+                        <button 
+                            type="button" 
+                            onclick="togglePassword('password-confirm')"
+                            class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        >
+                            <i class="fas fa-eye" id="password-confirm-eye"></i>
+                        </button>
+                    </div>
+                    <p id="password-confirm-error" class="text-red-600 text-xs mt-1 hidden"></p>
+                </div>
+                
+                <!-- Términos -->
+                <div class="flex items-start">
+                    <input 
+                        type="checkbox" 
+                        id="terminos" 
+                        required
+                        class="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    >
+                    <label for="terminos" class="ml-2 text-sm text-gray-600">
+                        Acepto los 
+                        <a href="#" class="text-blue-600 hover:underline">Términos y Condiciones</a> 
+                        y la 
+                        <a href="#" class="text-blue-600 hover:underline">Política de Privacidad</a>
+                    </label>
+                </div>
+                
+                <!-- Botón -->
+                <button 
+                    type="submit" 
+                    id="submit-btn"
+                    class="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center shadow-lg"
+                >
+                    <span id="btn-text">Crear Cuenta Gratis</span>
+                    <i id="btn-spinner" class="fas fa-spinner fa-spin ml-2 hidden"></i>
+                </button>
+            </form>
+            
+            <!-- Link a login -->
+            <div class="mt-6 text-center">
+                <p class="text-sm text-gray-600">
+                    ¿Ya tienes cuenta? 
+                    <a href="login.html" class="text-blue-600 hover:underline font-semibold">
+                        Inicia sesión aquí
+                    </a>
+                </p>
+            </div>
+        </div>
+        
+        <!-- Volver al inicio -->
+        <div class="mt-6 text-center">
+            <a href="index.html" class="text-gray-600 hover:text-gray-900 inline-flex items-center">
+                <i class="fas fa-arrow-left mr-2"></i>
+                Volver al inicio
+            </a>
+        </div>
+    </div>
+    
+    <!-- Scripts -->
+    <script src="js/config.js"></script>
+    <script src="js/api.js"></script>
+    
+    <script>
+        // Toggle visibilidad contraseña
+        function togglePassword(fieldId) {
+            const field = document.getElementById(fieldId);
+            const eye = document.getElementById(fieldId + '-eye');
+            
+            if (field.type === 'password') {
+                field.type = 'text';
+                eye.classList.remove('fa-eye');
+                eye.classList.add('fa-eye-slash');
+            } else {
+                field.type = 'password';
+                eye.classList.remove('fa-eye-slash');
+                eye.classList.add('fa-eye');
+            }
+        }
+        
+        // Calcular fuerza de contraseña
+        function calcularFuerza(password) {
+            let strength = 0;
+            if (password.length >= 8) strength++;
+            if (/\d/.test(password)) strength++;
+            if (/[a-z]/.test(password) && /[A-Z]/.test(password)) strength++;
+            if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) strength++;
+            return strength;
+        }
+        
+        // Actualizar indicador
+        function actualizarIndicador(password) {
+            const strength = calcularFuerza(password);
+            const bars = ['strength-bar-1', 'strength-bar-2', 'strength-bar-3', 'strength-bar-4'];
+            const colors = ['bg-red-500', 'bg-orange-500', 'bg-yellow-500', 'bg-green-500'];
+            const texts = ['Muy débil', 'Débil', 'Media', 'Fuerte'];
+            
+            bars.forEach((id, i) => {
+                const bar = document.getElementById(id);
+                bar.className = i < strength ? `flex-1 strength-meter ${colors[strength-1]}` : 'flex-1 strength-meter bg-gray-200';
+            });
+            
+            document.getElementById('strength-text').textContent = strength > 0 ? `Contraseña: ${texts[strength-1]}` : 'Mínimo 8 caracteres';
+        }
+        
+        // Event listeners
+        document.getElementById('password').addEventListener('input', (e) => {
+            actualizarIndicador(e.target.value);
+        });
+        
+        // Enviar formulario
+        document.getElementById('registro-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const nombre = document.getElementById('nombre').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+            const passwordConfirm = document.getElementById('password-confirm').value;
+            
+            // Validar contraseñas coinciden
+            if (password !== passwordConfirm) {
+                document.getElementById('error-message').textContent = 'Las contraseñas no coinciden';
+                document.getElementById('error-alert').classList.remove('hidden');
+                return;
+            }
+            
+            // Deshabilitar botón
+            const submitBtn = document.getElementById('submit-btn');
+            const btnText = document.getElementById('btn-text');
+            const btnSpinner = document.getElementById('btn-spinner');
+            
+            submitBtn.disabled = true;
+            btnText.textContent = 'Creando cuenta...';
+            btnSpinner.classList.remove('hidden');
+            document.getElementById('error-alert').classList.add('hidden');
+            
+            try {
+                // Registrar
+                await api.register(nombre, email, password);
+                
+                // Auto-login
+                await api.login(email, password);
+                
+                // Guardar usuario
+                const user = await api.getMe();
+                localStorage.setItem('user', JSON.stringify(user));
+                
+                // Mostrar éxito
+                document.getElementById('success-alert').classList.remove('hidden');
+                document.getElementById('registro-form').classList.add('hidden');
+                
+                // Redirigir
+                setTimeout(() => {
+                    window.location.href = 'dashboard.html';
+                }, 1500);
+                
+            } catch (error) {
+                document.getElementById('error-message').textContent = error.message || 'Error al crear la cuenta';
+                document.getElementById('error-alert').classList.remove('hidden');
+                
+                submitBtn.disabled = false;
+                btnText.textContent = 'Crear Cuenta Gratis';
+                btnSpinner.classList.add('hidden');
+            }
+        });
+        
+        // Verificar si ya está autenticado
+        if (api.getToken()) {
+            window.location.href = 'dashboard.html';
+        }
+    </script>
+</body>
+</html>

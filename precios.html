@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Planes y Precios - Asistente Pedagógico IA</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- CSS Custom -->
+    <link rel="stylesheet" href="css/main.css">
+    
+    <style>
+        /* Animaciones */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .fade-in-up {
+            animation: fadeInUp 0.6s ease-out;
+        }
+        
+        /* Precio destacado */
+        .precio-destacado {
+            position: relative;
+            transform: scale(1.05);
+            z-index: 10;
+        }
+        
+        @media (max-width: 768px) {
+            .precio-destacado {
+                transform: scale(1);
+            }
+        }
+        
+        /* Badge popular */
+        .badge-popular {
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    
+    <!-- Navegación -->
+    <nav class="bg-white shadow-sm sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <div class="flex items-center">
+                    <i class="fas fa-graduation-cap text-3xl text-blue-600"></i>
+                    <span class="ml-2 text-xl font-bold text-gray-900">Asistente Pedagógico IA</span>
+                </div>
+                
+                <div class="flex items-center space-x-4">
+                    <a href="index.html" class="text-gray-700 hover:text-blue-600">Inicio</a>
+                    <a href="index.html#como-funciona" class="text-gray-700 hover:text-blue-600">Características</a>
+                    <a href="login.html" class="text-gray-700 hover:text-blue-600">Iniciar Sesión</a>
+                    <a href="registro.html" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                        Comenzar Gratis
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+    
+    <!-- Hero Section -->
+    <section class="bg-gradient-to-br from-blue-50 to-indigo-100 py-20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h1 class="text-5xl md:text-6xl font-bold text-gray-900 mb-6 fade-in-up">
+                Planes Diseñados para Docentes
+            </h1>
+            <p class="text-xl text-gray-600 mb-8 max-w-3xl mx-auto fade-in-up" style="animation-delay: 0.1s;">
+                Desde gratis hasta planes institucionales. Elige el que mejor se adapte a tus necesidades.
+            </p>
+            
+            <!-- Toggle Anual/Mensual -->
+            <div class="flex items-center justify-center space-x-4 fade-in-up" style="animation-delay: 0.2s;">
+                <span class="text-gray-600">Mensual</span>
+                <label class="relative inline-block w-14 h-8">
+                    <input type="checkbox" id="toggle-billing" class="sr-only peer" onchange="toggleBilling()">
+                    <div class="w-14 h-8 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-6 peer-checked:bg-blue-600 after:content-[''] after:absolute after:top-1 after:left-1 after:bg-white after:rounded-full after:h-6 after:w-6 after:transition-all"></div>
+                </label>
+                <span class="text-gray-600">
+                    Anual 
+                    <span class="inline-block bg-green-100 text-green-700 text-xs px-2 py-1 rounded-full ml-1">
+                        Ahorra 20%
+                    </span>
+                </span>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Cards de Precios -->
+    <section class="py-20 -mt-20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid md:grid-cols-3 gap-8">
+                
+                <!-- Plan FREE -->
+                <div class="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-2xl transition-shadow fade-in-up">
+                    <div class="p-8">
+                        <h3 class="text-2xl font-bold text-gray-900 mb-2">Free</h3>
+                        <p class="text-gray-600 mb-6">Perfecto para empezar</p>
+                        
+                        <div class="mb-8">
+                            <span class="text-5xl font-bold text-gray-900">$0</span>
+                            <span class="text-gray-600 ml-2">/ mes</span>
+                        </div>
+                        
+                        <a href="registro.html" class="block w-full bg-gray-200 text-gray-900 text-center py-3 rounded-lg font-semibold hover:bg-gray-300 transition-colors mb-8">
+                            Comenzar Gratis
+                        </a>
+                        
+                        <div class="space-y-4">
+                            <div class="flex items-start">
+                                <i class="fas fa-check text-green-600 mt-1 mr-3"></i>
+                                <span class="text-gray-700"><strong>10 interacciones IA</strong> al mes</span>
+                            </div>
+                            <div class="flex items-start">
+                                <i class="fas fa-check text-green-600 mt-1 mr-3"></i>
+                                <span class="text-gray-700"><strong>1 grupo</strong> de estudiantes</span>
+                            </div>
+                            <div class="flex items-start">
+                                <i class="fas fa-check text-green-600 mt-1 mr-3"></i>
+                                <span class="text-gray-700">Planificación de clases</span>
+                            </div>
+                            <div class="flex items-start">
+                                <i class="fas fa-check text-green-600 mt-1 mr-3"></i>
+                                <span class="text-gray-700">Generación de evaluaciones</span>
+                            </div>
+                            <div class="flex items-start">
+                                <i class="fas fa-check text-green-600 mt-1 mr-3"></i>
+                                <span class="text-gray-700">Experimentos de física</span>
+                            </div>
+                            <div class="flex items-start">
+                                <i class="fas fa-check text-green-600 mt-1 mr-3"></i>
+                                <span class="text-gray-700">500 MB almacenamiento</span>
+                            </div>
+                            <div class="flex items-start">
+                                <i class="fas fa-check text-green-600 mt-1 mr-3"></i>
+                                <span class="text-gray-700">Soporte por comunidad</span>
+                            </div>
+                            
+                            <div class="border-t pt-4 mt-6">
+                                <div class="flex items-start text-gray-400">
+                                    <i class="fas fa-times mt-1 mr-3"></i>
+                                    <span>Sin seguimiento longitudinal</span>
+                                </div>
+                                <div class="flex items-start text-gray-400 mt-2">
+                                    <i class="fas fa-times mt-1 mr-3"></i>
+                                    <span>Sin análisis socioemocional</span>
+                                </div>
+                                <div class="flex items-start text-gray-400 mt-2">
+                                    <i class="fas fa-times mt-1 mr-3"></i>
+                                    <span>Sin alertas proactivas</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Plan PRO (Destacado) -->
+                <div class="bg-white rounded-2xl shadow-2xl overflow-hidden precio-destacado border-4 border-blue-600 fade-in-up" style="animation-delay: 0.1s;">
+                    <div class="badge-popular bg-blue-600 text-white px-6 py-2 rounded-full text-sm font-bold shadow-lg">
+                        MÁS POPULAR
+                    </div>
+                    
+                    <div class="p-8 pt-6">
+                        <h3 class="text-2xl font-bold text-gray-900 mb-2">Pro</h3>
+                        <p class="text-gray-600 mb-6">Para docentes dedicados</p>
+                        
+                        <div class="mb-8">
+                            <span class="text-5xl font-bold text-blue-600" id="precio-pro-mensual">$9.99</span>
+                            <span class="text-5xl font-bold text-blue-600 hidden" id="precio-pro-anual">$7.99</span>
+                            <span class="text-gray-600 ml-2">/ mes</span>
+                            <div class="text-sm text-gray-500 mt-2">
+                                <span id="precio-pro-total-mensual">Facturado mensualmente</span>
+                                <span id="precio-pro-total-anual" class="hidden">$95.88 facturado anualmente</span>
+                            </div>
+                        </div>
+                        
+                        <a href="registro.html" class="block w-full bg-blue-600 text-white text-center py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors mb-8 shadow-lg">
+                            <i class="fas fa-rocket mr-2"></i>
+                            Comenzar Prueba Gratis
+                        </a>
+                        
+                        <div class="space-y-4">
+                            <div class="flex items-start">
+                                <i class="fas fa-check text-green-600 mt-1 mr-3"></i>
+                                <span class="text-gray-700"><strong>Interacciones ILIMITADAS</strong></span>
+                            </div>
+                            <div class="flex items-start">
+                                <i class="fas fa-check text-green-600 mt-1 mr-3"></i>
+                                <span class="text-gray-700"><strong>Grupos ilimitados</strong></span>
+                            </div>
+                            <div class="flex items-start">
+                                <i class="fas fa-check text-green-600 mt-1 mr-3"></i>
+                                <span class="text-gray-700">Todo lo de Free +</span>
+                            </div>
+                            <div class="flex items-start">
+                                <i class="fas fa-check text-green-600 mt-1 mr-3"></i>
+                                <span class="text-gray-700">Seguimiento longitudinal (4 años)</span>
+                            </div>
+                            <div class="flex items-start">
+                                <i class="fas fa-check text-green-600 mt-1 mr-3"></i>
+                                <span class="text-gray-700">Análisis socioemocional avanzado</span>
+                            </div>
+                            <div class="flex items-start">
+                                <i class="fas fa-check text-green-600 mt-1 mr-3"></i>
+                                <span class="text-gray-700">Alertas proactivas de estudiantes</span>
+                            </div>
+                            <div class="flex items-start">
+                                <i class="fas fa-check text-green-600 mt-1 mr-3"></i>
+                                <span class="text-gray-700">Generación masiva de documentos</span>
+                            </div>
+                            <div class="flex items-start">
+                                <i class="fas fa-check text-green-600 mt-1 mr-3"></i>
+                                <span class="text-gray-700">Exportación de datos</span>
+                            </div>
+                            <div class="flex items-start">
+                                <i class="fas fa-check text-green-600 mt-1 mr-3"></i>
+                                <span class="text-gray-700">5 GB de almacenamiento</span>
+                            </div>
+                            <div class="flex items-start">
+                                <i class="fas fa-check text-green-600 mt-1 mr-3"></i>
+                                <span class="text-gray-700">Soporte prioritario por email</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Plan INSTITUCIONAL -->
+                <div class="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-2xl transition-shadow fade-in-up" style="animation-delay: 0.2s;">
+                    <div class="p-8">
+                        <h3 class="text-2xl font-bold text-gray-900 mb-2">Institucional</h3>
+                        <p class="text-gray-600 mb-6">Para colegios y universidades</p>
+                        
+                        <div class="mb-8">
+                            <span class="text-4xl font-bold text-gray-900">Personalizado</span>
+                            <div class="text-sm text-gray-500 mt-2">Cotización según necesidades</div>
+                        </div>
+                        
+                        <a href="mailto:contacto@asistentepedagogico.com?subject=Cotización Plan Institucional" class="block w-full bg-purple-600 text-white text-center py-3 rounded-lg font-semibold hover:bg-purple-700 transition-colors mb-8">
+                            Solicitar Cotización
+                        </a>
+                        
+                        <div class="space-y-4">
+                            <div class="flex items-start">
+                                <i class="fas fa-check text-green-600 mt-1 mr-3"></i>
+                                <span class="text-gray-700">Todo lo de Pro +</span>
+                            </div>
+                            <div class="flex items-start">
+                                <i class="fas fa-check text-green-600 mt-1 mr-3"></i>
+                                <span class="text-gray-700"><strong>Licencias para todos los docentes STEM</strong></span>
+                            </div>
+                            <div class="flex items-start">
+                                <i class="fas fa-check text-green-600 mt-1 mr-3"></i>
+                                <span class="text-gray-700">Dashboard institucional</span>
+                            </div>
+                            <div class="flex items-start">
+                                <i class="fas fa-check text-green-600 mt-1 mr-3"></i>
+                                <span class="text-gray-700">Reportes agregados por institución</span>
+                            </div>
+                            <div class="flex items-start">
+                                <i class="fas fa-check text-green-600 mt-1 mr-3"></i>
+                                <span class="text-gray-700">Capacitación presencial</span>
+                            </div>
+                            <div class="flex items-start">
+                                <i class="fas fa-check text-green-600 mt-1 mr-3"></i>
+                                <span class="text-gray-700">Soporte técnico dedicado</span>
+                            </div>
+                            <div class="flex items-start">
+                                <i class="fas fa-check text-green-600 mt-1 mr-3"></i>
+                                <span class="text-gray-700">Onboarding asistido</span>
+                            </div>
+                            <div class="flex items-start">
+                                <i class="fas fa-check text-green-600 mt-1 mr-3"></i>
+                                <span class="text-gray-700">50 GB almacenamiento compartido</span>
+                            </div>
+                            <div class="flex items-start">
+                                <i class="fas fa-check text-green-600 mt-1 mr-3"></i>
+                                <span class="text-gray-700">Personalización de prompts</span>
+                            </div>
+                            <div class="flex items-start">
+                                <i class="fas fa-check text-green-600 mt-1 mr-3"></i>
+                                <span class="text-gray-700">Integración con SIS (opcional)</span>
+                            </div>
+                            <div class="flex items-start">
+                                <i class="fas fa-check text-green-600 mt-1 mr-3"></i>
+                                <span class="text-gray-700">SLA garantizado 99.9%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+            </div>
+            
+            <!-- Nota sobre precios -->
+            <div class="mt-8 text-center">
+                <p class="text-sm text-gray-600">
+                    💳 Todos los planes aceptan tarjetas de crédito y débito. Cancela cuando quieras, sin preguntas.
+                </p>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Tabla Comparativa Detallada -->
+    <section class="py-20 bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12">
+                <h2 class="text-4xl font-bold text-gray-900 mb-4">Comparación Detallada</h2>
+                <p class="text-xl text-gray-600">Todas las características lado a lado</p>
+            </div>
+            
+            <div class="overflow-x-auto">
+                <table class="w-full bg-white shadow-lg rounded-lg overflow-hidden">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="py-4 px-6 text-left text-sm font-semibold text-gray-900 w-1/2">Característica</th>
+                            <th class="py-4 px-6 text-center text-sm font-semibold text-gray-900">Free</th>
+                            <th class="py-4 px-6 text-center text-sm font-semibold text-blue-600 bg-blue-50">Pro</th>
+                            <th class="py-4 px-6 text-center text-sm font-semibold text-purple-600 bg-purple-50">Institucional</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200">
+                        <!-- Uso básico -->
+                        <tr class="hover:bg-gray-50">
+                            <td class="py-4 px-6 font-medium text-gray-900">Mensajes IA al mes</td>
+                            <td class="py-4 px-6 text-center">10</td>
+                            <td class="py-4 px-6 text-center bg-blue-50 font-bold text-blue-600">Ilimitado</td>
+                            <td class="py-4 px-6 text-center bg-purple-50 font-bold text-purple-600">Ilimitado</td>
+                        </tr>
+                        <tr class="hover:bg-gray-50">
+                            <td class="py-4 px-6 font-medium text-gray-900">Grupos de estudiantes</td>
+                            <td class="py-4 px-6 text-center">1</td>
+                            <td class="py-4 px-6 text-center bg-blue-50 font-bold text-blue-600">Ilimitado</td>
+                            <td class="py-4 px-6 text-center bg-purple-50 font-bold text-purple-600">Ilimitado</td>
+                        </tr>
+                        <tr class="hover:bg-gray-50">
+                            <td class="py-4 px-6 font-medium text-gray-900">Almacenamiento</td>
+                            <td class="py-4 px-6 text-center">500 MB</td>
+                            <td class="py-4 px-6 text-center bg-blue-50">5 GB</td>
+                            <td class="py-4 px-6 text-center bg-purple-50">50 GB</td>
+                        </tr>
+                        
+                        <!-- Funcionalidades básicas -->
+                        <tr class="bg-gray-100">
+                            <td colspan="4" class="py-3 px-6 font-bold text-gray-900">Funcionalidades Básicas</td>
+                        </tr>
+                        <tr class="hover:bg-gray-50">
+                            <td class="py-4 px-6">Planificación de clases</td>
+                            <td class="py-4 px-6 text-center"><i class="fas fa-check text-green-600 text-xl"></i></td>
+                            <td class="py-4 px-6 text-center bg-blue-50"><i class="fas fa-check text-green-600 text-xl"></i></td>
+                            <td class="py-4 px-6 text-center bg-purple-50"><i class="fas fa-check text-green-600 text-xl"></i></td>
+                        </tr>
+                        <tr class="hover:bg-gray-50">
+                            <td class="py-4 px-6">Generación de evaluaciones</td>
+                            <td class="py-4 px-6 text-center"><i class="fas fa-check text-green-600 text-xl"></i></td>
+                            <td class="py-4 px-6 text-center bg-blue-50"><i class="fas fa-check text-green-600 text-xl"></i></td>
+                            <td class="py-4 px-6 text-center bg-purple-50"><i class="fas fa-check text-green-600 text-xl"></i></td>
+                        </tr>
+                        <tr class="hover:bg-gray-50">
+                            <td class="py-4 px-6">Experimentos de física</td>
+                            <td class="py-4 px-6 text-center"><i class="fas fa-check text-green-600 text-xl"></i></td>
+                            <td class="py-4 px-6 text-center bg-blue-50"><i class="fas fa-check text-green-600 text-xl"></i></td>
+                            <td class="py-4 px-6 text-center bg-purple-50"><i class="fas fa-check text-green-600 text-xl"></i></td>
+                        </tr>
+                        <tr class="hover:bg-gray-50">
+                            <td class="py-4 px-6">Ajustes para PIARs (educación inclusiva)</td>
+                            <td class="py-4 px-6 text-center"><i class="fas fa-check text-green-600 text-xl"></i></td>
+                            <td class="py-4 px-6 text-center bg-blue-50"><i class="fas fa-check text-green-600 text-xl"></i></td>
+                            <td class="py-4 px-6 text-center bg-purple-50"><i class="fas fa-check text-green-600 text-xl"></i></td>
+                        </tr>
+                        
+                        <!-- Funcionalidades avanzadas -->
+                        <tr class="bg-gray-100">
+                            <td colspan="4" class="py-3 px-6 font-bold text-gray-900">Funcionalidades Avanzadas</td>
+                        </tr>
+                        <tr class="hover:bg-gray-50">
+                            <td class="py-4 px-6">Seguimiento longitudinal (4 años: 8° → 11°)</td>
+                            <td class="py-4 px-6 text-center"><i class="fas fa-times text-red-600 text-xl"></i></td>
+                            <td class="py-4 px-6 text-center bg-blue-50"><i class="fas fa-check text-green-600 text-xl"></i></td>
+                            <td class="py-4 px-6 text-center bg-purple-50"><i class="fas fa-check text-green-600 text-xl"></i></td>
+                        </tr>
+                        <tr class="hover:bg-gray-50">
+                            <td class="py-4 px-6">Análisis socioemocional</td>
+                            <td class="py-4 px-6 text-center"><i class="fas fa-times text-red-600 text-xl"></i></td>
+                            <td class="py-4 px-6 text-center bg-blue-50"><i class="fas fa-check text-green-600 text-xl"></i></td>
+                            <td class="py-4 px-6 text-center bg-purple-50"><i class="fas fa-check text-green-600 text-xl"></i></td>
+                        </tr>
+                        <tr class="hover:bg-gray-50">
+                            <td class="py-4 px-6">Alertas proactivas de estudiantes en riesgo</td>
+                            <td class="py-4 px-6 text-center"><i class="fas fa-times text-red-600 text-xl"></i></td>
+                            <td class="py-4 px-6 text-center bg-blue-50"><i class="fas fa-check text-green-600 text-xl"></i></td>
+                            <td class="py-4 px-6 text-center bg-purple-50"><i class="fas fa-check text-green-600 text-xl"></i></td>
+                        </tr>
+                        <tr class="hover:bg-gray-50">
+                            <td class="py-4 px-6">Generación masiva de documentos</td>
+                            <td class="py-4 px-6 text-center"><i class="fas fa-times text-red-600 text-xl"></i></td>
+                            <td class="py-4 px-6 text-center bg-blue-50"><i class="fas fa-check text-green-600 text-xl"></i></td>
+                            <td class="py-4 px-6 text-center bg-purple-50"><i class="fas fa-check text-green-600 text-xl"></i></td>
+                        </tr>
+                        <tr class="hover:bg-gray-50">
+                            <td class="py-4 px-6">Exportación de datos</td>
+                            <td class="py-4 px-6 text-center"><i class="fas fa-times text-red-600 text-xl"></i></td>
+                            <td class="py-4 px-6 text-center bg-blue-50"><i class="fas fa-check text-green-600 text-xl"></i></td>
+                            <td class="py-4 px-6 text-center bg-purple-50"><i class="fas fa-check text-green-600 text-xl"></i></td>
+                        </tr>
+                        
+                        <!-- Funcionalidades institucionales -->
+                        <tr class="bg-gray-100">
+                            <td colspan="4" class="py-3 px-6 font-bold text-gray-900">Funcionalidades Institucionales</td>
+                        </tr>
+                        <tr class="hover:bg-gray-50">
+                            <td class="py-4 px-6">Dashboard institucional</td>
+                            <td class="py-4 px-6 text-center"><i class="fas fa-times text-red-600 text-xl"></i></td>
+                            <td class="py-4 px-6 text-center bg-blue-50"><i class="fas fa-times text-red-600 text-xl"></i></td>
+                            <td class="py-4 px-6 text-center bg-purple-50"><i class="fas fa-check text-green-600 text-xl"></i></td>
+                        </tr>
+                        <tr class="hover:bg-gray-50">
+                            <td class="py-4 px-6">Reportes agregados</td>
+                            <td class="py-4 px-6 text-center"><i class="fas fa-times text-red-600 text-xl"></i></td>
+                            <td class="py-4 px-6 text-center bg-blue-50"><i class="fas fa-times text-red-600 text-xl"></i></td>
+                            <td class="py-4 px-6 text-center bg-purple-50"><i class="fas fa-check text-green-600 text-xl"></i></td>
+                        </tr>
+                        <tr class="hover:bg-gray-50">
+                            <td class="py-4 px-6">Capacitación presencial</td>
+                            <td class="py-4 px-6 text-center"><i class="fas fa-times text-red-600 text-xl"></i></td>
+                            <td class="py-4 px-6 text-center bg-blue-50"><i class="fas fa-times text-red-600 text-xl"></i></td>
+                            <td class="py-4 px-6 text-center bg-purple-50"><i class="fas fa-check text-green-600 text-xl"></i></td>
+                        </tr>
+                        <tr class="hover:bg-gray-50">
+                            <td class="py-4 px-6">Integración con SIS</td>
+                            <td class="py-4 px-6 text-center"><i class="fas fa-times text-red-600 text-xl"></i></td>
+                            <td class="py-4 px-6 text-center bg-blue-50"><i class="fas fa-times text-red-600 text-xl"></i></td>
+                            <td class="py-4 px-6 text-center bg-purple-50"><i class="fas fa-check text-green-600 text-xl"></i></td>
+                        </tr>
+                        
+                        <!-- Soporte -->
+                        <tr class="bg-gray-100">
+                            <td colspan="4" class="py-3 px-6 font-bold text-gray-900">Soporte</td>
+                        </tr>
+                        <tr class="hover:bg-gray-50">
+                            <td class="py-4 px-6">Tipo de soporte</td>
+                            <td class="py-4 px-6 text-center text-sm">Comunidad</td>
+                            <td class="py-4 px-6 text-center bg-blue-50 text-sm">Email prioritario</td>
+                            <td class="py-4 px-6 text-center bg-purple-50 text-sm">Dedicado 24/7</td>
+                        </tr>
+                        <tr class="hover:bg-gray-50">
+                            <td class="py-4 px-6">Tiempo de respuesta</td>
+                            <td class="py-4 px-6 text-center text-sm">Mejor esfuerzo</td>
+                            <td class="py-4 px-6 text-center bg-blue-50 text-sm">24-48 horas</td>
+                            <td class="py-4 px-6 text-center bg-purple-50 text-sm">4 horas</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+    
+    <!-- FAQs -->
+    <section class="py-20 bg-gray-50">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12">
+                <h2 class="text-4xl font-bold text-gray-900 mb-4">Preguntas Frecuentes</h2>
+                <p class="text-xl text-gray-600">Todo lo que necesitas saber sobre nuestros planes</p>
+            </div>
+            
+            <div class="space-y-6">
+                <!-- FAQ 1 -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <button class="w-full flex justify-between items-center text-left" onclick="toggleFaq(1)">
+                        <h3 class="text-lg font-semibold text-gray-900">¿Puedo cambiar de plan en cualquier momento?</h3>
+                        <i class="fas fa-chevron-down text-gray-400" id="faq-icon-1"></i>
+                    </button>
+                    <div id="faq-content-1" class="hidden mt-4 text-gray-600">
+                        Sí, puedes actualizar de Free a Pro en cualquier momento. El cambio es inmediato. Si decides cancelar Pro, continuarás teniendo acceso hasta el final del período pagado.
+                    </div>
+                </div>
+                
+                <!-- FAQ 2 -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <button class="w-full flex justify-between items-center text-left" onclick="toggleFaq(2)">
+                        <h3 class="text-lg font-semibold text-gray-900">¿Qué métodos de pago aceptan?</h3>
+                        <i class="fas fa-chevron-down text-gray-400" id="faq-icon-2"></i>
+                    </button>
+                    <div id="faq-content-2" class="hidden mt-4 text-gray-600">
+                        Aceptamos tarjetas de crédito y débito (Visa, Mastercard, American Express) a través de Stripe. Los pagos son seguros y encriptados. Para planes institucionales, también aceptamos transferencias bancarias.
+                    </div>
+                </div>
+                
+                <!-- FAQ 3 -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <button class="w-full flex justify-between items-center text-left" onclick="toggleFaq(3)">
+                        <h3 class="text-lg font-semibold text-gray-900">¿Hay período de prueba en el Plan Pro?</h3>
+                        <i class="fas fa-chevron-down text-gray-400" id="faq-icon-3"></i>
+                    </button>
+                    <div id="faq-content-3" class="hidden mt-4 text-gray-600">
+                        Sí, ofrecemos 7 días de prueba gratis del Plan Pro. Puedes cancelar antes de que termine el período de prueba sin ningún cargo. Solo necesitas tu tarjeta para verificar tu identidad.
+                    </div>
+                </div>
+                
+                <!-- FAQ 4 -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <button class="w-full flex justify-between items-center text-left" onclick="toggleFaq(4)">
+                        <h3 class="text-lg font-semibold text-gray-900">¿Qué pasa si supero el límite del Plan Free?</h3>
+                        <i class="fas fa-chevron-down text-gray-400" id="faq-icon-4"></i>
+                    </button>
+                    <div id="faq-content-4" class="hidden mt-4 text-gray-600">
+                        Si llegas al límite de 10 mensajes, podrás seguir accediendo a tus grupos y ver el historial, pero no podrás enviar más mensajes hasta el próximo mes. Te recomendamos actualizar a Pro para obtener mensajes ilimitados.
+                    </div>
+                </div>
+                
+                <!-- FAQ 5 -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <button class="w-full flex justify-between items-center text-left" onclick="toggleFaq(5)">
+                        <h3 class="text-lg font-semibold text-gray-900">¿Ofrecen descuentos para instituciones educativas?</h3>
+                        <i class="fas fa-chevron-down text-gray-400" id="faq-icon-5"></i>
+                    </button>
+                    <div id="faq-content-5" class="hidden mt-4 text-gray-600">
+                        Sí, ofrecemos planes personalizados con descuentos significativos para instituciones educativas. El precio depende del número de docentes y las necesidades específicas. Contáctanos para una cotización personalizada.
+                    </div>
+                </div>
+                
+                <!-- FAQ 6 -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <button class="w-full flex justify-between items-center text-left" onclick="toggleFaq(6)">
+                        <h3 class="text-lg font-semibold text-gray-900">¿Mis datos están seguros?</h3>
+                        <i class="fas fa-chevron-down text-gray-400" id="faq-icon-6"></i>
+                    </button>
+                    <div id="faq-content-6" class="hidden mt-4 text-gray-600">
+                        Absolutamente. Cumplimos con la Ley 1581 de 2012 de protección de datos personales en Colombia. Todos los datos están encriptados y usamos seudónimos para los estudiantes. Nunca compartimos tu información con terceros.
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Pregunta adicional -->
+            <div class="mt-12 text-center p-8 bg-blue-50 rounded-lg">
+                <h3 class="text-xl font-semibold text-gray-900 mb-4">¿Tienes más preguntas?</h3>
+                <p class="text-gray-600 mb-6">Estamos aquí para ayudarte. Contáctanos directamente.</p>
+                <a href="mailto:soporte@asistentepedagogico.com" class="inline-flex items-center bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-semibold">
+                    <i class="fas fa-envelope mr-2"></i>
+                    soporte@asistentepedagogico.com
+                </a>
+            </div>
+        </div>
+    </section>
+    
+    <!-- CTA Final -->
+    <section class="py-20 bg-gradient-to-r from-blue-600 to-indigo-700 text-white">
+        <div class="max-w-4xl mx-auto text-center px-4">
+            <h2 class="text-4xl font-bold mb-6">
+                Comienza a Transformar tu Enseñanza Hoy
+            </h2>
+            <p class="text-xl mb-8 opacity-90">
+                Únete a cientos de docentes colombianos que ya están usando IA para mejorar sus clases
+            </p>
+            <div class="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-4">
+                <a href="registro.html" class="bg-white text-blue-600 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-gray-100 inline-block shadow-lg">
+                    Comenzar Gratis
+                    <i class="fas fa-arrow-right ml-2"></i>
+                </a>
+                <a href="mailto:contacto@asistentepedagogico.com?subject=Demo del producto" class="bg-transparent border-2 border-white text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-white hover:text-blue-600 inline-block">
+                    Agendar Demo
+                </a>
+            </div>
+            <p class="mt-6 text-sm opacity-75">
+                ✓ Sin tarjeta de crédito para comenzar · ✓ Cancela cuando quieras
+            </p>
+        </div>
+    </section>
+    
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-gray-400 py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid md:grid-cols-4 gap-8">
+                <div>
+                    <h3 class="text-white font-semibold mb-4">Asistente Pedagógico</h3>
+                    <p class="text-sm">
+                        Herramienta basada en IA para docentes de álgebra y física en Colombia.
+                    </p>
+                </div>
+                
+                <div>
+                    <h3 class="text-white font-semibold mb-4">Producto</h3>
+                    <ul class="space-y-2 text-sm">
+                        <li><a href="index.html#como-funciona" class="hover:text-white">Características</a></li>
+                        <li><a href="precios.html" class="hover:text-white">Precios</a></li>
+                        <li><a href="#" class="hover:text-white">Casos de Uso</a></li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h3 class="text-white font-semibold mb-4">Recursos</h3>
+                    <ul class="space-y-2 text-sm">
+                        <li><a href="#" class="hover:text-white">Blog</a></li>
+                        <li><a href="#" class="hover:text-white">Ayuda</a></li>
+                        <li><a href="#" class="hover:text-white">Tutoriales</a></li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h3 class="text-white font-semibold mb-4">Legal</h3>
+                    <ul class="space-y-2 text-sm">
+                        <li><a href="#" class="hover:text-white">Privacidad</a></li>
+                        <li><a href="#" class="hover:text-white">Términos</a></li>
+                        <li><a href="mailto:contacto@asistentepedagogico.com" class="hover:text-white">Contacto</a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="border-t border-gray-800 mt-8 pt-8 text-center text-sm">
+                <p>&copy; 2026 Asistente Pedagógico IA. Todos los derechos reservados.</p>
+            </div>
+        </div>
+    </footer>
+    
+    <!-- Scripts -->
+    <script>
+        // Toggle billing (mensual/anual)
+        function toggleBilling() {
+            const isAnual = document.getElementById('toggle-billing').checked;
+            
+            // Precio Pro
+            document.getElementById('precio-pro-mensual').classList.toggle('hidden', isAnual);
+            document.getElementById('precio-pro-anual').classList.toggle('hidden', !isAnual);
+            document.getElementById('precio-pro-total-mensual').classList.toggle('hidden', isAnual);
+            document.getElementById('precio-pro-total-anual').classList.toggle('hidden', !isAnual);
+        }
+        
+        // Toggle FAQ
+        function toggleFaq(num) {
+            const content = document.getElementById(`faq-content-${num}`);
+            const icon = document.getElementById(`faq-icon-${num}`);
+            
+            content.classList.toggle('hidden');
+            
+            if (content.classList.contains('hidden')) {
+                icon.classList.remove('fa-chevron-up');
+                icon.classList.add('fa-chevron-down');
+            } else {
+                icon.classList.remove('fa-chevron-down');
+                icon.classList.add('fa-chevron-up');
+            }
+        }
+    </script>
+</body>
+</html>

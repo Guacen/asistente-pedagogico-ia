@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi Cuenta - Asistente Pedagógico IA</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- CSS Custom -->
+    <link rel="stylesheet" href="css/main.css">
+</head>
+<body class="bg-gray-50">
+    
+    <!-- Layout principal -->
+    <div class="min-h-screen">
+        
+        <!-- Header -->
+        <header class="bg-white shadow-sm sticky top-0 z-10">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <a href="dashboard.html" class="text-gray-600 hover:text-gray-900">
+                            <i class="fas fa-arrow-left text-xl"></i>
+                        </a>
+                        <div>
+                            <h1 class="text-2xl font-bold text-gray-900">Mi Cuenta</h1>
+                            <p class="text-sm text-gray-600">Gestiona tu perfil y suscripción</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+        
+        <!-- Contenido principal -->
+        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            
+            <!-- Tabs -->
+            <div class="mb-6">
+                <div class="border-b border-gray-200">
+                    <nav class="-mb-px flex space-x-8">
+                        <button 
+                            onclick="cambiarTab('suscripcion')"
+                            id="tab-suscripcion"
+                            class="tab-button border-b-2 border-blue-600 py-4 px-1 text-sm font-medium text-blue-600"
+                        >
+                            <i class="fas fa-credit-card mr-2"></i>
+                            Suscripción
+                        </button>
+                        <button 
+                            onclick="cambiarTab('perfil')"
+                            id="tab-perfil"
+                            class="tab-button border-b-2 border-transparent py-4 px-1 text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                        >
+                            <i class="fas fa-user mr-2"></i>
+                            Perfil
+                        </button>
+                        <button 
+                            onclick="cambiarTab('seguridad')"
+                            id="tab-seguridad"
+                            class="tab-button border-b-2 border-transparent py-4 px-1 text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                        >
+                            <i class="fas fa-lock mr-2"></i>
+                            Seguridad
+                        </button>
+                    </nav>
+                </div>
+            </div>
+            
+            <!-- Tab Content: SUSCRIPCIÓN -->
+            <div id="content-suscripcion" class="tab-content">
+                
+                <!-- Plan Actual -->
+                <div class="bg-white rounded-lg shadow-md overflow-hidden mb-6">
+                    <div class="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4">
+                        <h2 class="text-xl font-bold text-white flex items-center">
+                            <i class="fas fa-star mr-2"></i>
+                            Plan Actual
+                        </h2>
+                    </div>
+                    
+                    <div class="p-6">
+                        <div class="flex items-center justify-between mb-6">
+                            <div>
+                                <h3 class="text-3xl font-bold text-gray-900" id="plan-nombre">Plan Free</h3>
+                                <p class="text-gray-600 mt-1" id="plan-descripcion">Perfecto para empezar</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-4xl font-bold text-gray-900" id="plan-precio">$0</p>
+                                <p class="text-sm text-gray-600">por mes</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Uso actual -->
+                        <div class="mb-6">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-sm font-medium text-gray-700">Mensajes IA este mes</span>
+                                <span class="text-sm font-bold text-gray-900">
+                                    <span id="mensajes-usados">0</span> / <span id="mensajes-limite">10</span>
+                                </span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-3">
+                                <div id="uso-bar" class="bg-blue-600 h-3 rounded-full transition-all" style="width: 0%"></div>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1">Se reinicia el 1 de cada mes</p>
+                        </div>
+                        
+                        <!-- Grupos -->
+                        <div class="mb-6">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-sm font-medium text-gray-700">Grupos creados</span>
+                                <span class="text-sm font-bold text-gray-900">
+                                    <span id="grupos-creados">0</span> / <span id="grupos-limite">1</span>
+                                </span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-3">
+                                <div id="grupos-bar" class="bg-green-600 h-3 rounded-full transition-all" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- Features del plan -->
+                        <div class="border-t pt-6">
+                            <h4 class="font-semibold mb-3">Incluye:</h4>
+                            <ul id="plan-features" class="space-y-2">
+                                <!-- Se llenan dinámicamente -->
+                            </ul>
+                        </div>
+                        
+                        <!-- Botón de upgrade -->
+                        <div id="upgrade-section" class="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                            <div class="flex items-start">
+                                <i class="fas fa-rocket text-blue-600 text-2xl mr-4 mt-1"></i>
+                                <div class="flex-1">
+                                    <h4 class="font-bold text-gray-900 mb-1">¿Necesitas más?</h4>
+                                    <p class="text-sm text-gray-600 mb-3">
+                                        Actualiza a Pro y obtén mensajes ilimitados, grupos ilimitados y funciones avanzadas.
+                                    </p>
+                                    <button 
+                                        onclick="upgradePro()"
+                                        class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 font-semibold"
+                                    >
+                                        <i class="fas fa-arrow-up mr-2"></i>
+                                        Upgrade a Pro - $9.99/mes
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Sección Pro (oculta si es Free) -->
+                        <div id="pro-section" class="hidden mt-6">
+                            <div class="flex items-center justify-between p-4 bg-green-50 rounded-lg border border-green-200">
+                                <div class="flex items-center">
+                                    <i class="fas fa-check-circle text-green-600 text-2xl mr-3"></i>
+                                    <div>
+                                        <p class="font-semibold text-gray-900">Suscripción activa</p>
+                                        <p class="text-sm text-gray-600">Próximo cobro: <span id="proxima-fecha">01/03/2026</span></p>
+                                    </div>
+                                </div>
+                                <button 
+                                    onclick="cancelarSuscripcion()"
+                                    class="text-red-600 hover:text-red-700 text-sm font-medium"
+                                >
+                                    Cancelar suscripción
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Comparación de Planes -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h2 class="text-xl font-bold text-gray-900 mb-6">Comparar Planes</h2>
+                    
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead>
+                                <tr class="border-b">
+                                    <th class="text-left py-3 px-4 font-semibold text-gray-900">Característica</th>
+                                    <th class="text-center py-3 px-4 font-semibold text-gray-900">Free</th>
+                                    <th class="text-center py-3 px-4 font-semibold text-blue-600">Pro</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y">
+                                <tr>
+                                    <td class="py-3 px-4">Mensajes IA al mes</td>
+                                    <td class="py-3 px-4 text-center">10</td>
+                                    <td class="py-3 px-4 text-center font-bold text-blue-600">Ilimitado</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-3 px-4">Grupos de estudiantes</td>
+                                    <td class="py-3 px-4 text-center">1</td>
+                                    <td class="py-3 px-4 text-center font-bold text-blue-600">Ilimitado</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-3 px-4">Planificación de clases</td>
+                                    <td class="py-3 px-4 text-center"><i class="fas fa-check text-green-600"></i></td>
+                                    <td class="py-3 px-4 text-center"><i class="fas fa-check text-green-600"></i></td>
+                                </tr>
+                                <tr>
+                                    <td class="py-3 px-4">Generación de evaluaciones</td>
+                                    <td class="py-3 px-4 text-center"><i class="fas fa-check text-green-600"></i></td>
+                                    <td class="py-3 px-4 text-center"><i class="fas fa-check text-green-600"></i></td>
+                                </tr>
+                                <tr>
+                                    <td class="py-3 px-4">Seguimiento longitudinal (4 años)</td>
+                                    <td class="py-3 px-4 text-center"><i class="fas fa-times text-red-600"></i></td>
+                                    <td class="py-3 px-4 text-center"><i class="fas fa-check text-green-600"></i></td>
+                                </tr>
+                                <tr>
+                                    <td class="py-3 px-4">Análisis socioemocional</td>
+                                    <td class="py-3 px-4 text-center"><i class="fas fa-times text-red-600"></i></td>
+                                    <td class="py-3 px-4 text-center"><i class="fas fa-check text-green-600"></i></td>
+                                </tr>
+                                <tr>
+                                    <td class="py-3 px-4">Alertas proactivas</td>
+                                    <td class="py-3 px-4 text-center"><i class="fas fa-times text-red-600"></i></td>
+                                    <td class="py-3 px-4 text-center"><i class="fas fa-check text-green-600"></i></td>
+                                </tr>
+                                <tr>
+                                    <td class="py-3 px-4">Almacenamiento</td>
+                                    <td class="py-3 px-4 text-center">500 MB</td>
+                                    <td class="py-3 px-4 text-center">5 GB</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-3 px-4">Soporte</td>
+                                    <td class="py-3 px-4 text-center">Comunidad</td>
+                                    <td class="py-3 px-4 text-center">Email prioritario</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Tab Content: PERFIL -->
+            <div id="content-perfil" class="tab-content hidden">
+                
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h2 class="text-xl font-bold text-gray-900 mb-6">Información Personal</h2>
+                    
+                    <!-- Alerta de éxito -->
+                    <div id="perfil-success" class="hidden bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-4 flex items-center">
+                        <i class="fas fa-check-circle mr-2"></i>
+                        <p>Perfil actualizado correctamente</p>
+                    </div>
+                    
+                    <!-- Alerta de error -->
+                    <div id="perfil-error" class="hidden bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 flex items-center">
+                        <i class="fas fa-exclamation-circle mr-2"></i>
+                        <p id="perfil-error-message"></p>
+                    </div>
+                    
+                    <form id="form-perfil" class="space-y-6">
+                        
+                        <!-- Avatar (opcional - placeholder) -->
+                        <div class="flex items-center">
+                            <div class="w-24 h-24 bg-blue-600 rounded-full flex items-center justify-center text-white text-3xl font-bold mr-6">
+                                <span id="avatar-inicial">D</span>
+                            </div>
+                            <div>
+                                <button type="button" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300">
+                                    <i class="fas fa-camera mr-2"></i>
+                                    Cambiar foto
+                                </button>
+                                <p class="text-xs text-gray-500 mt-1">JPG, PNG. Máximo 2MB</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Nombre completo -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Nombre Completo <span class="text-red-600">*</span>
+                            </label>
+                            <input 
+                                type="text" 
+                                id="perfil-nombre"
+                                required
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            >
+                        </div>
+                        
+                        <!-- Email -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Email
+                            </label>
+                            <input 
+                                type="email" 
+                                id="perfil-email"
+                                disabled
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
+                            >
+                            <p class="text-xs text-gray-500 mt-1">El email no se puede cambiar</p>
+                        </div>
+                        
+                        <!-- Institución -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Institución Educativa
+                            </label>
+                            <input 
+                                type="text" 
+                                id="perfil-institucion"
+                                placeholder="Nombre de tu colegio o universidad"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            >
+                        </div>
+                        
+                        <!-- Ciudad -->
+                        <div class="grid md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Ciudad</label>
+                                <input 
+                                    type="text" 
+                                    id="perfil-ciudad"
+                                    placeholder="Ej: Medellín"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                >
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Departamento</label>
+                                <input 
+                                    type="text" 
+                                    id="perfil-departamento"
+                                    placeholder="Ej: Antioquia"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                >
+                            </div>
+                        </div>
+                        
+                        <!-- Botones -->
+                        <div class="flex justify-end space-x-3 pt-4">
+                            <button 
+                                type="button"
+                                onclick="cancelarCambiosPerfil()"
+                                class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                            >
+                                Cancelar
+                            </button>
+                            <button 
+                                type="submit"
+                                id="btn-guardar-perfil"
+                                class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center"
+                            >
+                                <span id="btn-perfil-text">Guardar Cambios</span>
+                                <i id="btn-perfil-spinner" class="fas fa-spinner fa-spin ml-2 hidden"></i>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Tab Content: SEGURIDAD -->
+            <div id="content-seguridad" class="tab-content hidden">
+                
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h2 class="text-xl font-bold text-gray-900 mb-6">Cambiar Contraseña</h2>
+                    
+                    <!-- Alerta de éxito -->
+                    <div id="password-success" class="hidden bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-4 flex items-center">
+                        <i class="fas fa-check-circle mr-2"></i>
+                        <p>Contraseña actualizada correctamente</p>
+                    </div>
+                    
+                    <!-- Alerta de error -->
+                    <div id="password-error" class="hidden bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 flex items-center">
+                        <i class="fas fa-exclamation-circle mr-2"></i>
+                        <p id="password-error-message"></p>
+                    </div>
+                    
+                    <form id="form-password" class="space-y-6 max-w-xl">
+                        
+                        <!-- Contraseña actual -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Contraseña Actual <span class="text-red-600">*</span>
+                            </label>
+                            <div class="relative">
+                                <input 
+                                    type="password" 
+                                    id="password-actual"
+                                    required
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-12"
+                                >
+                                <button 
+                                    type="button" 
+                                    onclick="togglePassword('password-actual')"
+                                    class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                >
+                                    <i class="fas fa-eye" id="password-actual-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Nueva contraseña -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Nueva Contraseña <span class="text-red-600">*</span>
+                            </label>
+                            <div class="relative">
+                                <input 
+                                    type="password" 
+                                    id="password-nueva"
+                                    required
+                                    minlength="8"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-12"
+                                >
+                                <button 
+                                    type="button" 
+                                    onclick="togglePassword('password-nueva')"
+                                    class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                >
+                                    <i class="fas fa-eye" id="password-nueva-eye"></i>
+                                </button>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1">Mínimo 8 caracteres</p>
+                        </div>
+                        
+                        <!-- Confirmar nueva contraseña -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Confirmar Nueva Contraseña <span class="text-red-600">*</span>
+                            </label>
+                            <div class="relative">
+                                <input 
+                                    type="password" 
+                                    id="password-confirmar"
+                                    required
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-12"
+                                >
+                                <button 
+                                    type="button" 
+                                    onclick="togglePassword('password-confirmar')"
+                                    class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                >
+                                    <i class="fas fa-eye" id="password-confirmar-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Botones -->
+                        <div class="flex justify-end space-x-3 pt-4">
+                            <button 
+                                type="button"
+                                onclick="cancelarCambiosPassword()"
+                                class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                            >
+                                Cancelar
+                            </button>
+                            <button 
+                                type="submit"
+                                id="btn-cambiar-password"
+                                class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center"
+                            >
+                                <span id="btn-password-text">Cambiar Contraseña</span>
+                                <i id="btn-password-spinner" class="fas fa-spinner fa-spin ml-2 hidden"></i>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                
+                <!-- Zona peligrosa -->
+                <div class="bg-white rounded-lg shadow-md p-6 mt-6 border-2 border-red-200">
+                    <h2 class="text-xl font-bold text-red-600 mb-4">Zona Peligrosa</h2>
+                    
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between p-4 bg-red-50 rounded-lg">
+                            <div>
+                                <p class="font-semibold text-gray-900">Eliminar Cuenta</p>
+                                <p class="text-sm text-gray-600">Esta acción no se puede deshacer</p>
+                            </div>
+                            <button 
+                                onclick="eliminarCuenta()"
+                                class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 font-semibold"
+                            >
+                                Eliminar Cuenta
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+        </main>
+    </div>
+    
+    <!-- Scripts -->
+    <script src="js/config.js"></script>
+    <script src="js/api.js"></script>
+    
+    <script>
+        // Verificar autenticación
+        if (!api.getToken()) {
+            window.location.href = 'login.html';
+        }
+        
+        // Variables globales
+        let user = null;
+        let subscription = null;
+        
+        // ==========================================
+        // CARGAR DATOS
+        // ==========================================
+        
+        async function cargarDatos() {
+            try {
+                // Usuario
+                user = await api.getMe();
+                renderPerfil();
+                
+                // Suscripción
+                subscription = await api.getSubscription();
+                renderSuscripcion();
+                
+            } catch (error) {
+                console.error('Error cargando datos:', error);
+                alert('Error al cargar información de la cuenta');
+            }
+        }
+        
+        // ==========================================
+        // RENDER SUSCRIPCIÓN
+        // ==========================================
+        
+        function renderSuscripcion() {
+            const planNombre = subscription.plan === 'free' ? 'Plan Free' : 'Plan Pro';
+            const planPrecio = subscription.plan === 'free' ? '$0' : '$9.99';
+            const planDescripcion = subscription.plan === 'free' 
+                ? 'Perfecto para empezar' 
+                : 'Acceso ilimitado a todas las funciones';
+            
+            document.getElementById('plan-nombre').textContent = planNombre;
+            document.getElementById('plan-precio').textContent = planPrecio;
+            document.getElementById('plan-descripcion').textContent = planDescripcion;
+            
+            // Uso de mensajes
+            const mensajesUsados = subscription.uso_actual?.mensajes_ia_este_mes || 0;
+            const mensajesLimite = subscription.limites?.mensajes_ia_mes || 10;
+            const porcentajeUso = mensajesLimite === Infinity ? 0 : (mensajesUsados / mensajesLimite) * 100;
+            
+            document.getElementById('mensajes-usados').textContent = mensajesUsados;
+            document.getElementById('mensajes-limite').textContent = mensajesLimite === Infinity ? '∞' : mensajesLimite;
+            document.getElementById('uso-bar').style.width = `${Math.min(porcentajeUso, 100)}%`;
+            
+            // Grupos
+            const gruposCreados = subscription.uso_actual?.grupos_creados || 0;
+            const gruposLimite = subscription.limites?.grupos_maximos || 1;
+            const porcentajeGrupos = gruposLimite === Infinity ? 0 : (gruposCreados / gruposLimite) * 100;
+            
+            document.getElementById('grupos-creados').textContent = gruposCreados;
+            document.getElementById('grupos-limite').textContent = gruposLimite === Infinity ? '∞' : gruposLimite;
+            document.getElementById('grupos-bar').style.width = `${Math.min(porcentajeGrupos, 100)}%`;
+            
+            // Features
+            const features = subscription.plan === 'free' 
+                ? [
+                    '<i class="fas fa-check text-green-600 mr-2"></i>10 interacciones IA al mes',
+                    '<i class="fas fa-check text-green-600 mr-2"></i>1 grupo de estudiantes',
+                    '<i class="fas fa-check text-green-600 mr-2"></i>Planificación básica',
+                    '<i class="fas fa-check text-green-600 mr-2"></i>Evaluaciones simples',
+                    '<i class="fas fa-times text-red-600 mr-2"></i>Sin seguimiento longitudinal',
+                    '<i class="fas fa-times text-red-600 mr-2"></i>Sin análisis avanzado'
+                ]
+                : [
+                    '<i class="fas fa-check text-green-600 mr-2"></i>Mensajes <strong>ILIMITADOS</strong>',
+                    '<i class="fas fa-check text-green-600 mr-2"></i>Grupos ilimitados',
+                    '<i class="fas fa-check text-green-600 mr-2"></i>Seguimiento longitudinal (4 años)',
+                    '<i class="fas fa-check text-green-600 mr-2"></i>Análisis socioemocional',
+                    '<i class="fas fa-check text-green-600 mr-2"></i>Alertas proactivas',
+                    '<i class="fas fa-check text-green-600 mr-2"></i>5GB almacenamiento',
+                    '<i class="fas fa-check text-green-600 mr-2"></i>Soporte prioritario'
+                ];
+            
+            document.getElementById('plan-features').innerHTML = features.map(f => `<li class="flex items-center text-sm">${f}</li>`).join('');
+            
+            // Mostrar/ocultar secciones
+            if (subscription.plan === 'free') {
+                document.getElementById('upgrade-section').classList.remove('hidden');
+                document.getElementById('pro-section').classList.add('hidden');
+            } else {
+                document.getElementById('upgrade-section').classList.add('hidden');
+                document.getElementById('pro-section').classList.remove('hidden');
+                
+                // Próxima fecha de cobro (ejemplo)
+                const proximaFecha = new Date();
+                proximaFecha.setMonth(proximaFecha.getMonth() + 1);
+                document.getElementById('proxima-fecha').textContent = proximaFecha.toLocaleDateString('es-CO');
+            }
+        }
+        
+        // ==========================================
+        // RENDER PERFIL
+        // ==========================================
+        
+        function renderPerfil() {
+            document.getElementById('perfil-nombre').value = user.nombre_completo || '';
+            document.getElementById('perfil-email').value = user.email || '';
+            document.getElementById('perfil-institucion').value = user.institucion || '';
+            document.getElementById('perfil-ciudad').value = user.ciudad || '';
+            document.getElementById('perfil-departamento').value = user.departamento || '';
+            
+            // Avatar inicial
+            const inicial = user.nombre_completo ? user.nombre_completo.charAt(0).toUpperCase() : 'U';
+            document.getElementById('avatar-inicial').textContent = inicial;
+        }
+        
+        // ==========================================
+        // TABS
+        // ==========================================
+        
+        function cambiarTab(tab) {
+            // Actualizar botones
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.classList.remove('border-blue-600', 'text-blue-600');
+                btn.classList.add('border-transparent', 'text-gray-500');
+            });
+            
+            document.getElementById(`tab-${tab}`).classList.add('border-blue-600', 'text-blue-600');
+            document.getElementById(`tab-${tab}`).classList.remove('border-transparent', 'text-gray-500');
+            
+            // Mostrar contenido
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.add('hidden');
+            });
+            
+            document.getElementById(`content-${tab}`).classList.remove('hidden');
+        }
+        
+        // ==========================================
+        // UPGRADE A PRO
+        // ==========================================
+        
+        async function upgradePro() {
+            if (!confirm('¿Deseas actualizar a Plan Pro por $9.99/mes?')) {
+                return;
+            }
+            
+            try {
+                // Crear sesión de checkout en Stripe
+                const { checkout_url } = await api.createCheckoutSession('pro');
+                
+                // Redirigir a Stripe
+                window.location.href = checkout_url;
+                
+            } catch (error) {
+                alert('Error al procesar el pago: ' + error.message);
+            }
+        }
+        
+        // ==========================================
+        // CANCELAR SUSCRIPCIÓN
+        // ==========================================
+        
+        async function cancelarSuscripcion() {
+            const confirmacion = prompt(
+                'Esta acción cancelará tu suscripción al final del período actual.\\n\\n' +
+                'Escribe "CANCELAR" para confirmar:'
+            );
+            
+            if (confirmacion !== 'CANCELAR') {
+                return;
+            }
+            
+            try {
+                // TODO: Implementar endpoint de cancelación
+                alert('Suscripción cancelada. Continuarás teniendo acceso hasta el final del período.');
+                
+                // Recargar datos
+                await cargarDatos();
+                
+            } catch (error) {
+                alert('Error al cancelar suscripción: ' + error.message);
+            }
+        }
+        
+        // ==========================================
+        // ACTUALIZAR PERFIL
+        // ==========================================
+        
+        document.getElementById('form-perfil').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const data = {
+                nombre_completo: document.getElementById('perfil-nombre').value,
+                institucion: document.getElementById('perfil-institucion').value,
+                ciudad: document.getElementById('perfil-ciudad').value,
+                departamento: document.getElementById('perfil-departamento').value
+            };
+            
+            const btn = document.getElementById('btn-guardar-perfil');
+            const btnText = document.getElementById('btn-perfil-text');
+            const spinner = document.getElementById('btn-perfil-spinner');
+            const successAlert = document.getElementById('perfil-success');
+            const errorAlert = document.getElementById('perfil-error');
+            
+            btn.disabled = true;
+            btnText.textContent = 'Guardando...';
+            spinner.classList.remove('hidden');
+            successAlert.classList.add('hidden');
+            errorAlert.classList.add('hidden');
+            
+            try {
+                // TODO: Implementar endpoint de actualización de perfil
+                // await api.updateProfile(data);
+                
+                // Simular éxito
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                successAlert.classList.remove('hidden');
+                
+                // Actualizar datos locales
+                user = { ...user, ...data };
+                
+            } catch (error) {
+                document.getElementById('perfil-error-message').textContent = error.message;
+                errorAlert.classList.remove('hidden');
+            } finally {
+                btn.disabled = false;
+                btnText.textContent = 'Guardar Cambios';
+                spinner.classList.add('hidden');
+            }
+        });
+        
+        function cancelarCambiosPerfil() {
+            renderPerfil();
+            document.getElementById('perfil-success').classList.add('hidden');
+            document.getElementById('perfil-error').classList.add('hidden');
+        }
+        
+        // ==========================================
+        // CAMBIAR CONTRASEÑA
+        // ==========================================
+        
+        document.getElementById('form-password').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const passwordActual = document.getElementById('password-actual').value;
+            const passwordNueva = document.getElementById('password-nueva').value;
+            const passwordConfirmar = document.getElementById('password-confirmar').value;
+            
+            const successAlert = document.getElementById('password-success');
+            const errorAlert = document.getElementById('password-error');
+            const errorMessage = document.getElementById('password-error-message');
+            
+            // Validar que coincidan
+            if (passwordNueva !== passwordConfirmar) {
+                errorMessage.textContent = 'Las contraseñas no coinciden';
+                errorAlert.classList.remove('hidden');
+                return;
+            }
+            
+            // Validar longitud
+            if (passwordNueva.length < 8) {
+                errorMessage.textContent = 'La contraseña debe tener al menos 8 caracteres';
+                errorAlert.classList.remove('hidden');
+                return;
+            }
+            
+            const btn = document.getElementById('btn-cambiar-password');
+            const btnText = document.getElementById('btn-password-text');
+            const spinner = document.getElementById('btn-password-spinner');
+            
+            btn.disabled = true;
+            btnText.textContent = 'Cambiando...';
+            spinner.classList.remove('hidden');
+            successAlert.classList.add('hidden');
+            errorAlert.classList.add('hidden');
+            
+            try {
+                // TODO: Implementar endpoint de cambio de contraseña
+                // await api.changePassword(passwordActual, passwordNueva);
+                
+                // Simular éxito
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                successAlert.classList.remove('hidden');
+                document.getElementById('form-password').reset();
+                
+            } catch (error) {
+                errorMessage.textContent = error.message || 'Error al cambiar contraseña';
+                errorAlert.classList.remove('hidden');
+            } finally {
+                btn.disabled = false;
+                btnText.textContent = 'Cambiar Contraseña';
+                spinner.classList.add('hidden');
+            }
+        });
+        
+        function cancelarCambiosPassword() {
+            document.getElementById('form-password').reset();
+            document.getElementById('password-success').classList.add('hidden');
+            document.getElementById('password-error').classList.add('hidden');
+        }
+        
+        // ==========================================
+        // TOGGLE PASSWORD
+        // ==========================================
+        
+        function togglePassword(fieldId) {
+            const field = document.getElementById(fieldId);
+            const eye = document.getElementById(fieldId + '-eye');
+            
+            if (field.type === 'password') {
+                field.type = 'text';
+                eye.classList.remove('fa-eye');
+                eye.classList.add('fa-eye-slash');
+            } else {
+                field.type = 'password';
+                eye.classList.remove('fa-eye-slash');
+                eye.classList.add('fa-eye');
+            }
+        }
+        
+        // ==========================================
+        // ELIMINAR CUENTA
+        // ==========================================
+        
+        async function eliminarCuenta() {
+            const confirmacion = prompt(
+                '⚠️ ADVERTENCIA: Esta acción eliminará permanentemente tu cuenta y todos tus datos.\\n\\n' +
+                'Escribe "ELIMINAR MI CUENTA" para confirmar:'
+            );
+            
+            if (confirmacion !== 'ELIMINAR MI CUENTA') {
+                return;
+            }
+            
+            const confirmacionFinal = confirm(
+                '¿Estás completamente seguro? Esta acción no se puede deshacer.'
+            );
+            
+            if (!confirmacionFinal) {
+                return;
+            }
+            
+            try {
+                // TODO: Implementar endpoint de eliminación de cuenta
+                // await api.deleteAccount();
+                
+                alert('Tu cuenta ha sido eliminada.');
+                
+                // Cerrar sesión y redirigir
+                api.removeToken();
+                localStorage.clear();
+                window.location.href = 'index.html';
+                
+            } catch (error) {
+                alert('Error al eliminar cuenta: ' + error.message);
+            }
+        }
+        
+        // ==========================================
+        // INICIALIZAR
+        // ==========================================
+        
+        cargarDatos();
+        
+        // Verificar si viene de Stripe (success o canceled)
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('success') === 'true') {
+            alert('¡Suscripción activada correctamente! Bienvenido a Plan Pro 🎉');
+            // Limpiar URL
+            window.history.replaceState({}, document.title, window.location.pathname);
+        } else if (urlParams.get('canceled') === 'true') {
+            alert('Proceso de pago cancelado. Tu suscripción no ha cambiado.');
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+    </script>
+</body>
+</html>

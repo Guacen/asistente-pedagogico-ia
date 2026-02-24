@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asistente Pedagógico IA - Para Docentes de Álgebra y Física</title>
+    
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Font Awesome para iconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- CSS Custom -->
+    <link rel="stylesheet" href="css/main.css">
+</head>
+<body class="bg-gray-50">
+    <!-- NAVEGACIÓN -->
+    <nav class="bg-white shadow-sm fixed w-full top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <div class="flex items-center">
+                    <i class="fas fa-graduation-cap text-3xl text-blue-600"></i>
+                    <span class="ml-2 text-xl font-bold text-gray-900">Asistente Pedagógico IA</span>
+                </div>
+                
+                <div class="flex items-center space-x-4">
+                    <a href="#como-funciona" class="text-gray-700 hover:text-blue-600">¿Cómo funciona?</a>
+                    <a href="#precios" class="text-gray-700 hover:text-blue-600">Precios</a>
+                    <a href="login.html" class="text-gray-700 hover:text-blue-600">Iniciar Sesión</a>
+                    <a href="registro.html" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                        Comenzar Gratis
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+    
+    <!-- HERO SECTION -->
+    <section class="pt-24 pb-20 bg-gradient-to-br from-blue-50 to-indigo-100">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center">
+                <h1 class="text-5xl md:text-6xl font-bold text-gray-900 mb-6">
+                    Tu Asistente de IA para<br>
+                    <span class="text-blue-600">Enseñar Álgebra y Física</span>
+                </h1>
+                
+                <p class="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
+                    Genera planes de clase, evaluaciones y experimentos adaptados a tu grupo.
+                    Inclusivo, contextualizado a Colombia y respaldado por investigación doctoral.
+                </p>
+                
+                <div class="flex justify-center space-x-4">
+                    <a href="registro.html" class="bg-blue-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-blue-700 shadow-lg">
+                        Comienza Gratis
+                        <i class="fas fa-arrow-right ml-2"></i>
+                    </a>
+                    
+                    <a href="#demo" class="bg-white text-blue-600 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-gray-50 shadow-lg border-2 border-blue-600">
+                        <i class="fas fa-play mr-2"></i>
+                        Ver Demo
+                    </a>
+                </div>
+                
+                <p class="mt-6 text-sm text-gray-500">
+                    ✓ 10 interacciones gratis al mes · ✓ Sin tarjeta de crédito · ✓ Cancela cuando quieras
+                </p>
+            </div>
+        </div>
+    </section>
+    
+    <!-- CARACTERÍSTICAS -->
+    <section id="como-funciona" class="py-20 bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl font-bold text-gray-900 mb-4">
+                    ¿Cómo funciona?
+                </h2>
+                <p class="text-xl text-gray-600">
+                    Chat inteligente que entiende tu contexto y necesidades pedagógicas
+                </p>
+            </div>
+            
+            <div class="grid md:grid-cols-3 gap-8">
+                <!-- Feature 1 -->
+                <div class="text-center p-6 rounded-lg hover:shadow-lg transition-shadow">
+                    <div class="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-comments text-3xl text-blue-600"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-3">Chat por Grupo</h3>
+                    <p class="text-gray-600">
+                        Crea grupos de estudiantes y chatea con la IA sobre cada uno. 
+                        Historial completo y contextual.
+                    </p>
+                </div>
+                
+                <!-- Feature 2 -->
+                <div class="text-center p-6 rounded-lg hover:shadow-lg transition-shadow">
+                    <div class="bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-book-open text-3xl text-green-600"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-3">Planes de Clase</h3>
+                    <p class="text-gray-600">
+                        Genera secuencias didácticas alineadas con DBA, adaptadas a estilos de aprendizaje.
+                    </p>
+                </div>
+                
+                <!-- Feature 3 -->
+                <div class="text-center p-6 rounded-lg hover:shadow-lg transition-shadow">
+                    <div class="bg-purple-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-clipboard-check text-3xl text-purple-600"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-3">Evaluaciones</h3>
+                    <p class="text-gray-600">
+                        Diseña evaluaciones según tu SIE institucional, con rúbricas y ajustes para PIARs.
+                    </p>
+                </div>
+                
+                <!-- Feature 4 -->
+                <div class="text-center p-6 rounded-lg hover:shadow-lg transition-shadow">
+                    <div class="bg-red-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-flask text-3xl text-red-600"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-3">Experimentos</h3>
+                    <p class="text-gray-600">
+                        Propuestas de física con materiales de bajo costo y simuladores gratuitos.
+                    </p>
+                </div>
+                
+                <!-- Feature 5 -->
+                <div class="text-center p-6 rounded-lg hover:shadow-lg transition-shadow">
+                    <div class="bg-yellow-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-universal-access text-3xl text-yellow-600"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-3">Inclusión</h3>
+                    <p class="text-gray-600">
+                        Ajustes automáticos para PIARs, DUA y atención a diversidad (género, ruralidad, NSE).
+                    </p>
+                </div>
+                
+                <!-- Feature 6 -->
+                <div class="text-center p-6 rounded-lg hover:shadow-lg transition-shadow">
+                    <div class="bg-indigo-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-chart-line text-3xl text-indigo-600"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-3">Seguimiento</h3>
+                    <p class="text-gray-600">
+                        Monitoreo socioemocional, alertas de estudiantes en riesgo y seguimiento longitudinal.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- PRECIOS -->
+    <section id="precios" class="py-20 bg-gray-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl font-bold text-gray-900 mb-4">
+                    Planes y Precios
+                </h2>
+                <p class="text-xl text-gray-600">
+                    Comienza gratis, escala cuando lo necesites
+                </p>
+            </div>
+            
+            <div class="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+                <!-- Plan FREE -->
+                <div class="bg-white rounded-lg shadow-lg p-8 border-2 border-gray-200">
+                    <h3 class="text-2xl font-bold mb-4">Gratis</h3>
+                    <div class="text-4xl font-bold mb-6">
+                        $0 <span class="text-lg text-gray-600">/mes</span>
+                    </div>
+                    
+                    <ul class="space-y-3 mb-8">
+                        <li class="flex items-center">
+                            <i class="fas fa-check text-green-600 mr-2"></i>
+                            10 interacciones IA al mes
+                        </li>
+                        <li class="flex items-center">
+                            <i class="fas fa-check text-green-600 mr-2"></i>
+                            1 grupo de estudiantes
+                        </li>
+                        <li class="flex items-center">
+                            <i class="fas fa-check text-green-600 mr-2"></i>
+                            Planificación básica de clases
+                        </li>
+                        <li class="flex items-center">
+                            <i class="fas fa-check text-green-600 mr-2"></i>
+                            Generación de evaluaciones
+                        </li>
+                        <li class="flex items-center text-gray-400">
+                            <i class="fas fa-times mr-2"></i>
+                            Sin seguimiento longitudinal
+                        </li>
+                    </ul>
+                    
+                    <a href="registro.html" class="block w-full bg-gray-200 text-gray-900 text-center py-3 rounded-lg font-semibold hover:bg-gray-300">
+                        Comenzar Gratis
+                    </a>
+                </div>
+                
+                <!-- Plan PRO -->
+                <div class="bg-white rounded-lg shadow-lg p-8 border-4 border-blue-600 relative">
+                    <div class="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-blue-600 text-white px-4 py-1 rounded-full text-sm font-semibold">
+                        Recomendado
+                    </div>
+                    
+                    <h3 class="text-2xl font-bold mb-4">Pro</h3>
+                    <div class="text-4xl font-bold mb-6">
+                        $9.99 <span class="text-lg text-gray-600">/mes</span>
+                    </div>
+                    
+                    <ul class="space-y-3 mb-8">
+                        <li class="flex items-center">
+                            <i class="fas fa-check text-green-600 mr-2"></i>
+                            Interacciones <strong>ILIMITADAS</strong>
+                        </li>
+                        <li class="flex items-center">
+                            <i class="fas fa-check text-green-600 mr-2"></i>
+                            Grupos ilimitados
+                        </li>
+                        <li class="flex items-center">
+                            <i class="fas fa-check text-green-600 mr-2"></i>
+                            Seguimiento longitudinal (4 años)
+                        </li>
+                        <li class="flex items-center">
+                            <i class="fas fa-check text-green-600 mr-2"></i>
+                            Generación masiva de documentos
+                        </li>
+                        <li class="flex items-center">
+                            <i class="fas fa-check text-green-600 mr-2"></i>
+                            Análisis socioemocional avanzado
+                        </li>
+                        <li class="flex items-center">
+                            <i class="fas fa-check text-green-600 mr-2"></i>
+                            Alertas proactivas
+                        </li>
+                        <li class="flex items-center">
+                            <i class="fas fa-check text-green-600 mr-2"></i>
+                            5GB de almacenamiento
+                        </li>
+                    </ul>
+                    
+                    <a href="registro.html" class="block w-full bg-blue-600 text-white text-center py-3 rounded-lg font-semibold hover:bg-blue-700">
+                        Comenzar Prueba Gratis
+                    </a>
+                </div>
+            </div>
+            
+            <p class="text-center text-gray-600 mt-8">
+                ¿Eres institución educativa? <a href="mailto:contacto@asistentepedagogico.com" class="text-blue-600 hover:underline">Contáctanos</a> para planes institucionales.
+            </p>
+        </div>
+    </section>
+    
+    <!-- TESTIMONIOS -->
+    <section class="py-20 bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl font-bold text-gray-900 mb-4">
+                    Lo que dicen los docentes
+                </h2>
+            </div>
+            
+            <div class="grid md:grid-cols-3 gap-8">
+                <!-- Testimonio 1 -->
+                <div class="bg-gray-50 p-6 rounded-lg">
+                    <div class="flex items-center mb-4">
+                        <div class="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold">
+                            MC
+                        </div>
+                        <div class="ml-3">
+                            <p class="font-semibold">María Camila R.</p>
+                            <p class="text-sm text-gray-600">Docente de Física - Medellín</p>
+                        </div>
+                    </div>
+                    <p class="text-gray-700 italic">
+                        "Me ahorra horas de planificación y las actividades son mucho más inclusivas que las que yo hacía sola."
+                    </p>
+                </div>
+                
+                <!-- Testimonio 2 -->
+                <div class="bg-gray-50 p-6 rounded-lg">
+                    <div class="flex items-center mb-4">
+                        <div class="w-12 h-12 bg-green-600 rounded-full flex items-center justify-center text-white font-bold">
+                            JP
+                        </div>
+                        <div class="ml-3">
+                            <p class="font-semibold">Juan Pablo G.</p>
+                            <p class="text-sm text-gray-600">Docente de Álgebra - Bogotá</p>
+                        </div>
+                    </div>
+                    <p class="text-gray-700 italic">
+                        "Los ajustes para mis estudiantes con PIAR son automáticos. Ya no tengo que improvisar."
+                    </p>
+                </div>
+                
+                <!-- Testimonio 3 -->
+                <div class="bg-gray-50 p-6 rounded-lg">
+                    <div class="flex items-center mb-4">
+                        <div class="w-12 h-12 bg-purple-600 rounded-full flex items-center justify-center text-white font-bold">
+                            LC
+                        </div>
+                        <div class="ml-3">
+                            <p class="font-semibold">Laura Castro</p>
+                            <p class="text-sm text-gray-600">Docente Rural - Boyacá</p>
+                        </div>
+                    </div>
+                    <p class="text-gray-700 italic">
+                        "Los experimentos con materiales de bajo costo son perfectos para mi contexto rural."
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- CTA FINAL -->
+    <section class="py-20 bg-blue-600 text-white">
+        <div class="max-w-4xl mx-auto text-center px-4">
+            <h2 class="text-4xl font-bold mb-6">
+                Comienza a usar IA en tus clases hoy mismo
+            </h2>
+            <p class="text-xl mb-8">
+                Únete a cientos de docentes colombianos que ya están transformando su enseñanza
+            </p>
+            <a href="registro.html" class="bg-white text-blue-600 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-gray-100 inline-block">
+                Crear Cuenta Gratis
+                <i class="fas fa-arrow-right ml-2"></i>
+            </a>
+        </div>
+    </section>
+    
+    <!-- FOOTER -->
+    <footer class="bg-gray-900 text-gray-400 py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid md:grid-cols-4 gap-8">
+                <div>
+                    <h3 class="text-white font-semibold mb-4">Asistente Pedagógico</h3>
+                    <p class="text-sm">
+                        Herramienta basada en IA para docentes de álgebra y física en Colombia.
+                    </p>
+                </div>
+                
+                <div>
+                    <h3 class="text-white font-semibold mb-4">Producto</h3>
+                    <ul class="space-y-2 text-sm">
+                        <li><a href="#" class="hover:text-white">Características</a></li>
+                        <li><a href="precios.html" class="hover:text-white">Precios</a></li>
+                        <li><a href="#" class="hover:text-white">Casos de Uso</a></li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h3 class="text-white font-semibold mb-4">Recursos</h3>
+                    <ul class="space-y-2 text-sm">
+                        <li><a href="#" class="hover:text-white">Blog</a></li>
+                        <li><a href="#" class="hover:text-white">Ayuda</a></li>
+                        <li><a href="#" class="hover:text-white">Tutoriales</a></li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h3 class="text-white font-semibold mb-4">Legal</h3>
+                    <ul class="space-y-2 text-sm">
+                        <li><a href="#" class="hover:text-white">Privacidad</a></li>
+                        <li><a href="#" class="hover:text-white">Términos</a></li>
+                        <li><a href="#" class="hover:text-white">Contacto</a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="border-t border-gray-800 mt-8 pt-8 text-center text-sm">
+                <p>&copy; 2026 Asistente Pedagógico IA. Todos los derechos reservados.</p>
+                <p class="mt-2">Proyecto de investigación doctoral - Universidad de Colombia</p>
+            </div>
+        </div>
+    </footer>
+    
+    <!-- Scripts -->
+    <script src="js/config.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
