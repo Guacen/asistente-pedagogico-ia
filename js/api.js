@@ -94,7 +94,27 @@ class ApiClient {
     async getMe() {
         return this.request('/api/auth/me');
     }
-    
+
+    async updatePerfil(data) {
+        return this.request('/api/auth/perfil', {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        });
+    }
+
+    async changePassword(passwordActual, passwordNuevo) {
+        return this.request('/api/auth/cambiar-password', {
+            method: 'POST',
+            body: JSON.stringify({ password_actual: passwordActual, password_nuevo: passwordNuevo })
+        });
+    }
+
+    async deleteAccount() {
+        return this.request('/api/auth/cuenta', {
+            method: 'DELETE'
+        });
+    }
+
     // ==========================================
     // GRUPOS
     // ==========================================

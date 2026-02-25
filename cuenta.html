@@ -24,12 +24,12 @@
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center space-x-4">
-                        <a href="dashboard.html" class="text-gray-600 hover:text-gray-900">
+                        <a href="dashboard.html" class="text-gray-600 hover:text-gray-900" title="Volver al Dashboard">
                             <i class="fas fa-arrow-left text-xl"></i>
                         </a>
                         <div>
                             <h1 class="text-2xl font-bold text-gray-900">Mi Cuenta</h1>
-                            <p class="text-sm text-gray-600">Gestiona tu perfil y suscripción</p>
+                            <p class="text-sm text-gray-600" id="header-user-name">Gestiona tu perfil y suscripción</p>
                         </div>
                     </div>
                 </div>
@@ -488,386 +488,315 @@
         </main>
     </div>
     
+    <!-- Toast container -->
+    <div id="toast-container" class="fixed bottom-6 right-6 z-50 space-y-2 pointer-events-none"></div>
+
     <!-- Scripts -->
     <script src="js/config.js"></script>
     <script src="js/api.js"></script>
-    
+    <script src="js/auth.js"></script>
+
     <script>
-        // Verificar autenticación
-        if (!api.getToken()) {
-            window.location.href = 'login.html';
-        }
-        
-        // Variables globales
+        requireAuth();
+
         let user = null;
         let subscription = null;
-        
-        // ==========================================
-        // CARGAR DATOS
-        // ==========================================
-        
+
+        // ── Toast ─────────────────────────────────────────────────────
+        function toast(msg, type = 'success', duration = 3500) {
+            const colors = { success:'bg-green-600', error:'bg-red-600', info:'bg-blue-600', warning:'bg-yellow-500' };
+            const icons  = { success:'fa-check-circle', error:'fa-exclamation-circle', info:'fa-info-circle', warning:'fa-exclamation-triangle' };
+            const el = document.createElement('div');
+            el.className = `pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg text-white text-sm font-medium
+                           ${colors[type]} transition-all duration-300 opacity-0 translate-y-2`;
+            el.innerHTML = `<i class="fas ${icons[type]}"></i><span>${msg}</span>`;
+            document.getElementById('toast-container').appendChild(el);
+            requestAnimationFrame(() => el.classList.remove('opacity-0', 'translate-y-2'));
+            setTimeout(() => {
+                el.classList.add('opacity-0', 'translate-y-2');
+                el.addEventListener('transitionend', () => el.remove());
+            }, duration);
+        }
+
+        // ── Cargar datos en paralelo ──────────────────────────────────
         async function cargarDatos() {
             try {
-                // Usuario
-                user = await api.getMe();
+                [user, subscription] = await Promise.all([
+                    api.getMe(),
+                    api.getSubscription().catch(() => null),
+                ]);
+                Auth.setUser(user);
                 renderPerfil();
-                
-                // Suscripción
-                subscription = await api.getSubscription();
-                renderSuscripcion();
-                
+                if (subscription) renderSuscripcion();
             } catch (error) {
                 console.error('Error cargando datos:', error);
-                alert('Error al cargar información de la cuenta');
+                toast('Error al cargar información de la cuenta', 'error');
+                if (error.message?.includes('401')) window.location.href = 'login.html';
             }
         }
-        
-        // ==========================================
-        // RENDER SUSCRIPCIÓN
-        // ==========================================
-        
+
+        // ── Render suscripción ────────────────────────────────────────
         function renderSuscripcion() {
-            const planNombre = subscription.plan === 'free' ? 'Plan Free' : 'Plan Pro';
-            const planPrecio = subscription.plan === 'free' ? '$0' : '$9.99';
-            const planDescripcion = subscription.plan === 'free' 
-                ? 'Perfecto para empezar' 
-                : 'Acceso ilimitado a todas las funciones';
-            
-            document.getElementById('plan-nombre').textContent = planNombre;
-            document.getElementById('plan-precio').textContent = planPrecio;
-            document.getElementById('plan-descripcion').textContent = planDescripcion;
-            
-            // Uso de mensajes
-            const mensajesUsados = subscription.uso_actual?.mensajes_ia_este_mes || 0;
-            const mensajesLimite = subscription.limites?.mensajes_ia_mes || 10;
-            const porcentajeUso = mensajesLimite === Infinity ? 0 : (mensajesUsados / mensajesLimite) * 100;
-            
+            const esPro = subscription.plan === 'pro';
+
+            document.getElementById('plan-nombre').textContent = esPro ? '⭐ Plan Pro' : 'Plan Free';
+            document.getElementById('plan-precio').textContent = esPro ? '$9.99' : '$0';
+            document.getElementById('plan-descripcion').textContent = esPro
+                ? 'Acceso ilimitado a todas las funciones'
+                : 'Perfecto para empezar';
+
+            // Mensajes — usar campos planos de SuscripcionOut
+            const mensajesUsados = subscription.mensajes_usados_mes || 0;
+            const rawMsgLimite   = subscription.mensajes_limite_mes || 10;
+            const msgLimiteDisplay = (esPro || rawMsgLimite >= 999999) ? '∞' : rawMsgLimite;
+            const pctMsg = (esPro || rawMsgLimite >= 999999) ? 0 : Math.min((mensajesUsados / rawMsgLimite) * 100, 100);
+
             document.getElementById('mensajes-usados').textContent = mensajesUsados;
-            document.getElementById('mensajes-limite').textContent = mensajesLimite === Infinity ? '∞' : mensajesLimite;
-            document.getElementById('uso-bar').style.width = `${Math.min(porcentajeUso, 100)}%`;
-            
+            document.getElementById('mensajes-limite').textContent = msgLimiteDisplay;
+            document.getElementById('uso-bar').style.width = `${pctMsg}%`;
+
             // Grupos
-            const gruposCreados = subscription.uso_actual?.grupos_creados || 0;
-            const gruposLimite = subscription.limites?.grupos_maximos || 1;
-            const porcentajeGrupos = gruposLimite === Infinity ? 0 : (gruposCreados / gruposLimite) * 100;
-            
-            document.getElementById('grupos-creados').textContent = gruposCreados;
-            document.getElementById('grupos-limite').textContent = gruposLimite === Infinity ? '∞' : gruposLimite;
-            document.getElementById('grupos-bar').style.width = `${Math.min(porcentajeGrupos, 100)}%`;
-            
-            // Features
-            const features = subscription.plan === 'free' 
-                ? [
-                    '<i class="fas fa-check text-green-600 mr-2"></i>10 interacciones IA al mes',
-                    '<i class="fas fa-check text-green-600 mr-2"></i>1 grupo de estudiantes',
-                    '<i class="fas fa-check text-green-600 mr-2"></i>Planificación básica',
-                    '<i class="fas fa-check text-green-600 mr-2"></i>Evaluaciones simples',
-                    '<i class="fas fa-times text-red-600 mr-2"></i>Sin seguimiento longitudinal',
-                    '<i class="fas fa-times text-red-600 mr-2"></i>Sin análisis avanzado'
-                ]
-                : [
-                    '<i class="fas fa-check text-green-600 mr-2"></i>Mensajes <strong>ILIMITADOS</strong>',
-                    '<i class="fas fa-check text-green-600 mr-2"></i>Grupos ilimitados',
-                    '<i class="fas fa-check text-green-600 mr-2"></i>Seguimiento longitudinal (4 años)',
-                    '<i class="fas fa-check text-green-600 mr-2"></i>Análisis socioemocional',
-                    '<i class="fas fa-check text-green-600 mr-2"></i>Alertas proactivas',
-                    '<i class="fas fa-check text-green-600 mr-2"></i>5GB almacenamiento',
-                    '<i class="fas fa-check text-green-600 mr-2"></i>Soporte prioritario'
-                ];
-            
-            document.getElementById('plan-features').innerHTML = features.map(f => `<li class="flex items-center text-sm">${f}</li>`).join('');
-            
+            const gruposUsados   = subscription.grupos_usados || 0;
+            const rawGrpLimite   = subscription.grupos_limite || 1;
+            const grpLimiteDisplay = (esPro || rawGrpLimite >= 999999) ? '∞' : rawGrpLimite;
+            const pctGrp = (esPro || rawGrpLimite >= 999999) ? 0 : Math.min((gruposUsados / rawGrpLimite) * 100, 100);
+
+            document.getElementById('grupos-creados').textContent = gruposUsados;
+            document.getElementById('grupos-limite').textContent = grpLimiteDisplay;
+            document.getElementById('grupos-bar').style.width = `${pctGrp}%`;
+
+            // Features list
+            const ok = '<i class="fas fa-check text-green-600 mr-2"></i>';
+            const no = '<i class="fas fa-times text-red-500 mr-2"></i>';
+            const features = esPro
+                ? [`${ok}Mensajes <strong>ILIMITADOS</strong>`, `${ok}Grupos ilimitados`,
+                   `${ok}Seguimiento longitudinal (4 años)`, `${ok}Análisis socioemocional`,
+                   `${ok}Alertas proactivas`, `${ok}5 GB de almacenamiento`, `${ok}Soporte prioritario`]
+                : [`${ok}10 interacciones IA al mes`, `${ok}1 grupo de estudiantes`,
+                   `${ok}Planificación de clases`, `${ok}Libro de calificaciones`,
+                   `${no}Sin seguimiento longitudinal`, `${no}Sin análisis avanzado`];
+
+            document.getElementById('plan-features').innerHTML =
+                features.map(f => `<li class="flex items-center text-sm">${f}</li>`).join('');
+
             // Mostrar/ocultar secciones
-            if (subscription.plan === 'free') {
-                document.getElementById('upgrade-section').classList.remove('hidden');
-                document.getElementById('pro-section').classList.add('hidden');
-            } else {
-                document.getElementById('upgrade-section').classList.add('hidden');
-                document.getElementById('pro-section').classList.remove('hidden');
-                
-                // Próxima fecha de cobro (ejemplo)
-                const proximaFecha = new Date();
-                proximaFecha.setMonth(proximaFecha.getMonth() + 1);
-                document.getElementById('proxima-fecha').textContent = proximaFecha.toLocaleDateString('es-CO');
+            document.getElementById('upgrade-section').classList.toggle('hidden', esPro);
+            document.getElementById('pro-section').classList.toggle('hidden', !esPro);
+
+            if (esPro && subscription.fecha_fin) {
+                const d = new Date(subscription.fecha_fin);
+                document.getElementById('proxima-fecha').textContent = d.toLocaleDateString('es-CO');
+            } else if (esPro) {
+                const d = new Date();
+                d.setMonth(d.getMonth() + 1);
+                document.getElementById('proxima-fecha').textContent = d.toLocaleDateString('es-CO');
             }
         }
-        
-        // ==========================================
-        // RENDER PERFIL
-        // ==========================================
-        
+
+        // ── Render perfil ─────────────────────────────────────────────
         function renderPerfil() {
-            document.getElementById('perfil-nombre').value = user.nombre_completo || '';
-            document.getElementById('perfil-email').value = user.email || '';
+            if (!user) return;
+            document.getElementById('perfil-nombre').value      = user.nombre_completo || '';
+            document.getElementById('perfil-email').value       = user.email || '';
             document.getElementById('perfil-institucion').value = user.institucion || '';
-            document.getElementById('perfil-ciudad').value = user.ciudad || '';
+            document.getElementById('perfil-ciudad').value      = user.ciudad || '';
             document.getElementById('perfil-departamento').value = user.departamento || '';
-            
-            // Avatar inicial
-            const inicial = user.nombre_completo ? user.nombre_completo.charAt(0).toUpperCase() : 'U';
+            const inicial = (user.nombre_completo || 'U').charAt(0).toUpperCase();
             document.getElementById('avatar-inicial').textContent = inicial;
+            // Mostrar nombre en header
+            const headerName = document.getElementById('header-user-name');
+            if (headerName) headerName.textContent = user.nombre_completo;
         }
-        
-        // ==========================================
-        // TABS
-        // ==========================================
-        
+
+        // ── Tabs ──────────────────────────────────────────────────────
         function cambiarTab(tab) {
-            // Actualizar botones
             document.querySelectorAll('.tab-button').forEach(btn => {
                 btn.classList.remove('border-blue-600', 'text-blue-600');
                 btn.classList.add('border-transparent', 'text-gray-500');
             });
-            
             document.getElementById(`tab-${tab}`).classList.add('border-blue-600', 'text-blue-600');
             document.getElementById(`tab-${tab}`).classList.remove('border-transparent', 'text-gray-500');
-            
-            // Mostrar contenido
-            document.querySelectorAll('.tab-content').forEach(content => {
-                content.classList.add('hidden');
-            });
-            
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
             document.getElementById(`content-${tab}`).classList.remove('hidden');
+            sessionStorage.setItem('cuenta_tab', tab);
         }
-        
-        // ==========================================
-        // UPGRADE A PRO
-        // ==========================================
-        
+
+        // ── Upgrade Pro ───────────────────────────────────────────────
         async function upgradePro() {
-            if (!confirm('¿Deseas actualizar a Plan Pro por $9.99/mes?')) {
-                return;
-            }
-            
             try {
-                // Crear sesión de checkout en Stripe
                 const { checkout_url } = await api.createCheckoutSession('pro');
-                
-                // Redirigir a Stripe
                 window.location.href = checkout_url;
-                
             } catch (error) {
-                alert('Error al procesar el pago: ' + error.message);
+                toast('Error al procesar el pago: ' + error.message, 'error');
             }
         }
-        
-        // ==========================================
-        // CANCELAR SUSCRIPCIÓN
-        // ==========================================
-        
+
+        // ── Cancelar suscripción ──────────────────────────────────────
         async function cancelarSuscripcion() {
             const confirmacion = prompt(
-                'Esta acción cancelará tu suscripción al final del período actual.\\n\\n' +
+                'Esta acción cancelará tu suscripción al final del período actual.\n\n' +
                 'Escribe "CANCELAR" para confirmar:'
             );
-            
-            if (confirmacion !== 'CANCELAR') {
-                return;
-            }
-            
+            if (confirmacion !== 'CANCELAR') return;
             try {
-                // TODO: Implementar endpoint de cancelación
-                alert('Suscripción cancelada. Continuarás teniendo acceso hasta el final del período.');
-                
-                // Recargar datos
+                await api.request('/api/suscripciones/cancelar', { method: 'POST' });
+                toast('Suscripción cancelada. Tendrás acceso hasta el final del período actual.', 'info', 5000);
                 await cargarDatos();
-                
             } catch (error) {
-                alert('Error al cancelar suscripción: ' + error.message);
+                toast('Error al cancelar suscripción: ' + error.message, 'error');
             }
         }
-        
-        // ==========================================
-        // ACTUALIZAR PERFIL
-        // ==========================================
-        
+
+        // ── Actualizar perfil ─────────────────────────────────────────
         document.getElementById('form-perfil').addEventListener('submit', async (e) => {
             e.preventDefault();
-            
             const data = {
-                nombre_completo: document.getElementById('perfil-nombre').value,
-                institucion: document.getElementById('perfil-institucion').value,
-                ciudad: document.getElementById('perfil-ciudad').value,
-                departamento: document.getElementById('perfil-departamento').value
+                nombre_completo: document.getElementById('perfil-nombre').value.trim(),
+                institucion:     document.getElementById('perfil-institucion').value.trim() || null,
+                ciudad:          document.getElementById('perfil-ciudad').value.trim() || null,
+                departamento:    document.getElementById('perfil-departamento').value.trim() || null,
             };
-            
+
             const btn = document.getElementById('btn-guardar-perfil');
             const btnText = document.getElementById('btn-perfil-text');
             const spinner = document.getElementById('btn-perfil-spinner');
             const successAlert = document.getElementById('perfil-success');
             const errorAlert = document.getElementById('perfil-error');
-            
+
             btn.disabled = true;
             btnText.textContent = 'Guardando...';
             spinner.classList.remove('hidden');
             successAlert.classList.add('hidden');
             errorAlert.classList.add('hidden');
-            
+
             try {
-                // TODO: Implementar endpoint de actualización de perfil
-                // await api.updateProfile(data);
-                
-                // Simular éxito
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                
+                user = await api.updatePerfil(data);
+                Auth.setUser(user);
+                renderPerfil();
                 successAlert.classList.remove('hidden');
-                
-                // Actualizar datos locales
-                user = { ...user, ...data };
-                
+                toast('Perfil actualizado correctamente ✓', 'success');
+                setTimeout(() => successAlert.classList.add('hidden'), 4000);
             } catch (error) {
                 document.getElementById('perfil-error-message').textContent = error.message;
                 errorAlert.classList.remove('hidden');
+                toast('Error al guardar perfil: ' + error.message, 'error');
             } finally {
                 btn.disabled = false;
                 btnText.textContent = 'Guardar Cambios';
                 spinner.classList.add('hidden');
             }
         });
-        
+
         function cancelarCambiosPerfil() {
             renderPerfil();
             document.getElementById('perfil-success').classList.add('hidden');
             document.getElementById('perfil-error').classList.add('hidden');
         }
-        
-        // ==========================================
-        // CAMBIAR CONTRASEÑA
-        // ==========================================
-        
+
+        // ── Cambiar contraseña ────────────────────────────────────────
         document.getElementById('form-password').addEventListener('submit', async (e) => {
             e.preventDefault();
-            
-            const passwordActual = document.getElementById('password-actual').value;
-            const passwordNueva = document.getElementById('password-nueva').value;
+            const passwordActual   = document.getElementById('password-actual').value;
+            const passwordNueva    = document.getElementById('password-nueva').value;
             const passwordConfirmar = document.getElementById('password-confirmar').value;
-            
+
             const successAlert = document.getElementById('password-success');
-            const errorAlert = document.getElementById('password-error');
+            const errorAlert   = document.getElementById('password-error');
             const errorMessage = document.getElementById('password-error-message');
-            
-            // Validar que coincidan
+
+            successAlert.classList.add('hidden');
+            errorAlert.classList.add('hidden');
+
             if (passwordNueva !== passwordConfirmar) {
-                errorMessage.textContent = 'Las contraseñas no coinciden';
+                errorMessage.textContent = 'Las contraseñas nuevas no coinciden';
                 errorAlert.classList.remove('hidden');
                 return;
             }
-            
-            // Validar longitud
             if (passwordNueva.length < 8) {
                 errorMessage.textContent = 'La contraseña debe tener al menos 8 caracteres';
                 errorAlert.classList.remove('hidden');
                 return;
             }
-            
+
             const btn = document.getElementById('btn-cambiar-password');
             const btnText = document.getElementById('btn-password-text');
             const spinner = document.getElementById('btn-password-spinner');
-            
             btn.disabled = true;
             btnText.textContent = 'Cambiando...';
             spinner.classList.remove('hidden');
-            successAlert.classList.add('hidden');
-            errorAlert.classList.add('hidden');
-            
+
             try {
-                // TODO: Implementar endpoint de cambio de contraseña
-                // await api.changePassword(passwordActual, passwordNueva);
-                
-                // Simular éxito
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                
+                await api.changePassword(passwordActual, passwordNueva);
                 successAlert.classList.remove('hidden');
                 document.getElementById('form-password').reset();
-                
+                toast('Contraseña actualizada correctamente ✓', 'success');
+                setTimeout(() => successAlert.classList.add('hidden'), 4000);
             } catch (error) {
                 errorMessage.textContent = error.message || 'Error al cambiar contraseña';
                 errorAlert.classList.remove('hidden');
+                toast('Error: ' + error.message, 'error');
             } finally {
                 btn.disabled = false;
                 btnText.textContent = 'Cambiar Contraseña';
                 spinner.classList.add('hidden');
             }
         });
-        
+
         function cancelarCambiosPassword() {
             document.getElementById('form-password').reset();
             document.getElementById('password-success').classList.add('hidden');
             document.getElementById('password-error').classList.add('hidden');
         }
-        
-        // ==========================================
-        // TOGGLE PASSWORD
-        // ==========================================
-        
+
+        // ── Toggle password visibility ────────────────────────────────
         function togglePassword(fieldId) {
             const field = document.getElementById(fieldId);
-            const eye = document.getElementById(fieldId + '-eye');
-            
+            const eye   = document.getElementById(fieldId + '-eye');
             if (field.type === 'password') {
                 field.type = 'text';
-                eye.classList.remove('fa-eye');
-                eye.classList.add('fa-eye-slash');
+                eye.classList.replace('fa-eye', 'fa-eye-slash');
             } else {
                 field.type = 'password';
-                eye.classList.remove('fa-eye-slash');
-                eye.classList.add('fa-eye');
+                eye.classList.replace('fa-eye-slash', 'fa-eye');
             }
         }
-        
-        // ==========================================
-        // ELIMINAR CUENTA
-        // ==========================================
-        
+
+        // ── Eliminar cuenta ───────────────────────────────────────────
         async function eliminarCuenta() {
             const confirmacion = prompt(
-                '⚠️ ADVERTENCIA: Esta acción eliminará permanentemente tu cuenta y todos tus datos.\\n\\n' +
-                'Escribe "ELIMINAR MI CUENTA" para confirmar:'
+                '⚠️ ADVERTENCIA: Esta acción eliminará permanentemente tu cuenta y todos tus datos.\n\n' +
+                'Escribe ELIMINAR MI CUENTA para confirmar:'
             );
-            
-            if (confirmacion !== 'ELIMINAR MI CUENTA') {
-                return;
-            }
-            
-            const confirmacionFinal = confirm(
-                '¿Estás completamente seguro? Esta acción no se puede deshacer.'
-            );
-            
-            if (!confirmacionFinal) {
-                return;
-            }
-            
+            if (confirmacion !== 'ELIMINAR MI CUENTA') return;
+            if (!confirm('¿Estás completamente seguro? Esta acción no se puede deshacer.')) return;
+
             try {
-                // TODO: Implementar endpoint de eliminación de cuenta
-                // await api.deleteAccount();
-                
-                alert('Tu cuenta ha sido eliminada.');
-                
-                // Cerrar sesión y redirigir
-                api.removeToken();
-                localStorage.clear();
-                window.location.href = 'index.html';
-                
+                await api.deleteAccount();
+                toast('Tu cuenta ha sido eliminada', 'info');
+                setTimeout(() => {
+                    api.removeToken();
+                    localStorage.clear();
+                    window.location.href = 'index.html';
+                }, 1500);
             } catch (error) {
-                alert('Error al eliminar cuenta: ' + error.message);
+                toast('Error al eliminar cuenta: ' + error.message, 'error');
             }
         }
-        
-        // ==========================================
-        // INICIALIZAR
-        // ==========================================
 
-        requireAuth();
+        // ── Inicializar ───────────────────────────────────────────────
         cargarDatos();
-        
-        // Verificar si viene de Stripe (success o canceled)
+
+        // Abrir tab correcto (desde sessionStorage o hash)
+        const tabInicio = sessionStorage.getItem('cuenta_tab') || 'suscripcion';
+        cambiarTab(tabInicio);
+
+        // Stripe retorno
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('success') === 'true') {
-            alert('¡Suscripción activada correctamente! Bienvenido a Plan Pro 🎉');
-            // Limpiar URL
+            toast('¡Suscripción activada correctamente! Bienvenido a Plan Pro 🎉', 'success', 6000);
             window.history.replaceState({}, document.title, window.location.pathname);
         } else if (urlParams.get('canceled') === 'true') {
-            alert('Proceso de pago cancelado. Tu suscripción no ha cambiado.');
+            toast('Proceso de pago cancelado. Tu suscripción no ha cambiado.', 'info');
             window.history.replaceState({}, document.title, window.location.pathname);
         }
     </script>

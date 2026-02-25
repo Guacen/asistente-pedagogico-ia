@@ -1433,10 +1433,33 @@
         // =========================================================
         requireAuth();
         cargarGrupos().then(() => {
-            // Abrir modal directamente si viene desde Dashboard con ?action=nuevo
             const params = new URLSearchParams(window.location.search);
+
+            // ?action=nuevo → abrir modal de nuevo grupo
             if (params.get('action') === 'nuevo') {
                 abrirModalNuevoGrupo();
+                return;
+            }
+
+            // ?tab=calificaciones&grupo=<id> → ir a la tab de calificaciones con ese grupo
+            const tabParam   = params.get('tab');
+            const grupoParam = params.get('grupo');
+            if (tabParam) {
+                cambiarTab(tabParam);
+                if (tabParam === 'calificaciones' && grupoParam) {
+                    const sel = document.getElementById('select-grupo-cal');
+                    if (sel) {
+                        sel.value = grupoParam;
+                        cargarLibroNotas();
+                    }
+                }
+                if ((tabParam === 'estudiantes' || tabParam === 'grupo') && grupoParam) {
+                    const sel = document.getElementById('select-grupo-est');
+                    if (sel) {
+                        sel.value = grupoParam;
+                        cargarEstudiantesGrupo(grupoParam);
+                    }
+                }
             }
         });
     </script>
