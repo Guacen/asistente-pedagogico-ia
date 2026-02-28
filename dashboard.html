@@ -9,570 +9,625 @@
     <link rel="stylesheet" href="css/main.css">
 </head>
 <body class="bg-gray-50">
-    
+
     <!-- Layout principal -->
     <div class="flex h-screen overflow-hidden">
-        
-        <!-- SIDEBAR -->
-        <aside class="w-64 bg-white border-r border-gray-200 flex flex-col">
-            <!-- Header del sidebar -->
-            <div class="p-4 border-b">
+
+        <!-- ══════════════════════════════════════ SIDEBAR ══════════════════════════════════════ -->
+        <aside class="w-64 bg-white border-r border-gray-200 flex flex-col flex-shrink-0">
+            <!-- Logo -->
+            <div class="p-4 border-b flex-shrink-0">
                 <div class="flex items-center">
                     <i class="fas fa-graduation-cap text-2xl text-blue-600"></i>
                     <span class="ml-2 font-bold text-lg">Asistente IA</span>
                 </div>
             </div>
-            
-            <!-- Lista de grupos -->
+
+            <!-- Lista de grupos en sidebar -->
             <div class="flex-1 overflow-y-auto p-4">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="font-semibold text-gray-700">Mis Grupos</h3>
-                    <button onclick="window.location.href='grupos.html?action=nuevo'" class="text-blue-600 hover:text-blue-700">
-                        <i class="fas fa-plus"></i>
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="font-semibold text-gray-700 text-sm uppercase tracking-wide">Mis Grupos</h3>
+                    <button
+                        onclick="window.location.href='grupos.html?action=nuevo'"
+                        title="Nuevo grupo"
+                        class="w-6 h-6 flex items-center justify-center text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                    >
+                        <i class="fas fa-plus text-sm"></i>
                     </button>
                 </div>
-                
-                <!-- Grupos dinámicos -->
-                <div id="grupos-list" class="space-y-2">
-                    <!-- Se llenan dinámicamente -->
-                    <div class="text-center text-gray-500 py-8">
-                        <i class="fas fa-spinner fa-spin text-2xl"></i>
-                        <p class="mt-2">Cargando grupos...</p>
+                <div id="sidebar-grupos" class="space-y-1">
+                    <!-- skeleton -->
+                    <div class="animate-pulse space-y-2 px-1">
+                        <div class="h-10 bg-gray-100 rounded-lg"></div>
+                        <div class="h-10 bg-gray-100 rounded-lg"></div>
+                        <div class="h-10 bg-gray-100 rounded-lg"></div>
                     </div>
                 </div>
             </div>
-            
-            <!-- Footer del sidebar -->
-            <div class="p-4 border-t space-y-2">
-                <!-- Uso de plan -->
+
+            <!-- Footer sidebar -->
+            <div class="p-4 border-t space-y-2 flex-shrink-0">
+                <!-- Plan usage -->
                 <div id="plan-usage" class="bg-blue-50 p-3 rounded-lg text-sm">
-                    <div class="flex justify-between items-center mb-2">
-                        <span id="plan-label" class="font-semibold text-blue-900">Plan Free</span>
-                        <a id="upgrade-link" href="cuenta.html" class="text-blue-600 text-xs hover:underline">Upgrade</a>
+                    <div class="flex justify-between items-center mb-1">
+                        <span id="plan-label" class="font-semibold text-blue-900 text-xs">Plan Free</span>
+                        <a id="upgrade-link" href="cuenta.html" onclick="sessionStorage.setItem('cuenta_tab','suscripcion')"
+                           class="text-blue-600 text-xs hover:underline">Upgrade ↑</a>
                     </div>
-                    <div class="text-blue-700">
+                    <div class="text-blue-700 text-xs">
                         <i class="fas fa-comments mr-1"></i>
-                        <span id="messages-used">0</span>/<span id="messages-limit">10</span> mensajes
+                        <span id="messages-used">0</span>/<span id="messages-limit">10</span> mensajes este mes
                     </div>
-                    <div class="mt-2 bg-blue-200 rounded-full h-2">
-                        <div id="usage-bar" class="bg-blue-600 h-2 rounded-full" style="width: 0%"></div>
+                    <div class="mt-2 bg-blue-200 rounded-full h-1.5">
+                        <div id="usage-bar" class="bg-blue-600 h-1.5 rounded-full transition-all" style="width:0%"></div>
                     </div>
                 </div>
-                
-                <!-- Botones de acción -->
-                <button onclick="window.location.href='grupos.html'" class="w-full bg-gray-100 text-gray-700 py-2 rounded-lg hover:bg-gray-200 flex items-center justify-center">
-                    <i class="fas fa-users mr-2"></i>
-                    Gestionar Grupos
+                <button onclick="window.location.href='grupos.html'"
+                    class="w-full bg-gray-100 text-gray-700 py-2 rounded-lg hover:bg-gray-200 flex items-center justify-center text-sm transition-colors">
+                    <i class="fas fa-users mr-2"></i>Gestionar Grupos
                 </button>
             </div>
         </aside>
-        
-        <!-- CONTENIDO PRINCIPAL -->
-        <div class="flex-1 flex flex-col">
-            
+
+        <!-- ══════════════════════════════════════ MAIN ══════════════════════════════════════ -->
+        <div class="flex-1 flex flex-col min-w-0">
+
             <!-- Header -->
-            <header class="bg-white border-b px-6 py-4">
+            <header class="bg-white border-b px-6 py-4 flex-shrink-0">
                 <div class="flex justify-between items-center">
                     <div>
                         <h1 class="text-2xl font-bold text-gray-900">Dashboard</h1>
-                        <p class="text-gray-600">Bienvenido de nuevo, <span id="user-name">Docente</span></p>
+                        <p class="text-gray-500 text-sm">Bienvenido, <span id="user-name" class="font-medium text-gray-700">Docente</span></p>
                     </div>
-                    
-                    <!-- Usuario dropdown -->
+
+                    <!-- User dropdown -->
                     <div class="relative">
-                        <button id="user-menu-btn" class="flex items-center space-x-2 hover:bg-gray-100 px-3 py-2 rounded-lg">
-                            <div class="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold">
+                        <button id="user-menu-btn"
+                            class="flex items-center gap-2 hover:bg-gray-100 px-3 py-2 rounded-lg transition-colors">
+                            <div class="w-9 h-9 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
                                 <span id="user-initial">D</span>
                             </div>
-                            <i class="fas fa-chevron-down text-gray-600"></i>
+                            <i class="fas fa-chevron-down text-gray-500 text-xs"></i>
                         </button>
-                        
-                        <!-- Dropdown menu -->
-                        <div id="user-menu" class="hidden absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border py-2">
-                            <div class="px-4 py-2 border-b">
+
+                        <div id="user-menu" class="hidden absolute right-0 mt-2 w-60 bg-white rounded-xl shadow-lg border py-2 z-50">
+                            <div class="px-4 py-3 border-b">
                                 <p class="text-sm font-semibold text-gray-900 truncate" id="user-name-menu">Docente</p>
-                                <p class="text-xs text-gray-500 truncate" id="user-email"></p>
+                                <p class="text-xs text-gray-500 truncate mt-0.5" id="user-email"></p>
                             </div>
-                            <a href="cuenta.html#perfil" onclick="sessionStorage.setItem('cuenta_tab','perfil')" class="flex items-center px-4 py-2 hover:bg-gray-100 text-sm">
-                                <i class="fas fa-user mr-2 text-gray-500 w-4"></i>
-                                Mi Perfil
+                            <a href="cuenta.html" onclick="sessionStorage.setItem('cuenta_tab','perfil')"
+                               class="flex items-center px-4 py-2 hover:bg-gray-50 text-sm text-gray-700 transition-colors">
+                                <i class="fas fa-user mr-3 text-gray-400 w-4"></i>Mi Perfil
                             </a>
-                            <a href="cuenta.html#suscripcion" onclick="sessionStorage.setItem('cuenta_tab','suscripcion')" class="flex items-center px-4 py-2 hover:bg-gray-100 text-sm">
-                                <i class="fas fa-credit-card mr-2 text-gray-500 w-4"></i>
-                                Suscripción
+                            <a href="cuenta.html" onclick="sessionStorage.setItem('cuenta_tab','suscripcion')"
+                               class="flex items-center px-4 py-2 hover:bg-gray-50 text-sm text-gray-700 transition-colors">
+                                <i class="fas fa-credit-card mr-3 text-gray-400 w-4"></i>Suscripción
                             </a>
-                            <a href="cuenta.html#seguridad" onclick="sessionStorage.setItem('cuenta_tab','seguridad')" class="flex items-center px-4 py-2 hover:bg-gray-100 text-sm">
-                                <i class="fas fa-lock mr-2 text-gray-500 w-4"></i>
-                                Seguridad
+                            <a href="cuenta.html" onclick="sessionStorage.setItem('cuenta_tab','seguridad')"
+                               class="flex items-center px-4 py-2 hover:bg-gray-50 text-sm text-gray-700 transition-colors">
+                                <i class="fas fa-lock mr-3 text-gray-400 w-4"></i>Seguridad
                             </a>
                             <hr class="my-1">
-                            <button onclick="logout()" class="w-full flex items-center px-4 py-2 hover:bg-gray-100 text-sm text-red-600">
-                                <i class="fas fa-sign-out-alt mr-2 w-4"></i>
-                                Cerrar Sesión
+                            <button onclick="cerrarSesion()"
+                                class="w-full flex items-center px-4 py-2 hover:bg-red-50 text-sm text-red-600 transition-colors">
+                                <i class="fas fa-sign-out-alt mr-3 w-4"></i>Cerrar Sesión
                             </button>
                         </div>
                     </div>
                 </div>
             </header>
-            
-            <!-- Área de contenido -->
+
+            <!-- Contenido -->
             <main class="flex-1 overflow-y-auto p-6">
-                
-                <!-- Resumen rápido -->
-                <div class="grid md:grid-cols-3 gap-6 mb-8">
-                    <!-- Card 1 -->
-                    <div class="bg-white p-6 rounded-lg shadow">
-                        <div class="flex items-center justify-between mb-4">
-                            <h3 class="text-gray-600 text-sm font-medium">Total Grupos</h3>
-                            <i class="fas fa-users text-blue-600 text-2xl"></i>
+
+                <!-- ── Stats ─────────────────────────────────── -->
+                <div class="grid sm:grid-cols-3 gap-4 mb-8">
+                    <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+                        <div class="flex items-center justify-between mb-3">
+                            <p class="text-gray-500 text-sm">Total Grupos</p>
+                            <div class="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
+                                <i class="fas fa-users text-blue-600"></i>
+                            </div>
                         </div>
                         <p class="text-3xl font-bold text-gray-900" id="total-grupos">0</p>
                     </div>
-                    
-                    <!-- Card 2 -->
-                    <div class="bg-white p-6 rounded-lg shadow">
-                        <div class="flex items-center justify-between mb-4">
-                            <h3 class="text-gray-600 text-sm font-medium">Estudiantes</h3>
-                            <i class="fas fa-user-graduate text-green-600 text-2xl"></i>
+                    <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+                        <div class="flex items-center justify-between mb-3">
+                            <p class="text-gray-500 text-sm">Estudiantes</p>
+                            <div class="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">
+                                <i class="fas fa-user-graduate text-green-600"></i>
+                            </div>
                         </div>
                         <p class="text-3xl font-bold text-gray-900" id="total-estudiantes">0</p>
                     </div>
-                    
-                    <!-- Card 3 -->
-                    <div class="bg-white p-6 rounded-lg shadow">
-                        <div class="flex items-center justify-between mb-4">
-                            <h3 class="text-gray-600 text-sm font-medium">Mensajes este mes</h3>
-                            <i class="fas fa-comments text-purple-600 text-2xl"></i>
+                    <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+                        <div class="flex items-center justify-between mb-3">
+                            <p class="text-gray-500 text-sm">Mensajes este mes</p>
+                            <div class="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
+                                <i class="fas fa-comments text-purple-600"></i>
+                            </div>
                         </div>
                         <p class="text-3xl font-bold text-gray-900">
-                            <span id="mensajes-usados">0</span>/<span id="mensajes-limite">10</span>
+                            <span id="mensajes-usados">0</span><span class="text-lg text-gray-400">/<span id="mensajes-limite">10</span></span>
                         </p>
                     </div>
                 </div>
-                
-                <!-- Acciones rápidas -->
-                <div class="mb-8">
-                    <h2 class="text-xl font-bold text-gray-900 mb-4">Acciones Rápidas</h2>
 
-                    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <!-- ── Acciones rápidas ───────────────────────── -->
+                <div class="mb-8">
+                    <h2 class="text-lg font-bold text-gray-900 mb-3">Acciones Rápidas</h2>
+                    <div class="grid sm:grid-cols-3 gap-4">
+
+                        <!-- Crear grupo -->
                         <button onclick="window.location.href='grupos.html?action=nuevo'"
-                            class="bg-white p-5 rounded-lg shadow hover:shadow-md transition-shadow text-left group">
-                            <div class="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center mb-3 group-hover:bg-blue-600 transition-colors">
-                                <i class="fas fa-plus text-blue-600 group-hover:text-white transition-colors"></i>
+                            class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 hover:shadow-md hover:border-blue-200 transition-all text-left group">
+                            <div class="w-11 h-11 bg-blue-100 rounded-xl flex items-center justify-center mb-3 group-hover:bg-blue-600 transition-colors">
+                                <i class="fas fa-plus text-blue-600 text-lg group-hover:text-white transition-colors"></i>
                             </div>
-                            <h3 class="font-semibold mb-1">Crear Nuevo Grupo</h3>
+                            <h3 class="font-semibold text-gray-900 mb-1">Crear Nuevo Grupo</h3>
                             <p class="text-gray-500 text-sm">Agrega un grupo de estudiantes</p>
                         </button>
 
-                        <button onclick="openFirstGroup()"
-                            class="bg-white p-5 rounded-lg shadow hover:shadow-md transition-shadow text-left group">
-                            <div class="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center mb-3 group-hover:bg-green-600 transition-colors">
-                                <i class="fas fa-robot text-green-600 group-hover:text-white transition-colors"></i>
+                        <!-- Iniciar Chat IA -->
+                        <button id="btn-chat-ia" onclick="abrirChatIA()"
+                            class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 hover:shadow-md hover:border-green-200 transition-all text-left group">
+                            <div class="w-11 h-11 bg-green-100 rounded-xl flex items-center justify-center mb-3 group-hover:bg-green-600 transition-colors">
+                                <i class="fas fa-robot text-green-600 text-lg group-hover:text-white transition-colors"></i>
                             </div>
-                            <h3 class="font-semibold mb-1">Iniciar Chat IA</h3>
+                            <h3 class="font-semibold text-gray-900 mb-1">Iniciar Chat IA</h3>
                             <p class="text-gray-500 text-sm">Planifica clases con inteligencia artificial</p>
                         </button>
 
-                        <button onclick="openNotasGrupo()"
-                            class="bg-white p-5 rounded-lg shadow hover:shadow-md transition-shadow text-left group">
-                            <div class="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center mb-3 group-hover:bg-purple-600 transition-colors">
-                                <i class="fas fa-table text-purple-600 group-hover:text-white transition-colors"></i>
+                        <!-- Libro de Notas -->
+                        <button id="btn-notas" onclick="abrirLibroNotas()"
+                            class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 hover:shadow-md hover:border-purple-200 transition-all text-left group">
+                            <div class="w-11 h-11 bg-purple-100 rounded-xl flex items-center justify-center mb-3 group-hover:bg-purple-600 transition-colors">
+                                <i class="fas fa-table text-purple-600 text-lg group-hover:text-white transition-colors"></i>
                             </div>
-                            <h3 class="font-semibold mb-1">Libro de Notas</h3>
+                            <h3 class="font-semibold text-gray-900 mb-1">Libro de Notas</h3>
                             <p class="text-gray-500 text-sm">Gestiona las calificaciones de tus estudiantes</p>
                         </button>
                     </div>
                 </div>
-                
-                <!-- Grupos recientes -->
+
+                <!-- ── Mis Grupos ─────────────────────────────── -->
                 <div>
                     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-                        <h2 class="text-xl font-bold text-gray-900">Mis Grupos</h2>
+                        <h2 class="text-lg font-bold text-gray-900">Mis Grupos</h2>
                         <div class="relative max-w-xs w-full">
-                            <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+                            <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none"></i>
                             <input
                                 id="search-grupos"
                                 type="text"
-                                placeholder="Buscar grupo..."
+                                placeholder="Buscar por nombre, asignatura…"
                                 oninput="filtrarGrupos(this.value)"
-                                class="w-full pl-9 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                                class="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
                             >
                         </div>
                     </div>
 
-                    <!-- Skeleton loading (3 tarjetas) -->
+                    <!-- Skeleton loading -->
                     <div id="grupos-skeleton" class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        <div class="bg-white rounded-lg shadow animate-pulse">
-                            <div class="p-5">
-                                <div class="flex items-center mb-3">
-                                    <div class="w-12 h-12 bg-gray-200 rounded-xl mr-3 flex-shrink-0"></div>
-                                    <div class="flex-1"><div class="h-4 bg-gray-200 rounded w-3/4 mb-2"></div><div class="h-3 bg-gray-200 rounded w-1/2"></div></div>
-                                </div>
-                                <div class="h-3 bg-gray-200 rounded w-2/3"></div>
-                            </div>
-                            <div class="border-t flex"><div class="flex-1 h-10 bg-gray-100"></div><div class="flex-1 h-10 bg-gray-100 border-l"></div></div>
+                        <div class="bg-white rounded-xl shadow-sm animate-pulse border border-gray-100">
+                            <div class="p-5"><div class="flex items-center mb-3"><div class="w-12 h-12 bg-gray-200 rounded-xl mr-3 flex-shrink-0"></div><div class="flex-1"><div class="h-4 bg-gray-200 rounded w-3/4 mb-2"></div><div class="h-3 bg-gray-200 rounded w-1/2"></div></div></div><div class="h-3 bg-gray-200 rounded w-2/3"></div></div>
+                            <div class="border-t flex"><div class="flex-1 h-10 bg-gray-50"></div><div class="flex-1 h-10 bg-gray-50 border-l"></div></div>
                         </div>
-                        <div class="bg-white rounded-lg shadow animate-pulse">
-                            <div class="p-5">
-                                <div class="flex items-center mb-3">
-                                    <div class="w-12 h-12 bg-gray-200 rounded-xl mr-3 flex-shrink-0"></div>
-                                    <div class="flex-1"><div class="h-4 bg-gray-200 rounded w-2/3 mb-2"></div><div class="h-3 bg-gray-200 rounded w-1/3"></div></div>
-                                </div>
-                                <div class="h-3 bg-gray-200 rounded w-1/2"></div>
-                            </div>
-                            <div class="border-t flex"><div class="flex-1 h-10 bg-gray-100"></div><div class="flex-1 h-10 bg-gray-100 border-l"></div></div>
+                        <div class="bg-white rounded-xl shadow-sm animate-pulse border border-gray-100">
+                            <div class="p-5"><div class="flex items-center mb-3"><div class="w-12 h-12 bg-gray-200 rounded-xl mr-3 flex-shrink-0"></div><div class="flex-1"><div class="h-4 bg-gray-200 rounded w-2/3 mb-2"></div><div class="h-3 bg-gray-200 rounded w-1/3"></div></div></div><div class="h-3 bg-gray-200 rounded w-1/2"></div></div>
+                            <div class="border-t flex"><div class="flex-1 h-10 bg-gray-50"></div><div class="flex-1 h-10 bg-gray-50 border-l"></div></div>
                         </div>
-                        <div class="bg-white rounded-lg shadow animate-pulse">
-                            <div class="p-5">
-                                <div class="flex items-center mb-3">
-                                    <div class="w-12 h-12 bg-gray-200 rounded-xl mr-3 flex-shrink-0"></div>
-                                    <div class="flex-1"><div class="h-4 bg-gray-200 rounded w-4/5 mb-2"></div><div class="h-3 bg-gray-200 rounded w-2/5"></div></div>
-                                </div>
-                                <div class="h-3 bg-gray-200 rounded w-3/5"></div>
-                            </div>
-                            <div class="border-t flex"><div class="flex-1 h-10 bg-gray-100"></div><div class="flex-1 h-10 bg-gray-100 border-l"></div></div>
+                        <div class="bg-white rounded-xl shadow-sm animate-pulse border border-gray-100">
+                            <div class="p-5"><div class="flex items-center mb-3"><div class="w-12 h-12 bg-gray-200 rounded-xl mr-3 flex-shrink-0"></div><div class="flex-1"><div class="h-4 bg-gray-200 rounded w-4/5 mb-2"></div><div class="h-3 bg-gray-200 rounded w-2/5"></div></div></div><div class="h-3 bg-gray-200 rounded w-3/5"></div></div>
+                            <div class="border-t flex"><div class="flex-1 h-10 bg-gray-50"></div><div class="flex-1 h-10 bg-gray-50 border-l"></div></div>
                         </div>
                     </div>
 
-                    <div id="grupos-grid" class="hidden grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        <!-- Se llenan dinámicamente -->
-                    </div>
-                    
+                    <!-- Grid de grupos -->
+                    <div id="grupos-grid" class="grid md:grid-cols-2 lg:grid-cols-3 gap-4" style="display:none"></div>
+
                     <!-- Sin resultados de búsqueda -->
                     <div id="no-search-results" class="hidden text-center py-10">
                         <i class="fas fa-search text-5xl text-gray-300 mb-3"></i>
-                        <p class="text-gray-600">No se encontraron grupos con ese nombre</p>
-                        <button onclick="clearSearch()" class="mt-3 text-blue-600 hover:underline text-sm">Limpiar búsqueda</button>
+                        <p class="text-gray-500">No se encontraron grupos con ese nombre</p>
+                        <button onclick="limpiarBusqueda()" class="mt-3 text-blue-600 hover:underline text-sm">
+                            <i class="fas fa-times mr-1"></i>Limpiar búsqueda
+                        </button>
                     </div>
 
-                    <!-- Mensaje si no hay grupos -->
-                    <div id="no-grupos-message" class="hidden text-center py-12">
-                        <i class="fas fa-inbox text-6xl text-gray-300 mb-4"></i>
-                        <p class="text-gray-600 mb-4">Aún no has creado ningún grupo</p>
-                        <button onclick="window.location.href='grupos.html?action=nuevo'" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700">
-                            Crear Mi Primer Grupo
+                    <!-- Sin grupos -->
+                    <div id="no-grupos-msg" class="hidden text-center py-16">
+                        <div class="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-inbox text-4xl text-gray-400"></i>
+                        </div>
+                        <p class="text-gray-600 font-medium mb-2">Aún no tienes grupos</p>
+                        <p class="text-gray-400 text-sm mb-5">Crea tu primer grupo para comenzar a usar el asistente</p>
+                        <button onclick="window.location.href='grupos.html?action=nuevo'"
+                            class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium">
+                            <i class="fas fa-plus mr-2"></i>Crear Mi Primer Grupo
                         </button>
                     </div>
                 </div>
-                
+
             </main>
-            
         </div>
     </div>
-    
-    <!-- Toast container -->
+
+    <!-- ── Modal: elegir grupo ──────────────────────────────────────── -->
+    <div id="modal-elegir-grupo" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+         onclick="cerrarModalGrupo(event)">
+        <div class="bg-white rounded-xl shadow-xl max-w-md w-full" onclick="event.stopPropagation()">
+            <div class="p-5 border-b flex items-center justify-between">
+                <h3 id="modal-grupo-title" class="font-bold text-gray-900">Selecciona un grupo</h3>
+                <button onclick="document.getElementById('modal-elegir-grupo').classList.add('hidden')"
+                    class="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div id="modal-grupo-lista" class="p-4 max-h-80 overflow-y-auto space-y-2"></div>
+        </div>
+    </div>
+
+    <!-- Toast -->
     <div id="toast-container" class="fixed bottom-6 right-6 z-50 space-y-2 pointer-events-none"></div>
 
-    <!-- Scripts -->
+    <!-- Scripts — SIN grupos.js (ese archivo es solo para grupos.html) -->
     <script src="js/config.js"></script>
     <script src="js/api.js"></script>
     <script src="js/auth.js"></script>
-    <script src="js/grupos.js"></script>
 
     <script>
-        requireAuth();
+    // ══════════════════════════════════════════════════════════════════
+    // DASHBOARD — lógica completamente autocontenida
+    // ══════════════════════════════════════════════════════════════════
+    requireAuth();
 
-        // ── Variables globales ──────────────────────────────────────
-        let grupos = [];
-        let user = null;
-        let subscription = null;
+    // Variables globales de ESTE módulo (no comparte nombres con grupos.js)
+    let dashGrupos = [];
+    let dashUser   = null;
+    let dashSub    = null;
 
-        // ── Toast ───────────────────────────────────────────────────
-        function toast(msg, type = 'success', duration = 3500) {
-            const colors = {
-                success: 'bg-green-600', error: 'bg-red-600',
-                info: 'bg-blue-600', warning: 'bg-yellow-500'
-            };
-            const icons = {
-                success: 'fa-check-circle', error: 'fa-exclamation-circle',
-                info: 'fa-info-circle', warning: 'fa-exclamation-triangle'
-            };
-            const el = document.createElement('div');
-            el.className = `pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg text-white text-sm font-medium
-                           ${colors[type]} transition-all duration-300 opacity-0 translate-y-2`;
-            el.innerHTML = `<i class="fas ${icons[type]}"></i><span>${msg}</span>`;
-            const container = document.getElementById('toast-container');
-            container.appendChild(el);
-            requestAnimationFrame(() => {
-                el.classList.remove('opacity-0', 'translate-y-2');
-            });
-            setTimeout(() => {
-                el.classList.add('opacity-0', 'translate-y-2');
-                el.addEventListener('transitionend', () => el.remove());
-            }, duration);
-        }
+    // ── Toast ─────────────────────────────────────────────────────────
+    function toast(msg, type = 'success', duration = 3500) {
+        const COLOR = { success:'bg-green-600', error:'bg-red-600', info:'bg-blue-600', warning:'bg-yellow-500' };
+        const ICON  = { success:'fa-check-circle', error:'fa-exclamation-circle', info:'fa-info-circle', warning:'fa-exclamation-triangle' };
+        const el = document.createElement('div');
+        el.className = `pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg text-white text-sm font-medium
+                        ${COLOR[type] || COLOR.info} transition-all duration-300 opacity-0 translate-y-2`;
+        el.innerHTML = `<i class="fas ${ICON[type] || ICON.info}"></i><span>${msg}</span>`;
+        document.getElementById('toast-container').appendChild(el);
+        requestAnimationFrame(() => el.classList.remove('opacity-0','translate-y-2'));
+        setTimeout(() => {
+            el.classList.add('opacity-0','translate-y-2');
+            el.addEventListener('transitionend', () => el.remove(), { once: true });
+        }, duration);
+    }
 
-        // ── Helpers ─────────────────────────────────────────────────
-        const SUBJECT_ICONS = {
-            'matemáticas': { icon: 'fa-calculator', color: 'text-blue-600', bg: 'bg-blue-100' },
-            'matematicas':  { icon: 'fa-calculator', color: 'text-blue-600', bg: 'bg-blue-100' },
-            'álgebra':      { icon: 'fa-square-root-alt', color: 'text-indigo-600', bg: 'bg-indigo-100' },
-            'algebra':      { icon: 'fa-square-root-alt', color: 'text-indigo-600', bg: 'bg-indigo-100' },
-            'física':       { icon: 'fa-atom', color: 'text-purple-600', bg: 'bg-purple-100' },
-            'fisica':       { icon: 'fa-atom', color: 'text-purple-600', bg: 'bg-purple-100' },
-            'química':      { icon: 'fa-flask', color: 'text-green-600', bg: 'bg-green-100' },
-            'quimica':      { icon: 'fa-flask', color: 'text-green-600', bg: 'bg-green-100' },
-            'biología':     { icon: 'fa-leaf', color: 'text-emerald-600', bg: 'bg-emerald-100' },
-            'biologia':     { icon: 'fa-leaf', color: 'text-emerald-600', bg: 'bg-emerald-100' },
-            'lengua':       { icon: 'fa-book-open', color: 'text-rose-600', bg: 'bg-rose-100' },
-            'español':      { icon: 'fa-book-open', color: 'text-rose-600', bg: 'bg-rose-100' },
-            'inglés':       { icon: 'fa-language', color: 'text-sky-600', bg: 'bg-sky-100' },
-            'ingles':       { icon: 'fa-language', color: 'text-sky-600', bg: 'bg-sky-100' },
-            'historia':     { icon: 'fa-landmark', color: 'text-amber-600', bg: 'bg-amber-100' },
-            'ciencias':     { icon: 'fa-microscope', color: 'text-teal-600', bg: 'bg-teal-100' },
-        };
-        function subjectStyle(asignatura) {
-            const key = (asignatura || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-            return SUBJECT_ICONS[key] || { icon: 'fa-chalkboard-teacher', color: 'text-gray-600', bg: 'bg-gray-100' };
-        }
+    // ── Mapeo de asignaturas → ícono ──────────────────────────────────
+    const SUBJ = {
+        'matematicas':  { icon:'fa-calculator',       color:'text-blue-600',    bg:'bg-blue-100'    },
+        'algebra':      { icon:'fa-square-root-alt',  color:'text-indigo-600',  bg:'bg-indigo-100'  },
+        'fisica':       { icon:'fa-atom',             color:'text-purple-600',  bg:'bg-purple-100'  },
+        'quimica':      { icon:'fa-flask',            color:'text-green-600',   bg:'bg-green-100'   },
+        'biologia':     { icon:'fa-leaf',             color:'text-emerald-600', bg:'bg-emerald-100' },
+        'ciencias':     { icon:'fa-microscope',       color:'text-teal-600',    bg:'bg-teal-100'    },
+        'lengua':       { icon:'fa-book-open',        color:'text-rose-600',    bg:'bg-rose-100'    },
+        'espanol':      { icon:'fa-book-open',        color:'text-rose-600',    bg:'bg-rose-100'    },
+        'ingles':       { icon:'fa-language',         color:'text-sky-600',     bg:'bg-sky-100'     },
+        'historia':     { icon:'fa-landmark',         color:'text-amber-600',   bg:'bg-amber-100'   },
+        'geografia':    { icon:'fa-globe',            color:'text-cyan-600',    bg:'bg-cyan-100'    },
+        'arte':         { icon:'fa-palette',          color:'text-pink-600',    bg:'bg-pink-100'    },
+        'educacion':    { icon:'fa-running',          color:'text-orange-600',  bg:'bg-orange-100'  },
+    };
+    function asignaturaStyle(a) {
+        const k = (a || '').toLowerCase()
+            .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+            .replace(/[^a-z]/g,'');
+        // buscar por inicio de palabra
+        const match = Object.keys(SUBJ).find(key => k.startsWith(key) || key.startsWith(k));
+        return SUBJ[match] || { icon:'fa-chalkboard-teacher', color:'text-gray-600', bg:'bg-gray-100' };
+    }
 
-        // ── Cargar datos en paralelo ─────────────────────────────────
-        async function cargarDatos() {
-            // Mostrar datos de localStorage instantáneamente
-            const cached = Auth.getUser();
-            if (cached) actualizarHeaderUsuario(cached);
+    // ── Contador animado ──────────────────────────────────────────────
+    function animateCount(el, target, ms = 700) {
+        if (!el) return;
+        const start = parseInt(el.textContent) || 0;
+        if (start === target) return;
+        const steps = Math.max(1, Math.round(ms / 16));
+        const inc = (target - start) / steps;
+        let cur = start, count = 0;
+        const t = setInterval(() => {
+            count++;
+            cur += inc;
+            el.textContent = Math.round(count < steps ? cur : target);
+            if (count >= steps) clearInterval(t);
+        }, 16);
+    }
 
-            try {
-                const [fetchedUser, fetchedGrupos, fetchedSub] = await Promise.all([
-                    api.getMe(),
-                    api.getGrupos(),
-                    api.getSubscription().catch(() => null),
-                ]);
+    // ── Cargar datos ──────────────────────────────────────────────────
+    async function cargarDatos() {
+        // Render instantáneo con caché
+        const cached = Auth.getUser();
+        if (cached) actualizarHeader(cached);
 
-                user = fetchedUser;
-                Auth.setUser(user);
-                grupos = fetchedGrupos;
-                subscription = fetchedSub;
+        try {
+            const [u, gs, sub] = await Promise.all([
+                api.getMe(),
+                api.getGrupos(),
+                api.getSubscription().catch(() => null),
+            ]);
+            dashUser = u;
+            dashGrupos = gs;
+            dashSub = sub;
+            Auth.setUser(u);
 
-                actualizarHeaderUsuario(user);
-                renderGrupos(); // sin filtro al cargar
-                renderSidebar();
-                if (subscription) renderPlanUsage();
-                actualizarEstadisticas();
-
-            } catch (error) {
-                console.error('Error cargando datos:', error);
-                if (error.message?.includes('401') || error.message?.includes('Token')) {
-                    window.location.href = 'login.html';
-                } else {
-                    toast('Error al cargar datos. Intenta recargar.', 'error');
-                }
-            }
-        }
-
-        function actualizarHeaderUsuario(u) {
-            if (!u) return;
-            document.getElementById('user-name').textContent = u.nombre_completo.split(' ')[0];
-            document.getElementById('user-initial').textContent = u.nombre_completo.charAt(0).toUpperCase();
-            const nameMenu = document.getElementById('user-name-menu');
-            if (nameMenu) nameMenu.textContent = u.nombre_completo;
-            const emailEl = document.getElementById('user-email');
-            if (emailEl) emailEl.textContent = u.email;
-        }
-
-        // ── Renderizar grupos (grid principal) ───────────────────────
-        function grupoCardHTML(g) {
-            const s = subjectStyle(g.asignatura);
-            return `
-            <div class="bg-white rounded-lg shadow hover:shadow-md transition-all flex flex-col">
-                <div class="p-5 flex-1">
-                    <div class="flex items-center mb-3">
-                        <div class="w-12 h-12 ${s.bg} rounded-xl flex items-center justify-center mr-3 flex-shrink-0">
-                            <i class="fas ${s.icon} text-xl ${s.color}"></i>
-                        </div>
-                        <div class="min-w-0">
-                            <h3 class="font-semibold text-gray-900 truncate">${g.nombre_grupo}</h3>
-                            <p class="text-xs text-gray-500 mt-0.5">${g.grado} · ${g.asignatura}</p>
-                        </div>
-                    </div>
-                    <div class="flex flex-wrap items-center gap-3 text-xs text-gray-500">
-                        <span title="Estudiantes"><i class="fas fa-users mr-1"></i>${g.cantidad_estudiantes} est.</span>
-                        <span title="Año lectivo"><i class="fas fa-calendar-alt mr-1"></i>${g.anio_lectivo}</span>
-                        <span class="inline-flex items-center bg-blue-50 text-blue-700 rounded-full px-2 py-0.5 font-medium">
-                            P${g.periodo_actual}
-                        </span>
-                    </div>
-                </div>
-                <div class="border-t flex">
-                    <a href="chat.html?id=${g.id_grupo}"
-                       class="flex-1 py-2.5 text-center text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-bl-lg transition-colors">
-                        <i class="fas fa-robot mr-1"></i>Chat IA
-                    </a>
-                    <a href="grupos.html?tab=calificaciones&grupo=${g.id_grupo}"
-                       class="flex-1 py-2.5 text-center text-sm font-medium text-green-600 hover:bg-green-50 rounded-br-lg border-l transition-colors">
-                        <i class="fas fa-table mr-1"></i>Notas
-                    </a>
-                </div>
-            </div>`;
-        }
-
-        function renderGrupos(query = '') {
-            const gruposGrid   = document.getElementById('grupos-grid');
-            const skeleton     = document.getElementById('grupos-skeleton');
-            const noGruposMsg  = document.getElementById('no-grupos-message');
-            const noSearchMsg  = document.getElementById('no-search-results');
-
-            // Ocultar skeleton siempre que se renderice
-            skeleton.classList.add('hidden');
-            gruposGrid.classList.remove('hidden');
-
-            if (grupos.length === 0) {
-                gruposGrid.classList.add('hidden');
-                noGruposMsg.classList.remove('hidden');
-                noSearchMsg.classList.add('hidden');
-                return;
-            }
-
-            noGruposMsg.classList.add('hidden');
-
-            const q = query.toLowerCase().trim();
-            const filtrados = q
-                ? grupos.filter(g =>
-                    g.nombre_grupo.toLowerCase().includes(q) ||
-                    (g.asignatura || '').toLowerCase().includes(q) ||
-                    (g.grado || '').toLowerCase().includes(q))
-                : grupos;
-
-            if (filtrados.length === 0) {
-                gruposGrid.innerHTML = '';
-                noSearchMsg.classList.remove('hidden');
-                return;
-            }
-
-            noSearchMsg.classList.add('hidden');
-            gruposGrid.innerHTML = filtrados.map(grupoCardHTML).join('');
-        }
-
-        function filtrarGrupos(query) {
-            renderGrupos(query);
-        }
-
-        function clearSearch() {
-            const inp = document.getElementById('search-grupos');
-            if (inp) inp.value = '';
+            actualizarHeader(u);
             renderGrupos();
-        }
+            renderSidebar();
+            if (sub) renderPlan();
+            renderStats();
 
-        // ── Renderizar sidebar ───────────────────────────────────────
-        function renderSidebar() {
-            const gruposList = document.getElementById('grupos-list');
-            if (grupos.length === 0) {
-                gruposList.innerHTML = `
-                    <div class="text-center text-gray-400 py-6 text-sm">
-                        <i class="fas fa-folder-open text-3xl mb-2 block"></i>
-                        No tienes grupos aún
-                    </div>`;
-                return;
-            }
-            gruposList.innerHTML = grupos.map(g => {
-                const s = subjectStyle(g.asignatura);
-                return `
-                <div class="group flex items-center p-2 rounded-lg hover:bg-gray-100 transition-colors">
-                    <a href="chat.html?id=${g.id_grupo}" class="flex items-center flex-1 min-w-0">
-                        <div class="w-8 h-8 ${s.bg} rounded-lg flex items-center justify-center mr-2 flex-shrink-0">
-                            <i class="fas ${s.icon} text-sm ${s.color}"></i>
-                        </div>
-                        <div class="min-w-0">
-                            <p class="font-medium text-sm text-gray-800 truncate">${g.nombre_grupo}</p>
-                            <p class="text-xs text-gray-500">${g.grado} · ${g.cantidad_estudiantes} est.</p>
-                        </div>
-                    </a>
-                    <a href="grupos.html?tab=calificaciones&grupo=${g.id_grupo}"
-                       title="Libro de notas"
-                       class="ml-1 text-gray-400 hover:text-green-600 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 p-1">
-                        <i class="fas fa-table text-xs"></i>
-                    </a>
-                </div>`;
-            }).join('');
-        }
-
-        // ── Plan usage ───────────────────────────────────────────────
-        function renderPlanUsage() {
-            if (!subscription) return;
-            const mensajesUsados = subscription.mensajes_usados_mes || 0;
-            const rawLimite = subscription.mensajes_limite_mes || 10;
-            const esPro = subscription.plan === 'pro';
-            const limiteDisplay = (esPro || rawLimite >= 999999) ? '∞' : rawLimite;
-            const pct = (esPro || rawLimite >= 999999) ? 0 : Math.min((mensajesUsados / rawLimite) * 100, 100);
-
-            const planLabel = document.getElementById('plan-label');
-            const upgradeLink = document.getElementById('upgrade-link');
-            const box = document.getElementById('plan-usage');
-
-            if (esPro) {
-                planLabel.textContent = '⭐ Plan Pro';
-                planLabel.classList.replace('text-blue-900', 'text-purple-800');
-                box.classList.replace('bg-blue-50', 'bg-purple-50');
-                upgradeLink.classList.add('hidden');
+        } catch (err) {
+            console.error(err);
+            if (err.message?.includes('401') || err.message?.includes('Token')) {
+                window.location.href = 'login.html';
             } else {
-                planLabel.textContent = 'Plan Free';
-                upgradeLink.classList.remove('hidden');
-            }
-
-            document.getElementById('messages-used').textContent = mensajesUsados;
-            document.getElementById('messages-limit').textContent = limiteDisplay;
-            document.getElementById('usage-bar').style.width = `${pct}%`;
-            document.getElementById('mensajes-usados').textContent = mensajesUsados;
-            document.getElementById('mensajes-limite').textContent = limiteDisplay;
-        }
-
-        // ── Estadísticas (contador animado) ─────────────────────────
-        function animateCount(el, target, duration = 600) {
-            const start = parseInt(el.textContent) || 0;
-            if (start === target) return;
-            const step = Math.ceil(Math.abs(target - start) / (duration / 16));
-            let current = start;
-            const timer = setInterval(() => {
-                current = target > start
-                    ? Math.min(current + step, target)
-                    : Math.max(current - step, target);
-                el.textContent = current;
-                if (current === target) clearInterval(timer);
-            }, 16);
-        }
-
-        function actualizarEstadisticas() {
-            animateCount(document.getElementById('total-grupos'), grupos.length);
-            const totalEst = grupos.reduce((s, g) => s + (g.cantidad_estudiantes || 0), 0);
-            animateCount(document.getElementById('total-estudiantes'), totalEst);
-        }
-
-        // ── Abrir primer grupo (chat) ─────────────────────────────────
-        function openFirstGroup() {
-            if (grupos.length > 0) {
-                window.location.href = `chat.html?id=${grupos[0].id_grupo}`;
-            } else {
-                toast('Primero crea un grupo para iniciar el chat', 'info');
+                toast('Error al cargar datos. Intenta recargar.', 'error');
+                // Mostrar skeleton fallido
+                document.getElementById('grupos-skeleton').classList.add('hidden');
+                document.getElementById('no-grupos-msg').classList.remove('hidden');
             }
         }
+    }
 
-        // ── Abrir libro de notas del primer grupo ────────────────────
-        function openNotasGrupo() {
-            if (grupos.length > 0) {
-                window.location.href = `grupos.html?tab=calificaciones&grupo=${grupos[0].id_grupo}`;
-            } else {
-                toast('Primero crea un grupo para ver el libro de notas', 'info');
-            }
+    // ── Header ────────────────────────────────────────────────────────
+    function actualizarHeader(u) {
+        if (!u) return;
+        const first = (u.nombre_completo || 'Docente').split(' ')[0];
+        document.getElementById('user-name').textContent = first;
+        document.getElementById('user-initial').textContent = first.charAt(0).toUpperCase();
+        const nm = document.getElementById('user-name-menu');
+        if (nm) nm.textContent = u.nombre_completo;
+        const em = document.getElementById('user-email');
+        if (em) em.textContent = u.email;
+    }
+
+    // ── Stats ─────────────────────────────────────────────────────────
+    function renderStats() {
+        animateCount(document.getElementById('total-grupos'), dashGrupos.length);
+        const totalEst = dashGrupos.reduce((s, g) => s + (g.cantidad_estudiantes || 0), 0);
+        animateCount(document.getElementById('total-estudiantes'), totalEst);
+    }
+
+    // ── Plan usage ────────────────────────────────────────────────────
+    function renderPlan() {
+        if (!dashSub) return;
+        const usados  = dashSub.mensajes_usados_mes  || 0;
+        const limite  = dashSub.mensajes_limite_mes  || 10;
+        const esPro   = dashSub.plan === 'pro';
+        const dispLim = (esPro || limite >= 999999) ? '∞' : limite;
+        const pct     = (esPro || limite >= 999999) ? 0 : Math.min((usados / limite) * 100, 100);
+
+        document.getElementById('messages-used').textContent = usados;
+        document.getElementById('messages-limit').textContent = dispLim;
+        document.getElementById('mensajes-usados').textContent = usados;
+        document.getElementById('mensajes-limite').textContent = dispLim;
+        document.getElementById('usage-bar').style.width = pct + '%';
+
+        const lbl  = document.getElementById('plan-label');
+        const box  = document.getElementById('plan-usage');
+        const upg  = document.getElementById('upgrade-link');
+        if (esPro) {
+            lbl.textContent = '⭐ Plan Pro';
+            lbl.className   = 'font-semibold text-purple-800 text-xs';
+            box.className   = box.className.replace('bg-blue-50','bg-purple-50');
+            upg.classList.add('hidden');
+        } else {
+            lbl.textContent = 'Plan Free';
+            upg.classList.remove('hidden');
+        }
+    }
+
+    // ── Sidebar ───────────────────────────────────────────────────────
+    function renderSidebar() {
+        const el = document.getElementById('sidebar-grupos');
+        if (dashGrupos.length === 0) {
+            el.innerHTML = `<p class="text-gray-400 text-xs text-center py-4">Sin grupos aún</p>`;
+            return;
+        }
+        el.innerHTML = dashGrupos.map(g => {
+            const s = asignaturaStyle(g.asignatura);
+            return `
+            <div class="group flex items-center rounded-lg hover:bg-gray-50 transition-colors pr-1">
+                <a href="chat.html?id=${g.id_grupo}" class="flex items-center flex-1 min-w-0 p-2">
+                    <div class="w-8 h-8 ${s.bg} rounded-lg flex items-center justify-center mr-2 flex-shrink-0">
+                        <i class="fas ${s.icon} text-xs ${s.color}"></i>
+                    </div>
+                    <div class="min-w-0">
+                        <p class="font-medium text-sm text-gray-800 truncate">${g.nombre_grupo}</p>
+                        <p class="text-xs text-gray-400 truncate">${g.grado} · ${g.cantidad_estudiantes} est.</p>
+                    </div>
+                </a>
+                <a href="grupos.html?tab=calificaciones&grupo=${g.id_grupo}" title="Libro de notas"
+                   class="opacity-0 group-hover:opacity-100 w-7 h-7 flex items-center justify-center text-gray-400 hover:text-green-600 hover:bg-green-50 rounded transition-all flex-shrink-0">
+                    <i class="fas fa-table text-xs"></i>
+                </a>
+            </div>`;
+        }).join('');
+    }
+
+    // ── Grid de grupos ────────────────────────────────────────────────
+    function grupoHTML(g) {
+        const s = asignaturaStyle(g.asignatura);
+        return `
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-md hover:border-gray-200 transition-all flex flex-col">
+            <div class="p-5 flex-1">
+                <div class="flex items-start mb-3">
+                    <div class="w-12 h-12 ${s.bg} rounded-xl flex items-center justify-center mr-3 flex-shrink-0">
+                        <i class="fas ${s.icon} text-xl ${s.color}"></i>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <h3 class="font-semibold text-gray-900 truncate leading-tight">${g.nombre_grupo}</h3>
+                        <p class="text-xs text-gray-500 mt-0.5 truncate">${g.grado} · ${g.asignatura}</p>
+                    </div>
+                </div>
+                <div class="flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                    <span class="flex items-center gap-1">
+                        <i class="fas fa-users"></i>${g.cantidad_estudiantes} est.
+                    </span>
+                    <span class="flex items-center gap-1">
+                        <i class="fas fa-calendar-alt"></i>${g.anio_lectivo}
+                    </span>
+                    <span class="inline-flex items-center bg-blue-50 text-blue-700 rounded-full px-2 py-0.5 font-medium">
+                        P${g.periodo_actual}
+                    </span>
+                </div>
+            </div>
+            <div class="border-t flex rounded-b-xl overflow-hidden">
+                <a href="chat.html?id=${g.id_grupo}"
+                   class="flex-1 py-3 text-center text-sm font-medium text-blue-600 hover:bg-blue-50 transition-colors flex items-center justify-center gap-1.5">
+                    <i class="fas fa-robot text-xs"></i>Chat IA
+                </a>
+                <a href="grupos.html?tab=calificaciones&grupo=${g.id_grupo}"
+                   class="flex-1 py-3 text-center text-sm font-medium text-green-600 hover:bg-green-50 transition-colors border-l flex items-center justify-center gap-1.5">
+                    <i class="fas fa-table text-xs"></i>Notas
+                </a>
+            </div>
+        </div>`;
+    }
+
+    function renderGrupos(query = '') {
+        const grid     = document.getElementById('grupos-grid');
+        const skeleton = document.getElementById('grupos-skeleton');
+        const noGrupos = document.getElementById('no-grupos-msg');
+        const noSearch = document.getElementById('no-search-results');
+
+        // Siempre ocultar skeleton
+        skeleton.classList.add('hidden');
+
+        if (dashGrupos.length === 0) {
+            grid.style.display = 'none';
+            noGrupos.classList.remove('hidden');
+            noSearch.classList.add('hidden');
+            return;
+        }
+        noGrupos.classList.add('hidden');
+
+        const q = query.trim().toLowerCase();
+        const filtrados = q
+            ? dashGrupos.filter(g =>
+                g.nombre_grupo.toLowerCase().includes(q) ||
+                (g.asignatura || '').toLowerCase().includes(q) ||
+                (g.grado || '').toLowerCase().includes(q))
+            : dashGrupos;
+
+        if (filtrados.length === 0) {
+            grid.style.display = 'none';
+            noSearch.classList.remove('hidden');
+            return;
         }
 
-        // ── User menu ─────────────────────────────────────────────────
-        document.getElementById('user-menu-btn').addEventListener('click', (e) => {
-            e.stopPropagation();
-            document.getElementById('user-menu').classList.toggle('hidden');
+        noSearch.classList.add('hidden');
+        grid.style.display = '';   // vuelve al display por defecto de la clase `grid`
+        grid.innerHTML = filtrados.map(grupoHTML).join('');
+    }
+
+    function filtrarGrupos(query) { renderGrupos(query); }
+
+    function limpiarBusqueda() {
+        const inp = document.getElementById('search-grupos');
+        if (inp) inp.value = '';
+        renderGrupos();
+    }
+
+    // ── Acciones rápidas ──────────────────────────────────────────────
+    function abrirChatIA() {
+        if (dashGrupos.length === 0) {
+            toast('Primero crea un grupo para usar el Chat IA', 'info');
+            return;
+        }
+        if (dashGrupos.length === 1) {
+            window.location.href = `chat.html?id=${dashGrupos[0].id_grupo}`;
+            return;
+        }
+        mostrarModalElegirGrupo('Chat IA — ¿Con qué grupo?', (g) => {
+            window.location.href = `chat.html?id=${g.id_grupo}`;
         });
-        document.addEventListener('click', () => {
-            document.getElementById('user-menu').classList.add('hidden');
-        });
+    }
 
-        // ── Logout ───────────────────────────────────────────────────
-        function logout() {
-            api.removeToken();
-            localStorage.clear();
-            window.location.href = 'login.html';
+    function abrirLibroNotas() {
+        if (dashGrupos.length === 0) {
+            toast('Primero crea un grupo para ver el libro de notas', 'info');
+            return;
         }
+        if (dashGrupos.length === 1) {
+            window.location.href = `grupos.html?tab=calificaciones&grupo=${dashGrupos[0].id_grupo}`;
+            return;
+        }
+        mostrarModalElegirGrupo('Libro de Notas — ¿Qué grupo?', (g) => {
+            window.location.href = `grupos.html?tab=calificaciones&grupo=${g.id_grupo}`;
+        });
+    }
 
-        // ── Inicializar ──────────────────────────────────────────────
-        cargarDatos();
+    // ── Modal elegir grupo ────────────────────────────────────────────
+    let _onGrupoSelect = null;
+
+    function mostrarModalElegirGrupo(title, onSelect) {
+        _onGrupoSelect = onSelect;
+        document.getElementById('modal-grupo-title').textContent = title;
+        const lista = document.getElementById('modal-grupo-lista');
+        lista.innerHTML = dashGrupos.map(g => {
+            const s = asignaturaStyle(g.asignatura);
+            return `
+            <button onclick="seleccionarGrupoModal('${g.id_grupo}')"
+                class="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 transition-colors text-left border border-transparent hover:border-gray-200">
+                <div class="w-10 h-10 ${s.bg} rounded-xl flex items-center justify-center flex-shrink-0">
+                    <i class="fas ${s.icon} ${s.color}"></i>
+                </div>
+                <div class="min-w-0">
+                    <p class="font-medium text-gray-900 truncate">${g.nombre_grupo}</p>
+                    <p class="text-xs text-gray-500">${g.grado} · ${g.asignatura} · ${g.cantidad_estudiantes} est.</p>
+                </div>
+            </button>`;
+        }).join('');
+        document.getElementById('modal-elegir-grupo').classList.remove('hidden');
+    }
+
+    function seleccionarGrupoModal(grupoId) {
+        document.getElementById('modal-elegir-grupo').classList.add('hidden');
+        const g = dashGrupos.find(x => x.id_grupo === grupoId);
+        if (g && _onGrupoSelect) _onGrupoSelect(g);
+        _onGrupoSelect = null;
+    }
+
+    function cerrarModalGrupo(e) {
+        if (e && e.target !== document.getElementById('modal-elegir-grupo')) return;
+        document.getElementById('modal-elegir-grupo').classList.add('hidden');
+        _onGrupoSelect = null;
+    }
+
+    // ── User menu ─────────────────────────────────────────────────────
+    document.getElementById('user-menu-btn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        document.getElementById('user-menu').classList.toggle('hidden');
+    });
+    document.addEventListener('click', () => {
+        document.getElementById('user-menu').classList.add('hidden');
+    });
+
+    // Escape cierra modal
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') document.getElementById('modal-elegir-grupo').classList.add('hidden');
+    });
+
+    // ── Logout ────────────────────────────────────────────────────────
+    function cerrarSesion() {
+        api.removeToken();
+        localStorage.clear();
+        window.location.href = 'login.html';
+    }
+
+    // ── Arranque ──────────────────────────────────────────────────────
+    cargarDatos();
     </script>
 </body>
 </html>
