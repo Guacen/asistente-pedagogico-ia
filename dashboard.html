@@ -186,12 +186,65 @@
                 
                 <!-- Grupos recientes -->
                 <div>
-                    <h2 class="text-xl font-bold text-gray-900 mb-4">Mis Grupos</h2>
-                    
-                    <div id="grupos-grid" class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                        <h2 class="text-xl font-bold text-gray-900">Mis Grupos</h2>
+                        <div class="relative max-w-xs w-full">
+                            <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+                            <input
+                                id="search-grupos"
+                                type="text"
+                                placeholder="Buscar grupo..."
+                                oninput="filtrarGrupos(this.value)"
+                                class="w-full pl-9 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                            >
+                        </div>
+                    </div>
+
+                    <!-- Skeleton loading (3 tarjetas) -->
+                    <div id="grupos-skeleton" class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div class="bg-white rounded-lg shadow animate-pulse">
+                            <div class="p-5">
+                                <div class="flex items-center mb-3">
+                                    <div class="w-12 h-12 bg-gray-200 rounded-xl mr-3 flex-shrink-0"></div>
+                                    <div class="flex-1"><div class="h-4 bg-gray-200 rounded w-3/4 mb-2"></div><div class="h-3 bg-gray-200 rounded w-1/2"></div></div>
+                                </div>
+                                <div class="h-3 bg-gray-200 rounded w-2/3"></div>
+                            </div>
+                            <div class="border-t flex"><div class="flex-1 h-10 bg-gray-100"></div><div class="flex-1 h-10 bg-gray-100 border-l"></div></div>
+                        </div>
+                        <div class="bg-white rounded-lg shadow animate-pulse">
+                            <div class="p-5">
+                                <div class="flex items-center mb-3">
+                                    <div class="w-12 h-12 bg-gray-200 rounded-xl mr-3 flex-shrink-0"></div>
+                                    <div class="flex-1"><div class="h-4 bg-gray-200 rounded w-2/3 mb-2"></div><div class="h-3 bg-gray-200 rounded w-1/3"></div></div>
+                                </div>
+                                <div class="h-3 bg-gray-200 rounded w-1/2"></div>
+                            </div>
+                            <div class="border-t flex"><div class="flex-1 h-10 bg-gray-100"></div><div class="flex-1 h-10 bg-gray-100 border-l"></div></div>
+                        </div>
+                        <div class="bg-white rounded-lg shadow animate-pulse">
+                            <div class="p-5">
+                                <div class="flex items-center mb-3">
+                                    <div class="w-12 h-12 bg-gray-200 rounded-xl mr-3 flex-shrink-0"></div>
+                                    <div class="flex-1"><div class="h-4 bg-gray-200 rounded w-4/5 mb-2"></div><div class="h-3 bg-gray-200 rounded w-2/5"></div></div>
+                                </div>
+                                <div class="h-3 bg-gray-200 rounded w-3/5"></div>
+                            </div>
+                            <div class="border-t flex"><div class="flex-1 h-10 bg-gray-100"></div><div class="flex-1 h-10 bg-gray-100 border-l"></div></div>
+                        </div>
+                    </div>
+
+                    <div id="grupos-grid" class="hidden grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                         <!-- Se llenan dinámicamente -->
                     </div>
                     
+                    <!-- Sin resultados de búsqueda -->
+                    <div id="no-search-results" class="hidden text-center py-10">
+                        <i class="fas fa-search text-5xl text-gray-300 mb-3"></i>
+                        <p class="text-gray-600">No se encontraron grupos con ese nombre</p>
+                        <button onclick="clearSearch()" class="mt-3 text-blue-600 hover:underline text-sm">Limpiar búsqueda</button>
+                    </div>
+
                     <!-- Mensaje si no hay grupos -->
                     <div id="no-grupos-message" class="hidden text-center py-12">
                         <i class="fas fa-inbox text-6xl text-gray-300 mb-4"></i>
@@ -292,7 +345,7 @@
                 subscription = fetchedSub;
 
                 actualizarHeaderUsuario(user);
-                renderGrupos();
+                renderGrupos(); // sin filtro al cargar
                 renderSidebar();
                 if (subscription) renderPlanUsage();
                 actualizarEstadisticas();
@@ -318,51 +371,86 @@
         }
 
         // ── Renderizar grupos (grid principal) ───────────────────────
-        function renderGrupos() {
-            const gruposGrid = document.getElementById('grupos-grid');
-            const noGruposMsg = document.getElementById('no-grupos-message');
+        function grupoCardHTML(g) {
+            const s = subjectStyle(g.asignatura);
+            return `
+            <div class="bg-white rounded-lg shadow hover:shadow-md transition-all flex flex-col">
+                <div class="p-5 flex-1">
+                    <div class="flex items-center mb-3">
+                        <div class="w-12 h-12 ${s.bg} rounded-xl flex items-center justify-center mr-3 flex-shrink-0">
+                            <i class="fas ${s.icon} text-xl ${s.color}"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <h3 class="font-semibold text-gray-900 truncate">${g.nombre_grupo}</h3>
+                            <p class="text-xs text-gray-500 mt-0.5">${g.grado} · ${g.asignatura}</p>
+                        </div>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-3 text-xs text-gray-500">
+                        <span title="Estudiantes"><i class="fas fa-users mr-1"></i>${g.cantidad_estudiantes} est.</span>
+                        <span title="Año lectivo"><i class="fas fa-calendar-alt mr-1"></i>${g.anio_lectivo}</span>
+                        <span class="inline-flex items-center bg-blue-50 text-blue-700 rounded-full px-2 py-0.5 font-medium">
+                            P${g.periodo_actual}
+                        </span>
+                    </div>
+                </div>
+                <div class="border-t flex">
+                    <a href="chat.html?id=${g.id_grupo}"
+                       class="flex-1 py-2.5 text-center text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-bl-lg transition-colors">
+                        <i class="fas fa-robot mr-1"></i>Chat IA
+                    </a>
+                    <a href="grupos.html?tab=calificaciones&grupo=${g.id_grupo}"
+                       class="flex-1 py-2.5 text-center text-sm font-medium text-green-600 hover:bg-green-50 rounded-br-lg border-l transition-colors">
+                        <i class="fas fa-table mr-1"></i>Notas
+                    </a>
+                </div>
+            </div>`;
+        }
+
+        function renderGrupos(query = '') {
+            const gruposGrid   = document.getElementById('grupos-grid');
+            const skeleton     = document.getElementById('grupos-skeleton');
+            const noGruposMsg  = document.getElementById('no-grupos-message');
+            const noSearchMsg  = document.getElementById('no-search-results');
+
+            // Ocultar skeleton siempre que se renderice
+            skeleton.classList.add('hidden');
+            gruposGrid.classList.remove('hidden');
 
             if (grupos.length === 0) {
                 gruposGrid.classList.add('hidden');
                 noGruposMsg.classList.remove('hidden');
+                noSearchMsg.classList.add('hidden');
                 return;
             }
 
-            gruposGrid.classList.remove('hidden');
             noGruposMsg.classList.add('hidden');
 
-            gruposGrid.innerHTML = grupos.map(g => {
-                const s = subjectStyle(g.asignatura);
-                return `
-                <div class="bg-white rounded-lg shadow hover:shadow-md transition-shadow flex flex-col">
-                    <div class="p-5 flex-1">
-                        <div class="flex items-center mb-3">
-                            <div class="w-12 h-12 ${s.bg} rounded-xl flex items-center justify-center mr-3 flex-shrink-0">
-                                <i class="fas ${s.icon} text-xl ${s.color}"></i>
-                            </div>
-                            <div class="min-w-0">
-                                <h3 class="font-semibold text-gray-900 truncate">${g.nombre_grupo}</h3>
-                                <p class="text-xs text-gray-500 mt-0.5">${g.grado} · ${g.asignatura}</p>
-                            </div>
-                        </div>
-                        <div class="flex items-center gap-4 text-xs text-gray-500">
-                            <span><i class="fas fa-users mr-1"></i>${g.cantidad_estudiantes} est.</span>
-                            <span><i class="fas fa-calendar-alt mr-1"></i>${g.anio_lectivo}</span>
-                            <span><i class="fas fa-flag mr-1"></i>Período ${g.periodo_actual}</span>
-                        </div>
-                    </div>
-                    <div class="border-t flex">
-                        <a href="chat.html?id=${g.id_grupo}"
-                           class="flex-1 py-2.5 text-center text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-bl-lg transition-colors">
-                            <i class="fas fa-robot mr-1"></i>Chat IA
-                        </a>
-                        <a href="grupos.html?tab=calificaciones&grupo=${g.id_grupo}"
-                           class="flex-1 py-2.5 text-center text-sm font-medium text-green-600 hover:bg-green-50 rounded-br-lg border-l transition-colors">
-                            <i class="fas fa-table mr-1"></i>Notas
-                        </a>
-                    </div>
-                </div>`;
-            }).join('');
+            const q = query.toLowerCase().trim();
+            const filtrados = q
+                ? grupos.filter(g =>
+                    g.nombre_grupo.toLowerCase().includes(q) ||
+                    (g.asignatura || '').toLowerCase().includes(q) ||
+                    (g.grado || '').toLowerCase().includes(q))
+                : grupos;
+
+            if (filtrados.length === 0) {
+                gruposGrid.innerHTML = '';
+                noSearchMsg.classList.remove('hidden');
+                return;
+            }
+
+            noSearchMsg.classList.add('hidden');
+            gruposGrid.innerHTML = filtrados.map(grupoCardHTML).join('');
+        }
+
+        function filtrarGrupos(query) {
+            renderGrupos(query);
+        }
+
+        function clearSearch() {
+            const inp = document.getElementById('search-grupos');
+            if (inp) inp.value = '';
+            renderGrupos();
         }
 
         // ── Renderizar sidebar ───────────────────────────────────────
@@ -428,11 +516,25 @@
             document.getElementById('mensajes-limite').textContent = limiteDisplay;
         }
 
-        // ── Estadísticas ─────────────────────────────────────────────
+        // ── Estadísticas (contador animado) ─────────────────────────
+        function animateCount(el, target, duration = 600) {
+            const start = parseInt(el.textContent) || 0;
+            if (start === target) return;
+            const step = Math.ceil(Math.abs(target - start) / (duration / 16));
+            let current = start;
+            const timer = setInterval(() => {
+                current = target > start
+                    ? Math.min(current + step, target)
+                    : Math.max(current - step, target);
+                el.textContent = current;
+                if (current === target) clearInterval(timer);
+            }, 16);
+        }
+
         function actualizarEstadisticas() {
-            document.getElementById('total-grupos').textContent = grupos.length;
+            animateCount(document.getElementById('total-grupos'), grupos.length);
             const totalEst = grupos.reduce((s, g) => s + (g.cantidad_estudiantes || 0), 0);
-            document.getElementById('total-estudiantes').textContent = totalEst;
+            animateCount(document.getElementById('total-estudiantes'), totalEst);
         }
 
         // ── Abrir primer grupo (chat) ─────────────────────────────────

@@ -256,17 +256,28 @@
                     
                     <form id="form-perfil" class="space-y-6">
                         
-                        <!-- Avatar (opcional - placeholder) -->
+                        <!-- Avatar con preview -->
                         <div class="flex items-center">
-                            <div class="w-24 h-24 bg-blue-600 rounded-full flex items-center justify-center text-white text-3xl font-bold mr-6">
-                                <span id="avatar-inicial">D</span>
-                            </div>
-                            <div>
-                                <button type="button" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300">
-                                    <i class="fas fa-camera mr-2"></i>
-                                    Cambiar foto
+                            <div class="relative mr-6 flex-shrink-0">
+                                <div id="avatar-circle" class="w-24 h-24 bg-blue-600 rounded-full flex items-center justify-center text-white text-3xl font-bold overflow-hidden">
+                                    <span id="avatar-inicial">D</span>
+                                    <img id="avatar-preview" src="" alt="Avatar" class="hidden w-full h-full object-cover">
+                                </div>
+                                <button
+                                    type="button"
+                                    onclick="document.getElementById('foto-input').click()"
+                                    title="Cambiar foto"
+                                    class="absolute bottom-0 right-0 w-8 h-8 bg-white border-2 border-gray-200 rounded-full flex items-center justify-center shadow hover:bg-blue-50 transition-colors"
+                                >
+                                    <i class="fas fa-camera text-gray-600 text-xs"></i>
                                 </button>
-                                <p class="text-xs text-gray-500 mt-1">JPG, PNG. Máximo 2MB</p>
+                            </div>
+                            <input id="foto-input" type="file" accept="image/jpeg,image/png,image/webp" class="hidden" onchange="previewFoto(event)">
+                            <div>
+                                <button type="button" onclick="document.getElementById('foto-input').click()" class="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium">
+                                    <i class="fas fa-camera mr-2"></i>Cambiar foto
+                                </button>
+                                <p class="text-xs text-gray-500 mt-1.5">JPG, PNG, WebP · Máximo 2 MB</p>
                             </div>
                         </div>
                         
@@ -418,7 +429,16 @@
                                     <i class="fas fa-eye" id="password-nueva-eye"></i>
                                 </button>
                             </div>
-                            <p class="text-xs text-gray-500 mt-1">Mínimo 8 caracteres</p>
+                            <!-- Fortaleza de contraseña -->
+                            <div class="mt-2">
+                                <div class="w-full bg-gray-200 rounded-full h-1.5">
+                                    <div id="password-strength-bar" class="h-1.5 rounded-full transition-all duration-300" style="width:0%"></div>
+                                </div>
+                                <div class="flex justify-between mt-1">
+                                    <p class="text-xs text-gray-500">Mínimo 8 caracteres</p>
+                                    <p id="password-strength-label" class="text-xs font-semibold"></p>
+                                </div>
+                            </div>
                         </div>
                         
                         <!-- Confirmar nueva contraseña -->
@@ -488,6 +508,41 @@
         </main>
     </div>
     
+    <!-- ── Modal de confirmación reutilizable ─────────────────── -->
+    <div id="modal-confirm" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onclick="closeConfirmModal(event)">
+        <div class="bg-white rounded-xl shadow-xl max-w-md w-full" onclick="event.stopPropagation()">
+            <div class="p-6">
+                <div class="flex items-start mb-4">
+                    <div id="modal-icon" class="w-12 h-12 rounded-full flex items-center justify-center mr-4 flex-shrink-0">
+                        <i id="modal-icon-i" class="fas fa-exclamation-triangle text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 id="modal-title" class="text-xl font-bold text-gray-900 mb-1">¿Confirmar acción?</h3>
+                        <p id="modal-body" class="text-gray-600 text-sm leading-relaxed"></p>
+                    </div>
+                </div>
+                <div id="modal-input-container" class="hidden mb-5">
+                    <label id="modal-input-label" class="block text-sm font-medium text-gray-700 mb-1.5"></label>
+                    <input
+                        type="text"
+                        id="modal-input"
+                        autocomplete="off"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    >
+                    <p id="modal-input-hint" class="text-xs text-gray-500 mt-1"></p>
+                </div>
+                <div class="flex justify-end gap-3">
+                    <button onclick="closeConfirmModal()" class="px-5 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 text-sm font-medium">
+                        Cancelar
+                    </button>
+                    <button id="modal-confirm-btn" class="px-5 py-2 rounded-lg text-white text-sm font-semibold transition-all">
+                        Confirmar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast container -->
     <div id="toast-container" class="fixed bottom-6 right-6 z-50 space-y-2 pointer-events-none"></div>
 
@@ -621,6 +676,82 @@
             sessionStorage.setItem('cuenta_tab', tab);
         }
 
+        // ══════════════════════════════════════════════════════════════
+        // MODAL DE CONFIRMACIÓN REUTILIZABLE
+        // ══════════════════════════════════════════════════════════════
+        let _modalResolve = null;
+
+        function showConfirmModal({ title, body, icon = 'warning', confirmText = 'Confirmar',
+                                    inputLabel = null, inputHint = null, expectedInput = null }) {
+            return new Promise((resolve) => {
+                _modalResolve = resolve;
+
+                document.getElementById('modal-title').textContent = title;
+                document.getElementById('modal-body').textContent  = body;
+
+                const iconEl = document.getElementById('modal-icon');
+                const iconI  = document.getElementById('modal-icon-i');
+                const confirmBtn = document.getElementById('modal-confirm-btn');
+
+                if (icon === 'danger') {
+                    iconEl.className     = 'w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mr-4 flex-shrink-0';
+                    iconI.className      = 'fas fa-trash-alt text-xl text-red-600';
+                    confirmBtn.className = 'px-5 py-2 rounded-lg text-white text-sm font-semibold transition-all bg-red-600 hover:bg-red-700';
+                } else {
+                    iconEl.className     = 'w-12 h-12 rounded-full bg-yellow-100 flex items-center justify-center mr-4 flex-shrink-0';
+                    iconI.className      = 'fas fa-exclamation-triangle text-xl text-yellow-600';
+                    confirmBtn.className = 'px-5 py-2 rounded-lg text-white text-sm font-semibold transition-all bg-yellow-500 hover:bg-yellow-600';
+                }
+
+                confirmBtn.textContent = confirmText;
+
+                const inputContainer = document.getElementById('modal-input-container');
+                const inputEl        = document.getElementById('modal-input');
+
+                if (inputLabel) {
+                    inputContainer.classList.remove('hidden');
+                    document.getElementById('modal-input-label').textContent = inputLabel;
+                    document.getElementById('modal-input-hint').textContent  = inputHint || '';
+                    inputEl.value       = '';
+                    inputEl.placeholder = expectedInput || '';
+                    confirmBtn.disabled = true;
+                    confirmBtn.classList.add('opacity-50', 'cursor-not-allowed');
+
+                    inputEl.oninput = (e) => {
+                        const ok = expectedInput
+                            ? e.target.value === expectedInput
+                            : e.target.value.trim().length > 0;
+                        confirmBtn.disabled = !ok;
+                        if (ok) confirmBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                        else    confirmBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                    };
+                } else {
+                    inputContainer.classList.add('hidden');
+                    confirmBtn.disabled = false;
+                    confirmBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                }
+
+                confirmBtn.onclick = () => { closeConfirmModal(); resolve(true); };
+
+                document.getElementById('modal-confirm').classList.remove('hidden');
+                setTimeout(() => (inputLabel ? inputEl.focus() : confirmBtn.focus()), 50);
+            });
+        }
+
+        function closeConfirmModal(e) {
+            if (e && e.target !== document.getElementById('modal-confirm')) return;
+            document.getElementById('modal-confirm').classList.add('hidden');
+            if (_modalResolve) { _modalResolve(false); _modalResolve = null; }
+        }
+
+        // Cerrar con Escape
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && !document.getElementById('modal-confirm').classList.contains('hidden')) {
+                document.getElementById('modal-confirm').classList.add('hidden');
+                if (_modalResolve) { _modalResolve(false); _modalResolve = null; }
+            }
+        });
+
         // ── Upgrade Pro ───────────────────────────────────────────────
         async function upgradePro() {
             try {
@@ -633,11 +764,16 @@
 
         // ── Cancelar suscripción ──────────────────────────────────────
         async function cancelarSuscripcion() {
-            const confirmacion = prompt(
-                'Esta acción cancelará tu suscripción al final del período actual.\n\n' +
-                'Escribe "CANCELAR" para confirmar:'
-            );
-            if (confirmacion !== 'CANCELAR') return;
+            const ok = await showConfirmModal({
+                title: 'Cancelar suscripción',
+                body:  'Tu plan Pro se cancelará al final del período actual. ' +
+                       'Seguirás teniendo acceso completo hasta entonces.',
+                icon:  'warning',
+                confirmText: 'Sí, cancelar',
+                inputLabel:  'Escribe CANCELAR para confirmar',
+                expectedInput: 'CANCELAR',
+            });
+            if (!ok) return;
             try {
                 await api.request('/api/suscripciones/cancelar', { method: 'POST' });
                 toast('Suscripción cancelada. Tendrás acceso hasta el final del período actual.', 'info', 5000);
@@ -763,24 +899,89 @@
 
         // ── Eliminar cuenta ───────────────────────────────────────────
         async function eliminarCuenta() {
-            const confirmacion = prompt(
-                '⚠️ ADVERTENCIA: Esta acción eliminará permanentemente tu cuenta y todos tus datos.\n\n' +
-                'Escribe ELIMINAR MI CUENTA para confirmar:'
-            );
-            if (confirmacion !== 'ELIMINAR MI CUENTA') return;
-            if (!confirm('¿Estás completamente seguro? Esta acción no se puede deshacer.')) return;
+            const ok = await showConfirmModal({
+                title: 'Eliminar cuenta permanentemente',
+                body:  'Esta acción eliminará tu cuenta, grupos, estudiantes y todos tus datos. ' +
+                       'Esta operación NO se puede deshacer.',
+                icon:  'danger',
+                confirmText:   'Eliminar mi cuenta',
+                inputLabel:    'Escribe ELIMINAR MI CUENTA para confirmar',
+                inputHint:     'Esta acción es irreversible',
+                expectedInput: 'ELIMINAR MI CUENTA',
+            });
+            if (!ok) return;
 
             try {
                 await api.deleteAccount();
-                toast('Tu cuenta ha sido eliminada', 'info');
+                toast('Tu cuenta ha sido eliminada. Hasta pronto.', 'info', 4000);
                 setTimeout(() => {
                     api.removeToken();
                     localStorage.clear();
                     window.location.href = 'index.html';
-                }, 1500);
+                }, 2000);
             } catch (error) {
                 toast('Error al eliminar cuenta: ' + error.message, 'error');
             }
+        }
+
+        // ══════════════════════════════════════════════════════════════
+        // FORTALEZA DE CONTRASEÑA
+        // ══════════════════════════════════════════════════════════════
+        function checkPasswordStrength(pw) {
+            let score = 0;
+            if (pw.length >= 8)  score++;
+            if (pw.length >= 12) score++;
+            if (/[A-Z]/.test(pw)) score++;
+            if (/[0-9]/.test(pw)) score++;
+            if (/[^A-Za-z0-9]/.test(pw)) score++;
+            const levels = [
+                { label: 'Muy débil',  bar: 'bg-red-500',    width: '20%',  text: 'text-red-600'    },
+                { label: 'Débil',      bar: 'bg-orange-400',  width: '40%',  text: 'text-orange-500' },
+                { label: 'Media',      bar: 'bg-yellow-400',  width: '60%',  text: 'text-yellow-600' },
+                { label: 'Fuerte',     bar: 'bg-green-500',   width: '80%',  text: 'text-green-600'  },
+                { label: 'Muy fuerte', bar: 'bg-green-600',   width: '100%', text: 'text-green-700'  },
+            ];
+            return levels[Math.max(0, Math.min(score - 1, 4))] || levels[0];
+        }
+
+        document.getElementById('password-nueva').addEventListener('input', (e) => {
+            const bar   = document.getElementById('password-strength-bar');
+            const label = document.getElementById('password-strength-label');
+            if (!bar || !label) return;
+            if (!e.target.value) {
+                bar.style.width = '0%';
+                bar.className   = 'h-1.5 rounded-full transition-all duration-300 bg-gray-300';
+                label.textContent = '';
+                return;
+            }
+            const s = checkPasswordStrength(e.target.value);
+            bar.style.width     = s.width;
+            bar.className       = `h-1.5 rounded-full transition-all duration-300 ${s.bar}`;
+            label.textContent   = s.label;
+            label.className     = `text-xs font-semibold ${s.text}`;
+        });
+
+        // ══════════════════════════════════════════════════════════════
+        // PREVIEW DE FOTO DE PERFIL
+        // ══════════════════════════════════════════════════════════════
+        function previewFoto(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            if (file.size > 2 * 1024 * 1024) {
+                toast('La imagen no puede superar 2 MB', 'error');
+                event.target.value = '';
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const preview = document.getElementById('avatar-preview');
+                const inicial = document.getElementById('avatar-inicial');
+                preview.src = e.target.result;
+                preview.classList.remove('hidden');
+                inicial.classList.add('hidden');
+                toast('Foto cargada. Guarda los cambios para aplicarla.', 'info');
+            };
+            reader.readAsDataURL(file);
         }
 
         // ── Inicializar ───────────────────────────────────────────────
