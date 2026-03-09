@@ -29,6 +29,7 @@ from migrate import apply_migrations, seed_pro_user
 # Importar routers
 import auth
 import chat
+import documento
 import grupos
 import suscripciones
 
@@ -76,6 +77,7 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(grupos.router)
 app.include_router(chat.router)
+app.include_router(documento.router)
 app.include_router(suscripciones.router)
 
 # ============================================================

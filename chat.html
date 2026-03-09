@@ -6,498 +6,644 @@
     <title>Chat - Asistente Pedagógico</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <!-- Socket.io Client -->
     <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
-    
-    <!-- Marked.js para renderizar Markdown -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="css/chat.css">
+    <style>
+        /* Markdown rendering en burbujas IA */
+        .msg-ia-body h1, .msg-ia-body h2, .msg-ia-body h3, .msg-ia-body h4 {
+            font-weight: 700; margin: .75em 0 .35em; line-height: 1.25;
+        }
+        .msg-ia-body h1 { font-size: 1.15em; color: #1e40af; }
+        .msg-ia-body h2 { font-size: 1.05em; color: #1d4ed8; }
+        .msg-ia-body h3 { font-size: .95em;  color: #2563eb; }
+        .msg-ia-body ul  { list-style: disc;    padding-left: 1.4em; margin: .4em 0; }
+        .msg-ia-body ol  { list-style: decimal; padding-left: 1.4em; margin: .4em 0; }
+        .msg-ia-body li  { margin: .2em 0; }
+        .msg-ia-body p   { margin: .4em 0; }
+        .msg-ia-body pre { background:#f1f5f9; border-radius:.4em; padding:.6em .8em;
+                           overflow-x:auto; font-size:.82em; }
+        .msg-ia-body code { background:#e2e8f0; border-radius:.25em; padding:.1em .3em;
+                            font-size:.85em; font-family:'Courier New',monospace; }
+        .msg-ia-body pre code { background: none; padding: 0; }
+        .msg-ia-body hr  { border: none; border-top: 1px solid #e2e8f0; margin: .6em 0; }
+        .msg-ia-body table { border-collapse: collapse; width: 100%; margin: .5em 0; font-size:.9em; }
+        .msg-ia-body th, .msg-ia-body td { border: 1px solid #e2e8f0; padding: .3em .6em; }
+        .msg-ia-body th { background: #f1f5f9; font-weight: 600; }
+
+        /* Botón descarga DOCX */
+        .btn-docx {
+            display: inline-flex; align-items: center; gap: .45em;
+            padding: .4em .9em; border-radius: .55em; font-size: .82em;
+            font-weight: 600; cursor: pointer; transition: all .2s;
+            background: #eff6ff; color: #1d4ed8;
+            border: 1px solid #bfdbfe;
+        }
+        .btn-docx:hover  { background: #dbeafe; border-color: #93c5fd; }
+        .btn-docx:disabled { opacity: .6; cursor: not-allowed; }
+        .btn-docx.done   { background: #f0fdf4; color: #15803d; border-color: #86efac; }
+
+        /* Typing dots */
+        .typing-dot { animation: bounce 1s infinite; display:inline-block; width:7px; height:7px;
+                      background:#9ca3af; border-radius:50%; }
+        .typing-dot:nth-child(2) { animation-delay:.15s; }
+        .typing-dot:nth-child(3) { animation-delay:.3s; }
+        @keyframes bounce { 0%,80%,100%{transform:translateY(0)} 40%{transform:translateY(-6px)} }
+    </style>
 </head>
 <body class="bg-gray-50">
-    
-    <!-- Layout -->
-    <div class="flex h-screen">
-        
-        <!-- SIDEBAR COMPACTO -->
-        <aside class="w-20 bg-white border-r flex flex-col items-center py-4">
-            <a href="dashboard.html" class="mb-6" title="Dashboard">
-                <i class="fas fa-graduation-cap text-2xl text-blue-600"></i>
+
+<div class="flex h-screen overflow-hidden">
+
+    <!-- ── SIDEBAR ──────────────────────────────────────── -->
+    <aside class="w-16 bg-white border-r flex flex-col items-center py-4 flex-shrink-0">
+        <a href="dashboard.html" class="mb-6" title="Dashboard">
+            <i class="fas fa-graduation-cap text-2xl text-blue-600"></i>
+        </a>
+        <nav class="flex flex-col items-center gap-4 flex-1">
+            <a href="dashboard.html" title="Dashboard"
+               class="w-10 h-10 flex items-center justify-center rounded-xl text-gray-500 hover:bg-blue-50 hover:text-blue-600 transition-colors">
+                <i class="fas fa-home"></i>
             </a>
-            
-            <a href="dashboard.html" class="mb-4 text-gray-600 hover:text-blue-600" title="Dashboard">
-                <i class="fas fa-home text-xl"></i>
+            <a href="grupos.html" title="Grupos"
+               class="w-10 h-10 flex items-center justify-center rounded-xl text-gray-500 hover:bg-blue-50 hover:text-blue-600 transition-colors">
+                <i class="fas fa-users"></i>
             </a>
-            
-            <a href="grupos.html" class="mb-4 text-gray-600 hover:text-blue-600" title="Grupos">
-                <i class="fas fa-users text-xl"></i>
+            <a href="cuenta.html" title="Cuenta"
+               class="w-10 h-10 flex items-center justify-center rounded-xl text-gray-500 hover:bg-blue-50 hover:text-blue-600 transition-colors">
+                <i class="fas fa-user"></i>
             </a>
-            
-            <a href="cuenta.html" class="mb-4 text-gray-600 hover:text-blue-600" title="Cuenta">
-                <i class="fas fa-user text-xl"></i>
-            </a>
-            
-            <div class="flex-1"></div>
-            
-            <button onclick="logout()" class="text-red-600 hover:text-red-700" title="Cerrar Sesión">
-                <i class="fas fa-sign-out-alt text-xl"></i>
-            </button>
-        </aside>
-        
-        <!-- CONTENIDO PRINCIPAL -->
-        <div class="flex-1 flex flex-col">
-            
-            <!-- Header del chat -->
-            <header class="bg-white border-b px-6 py-4">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center">
-                        <a href="dashboard.html" class="text-gray-600 hover:text-gray-900 mr-4">
-                            <i class="fas fa-arrow-left"></i>
-                        </a>
-                        <div>
-                            <h1 class="text-xl font-bold text-gray-900" id="grupo-nombre">Cargando...</h1>
-                            <p class="text-sm text-gray-600" id="grupo-info"></p>
-                        </div>
-                    </div>
-                    
-                    <button onclick="toggleSidebar()" class="text-gray-600 hover:text-gray-900">
-                        <i class="fas fa-bars text-xl"></i>
-                    </button>
+        </nav>
+        <button onclick="cerrarSesion()" title="Cerrar Sesión"
+            class="w-10 h-10 flex items-center justify-center rounded-xl text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors">
+            <i class="fas fa-sign-out-alt"></i>
+        </button>
+    </aside>
+
+    <!-- ── MAIN ─────────────────────────────────────────── -->
+    <div class="flex-1 flex flex-col min-w-0">
+
+        <!-- Header -->
+        <header class="bg-white border-b px-5 py-3 flex items-center justify-between flex-shrink-0">
+            <div class="flex items-center gap-3">
+                <a href="dashboard.html" class="text-gray-400 hover:text-gray-700 transition-colors">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <div>
+                    <h1 class="text-lg font-bold text-gray-900 leading-tight" id="grupo-nombre">Cargando…</h1>
+                    <p class="text-xs text-gray-500" id="grupo-info"></p>
                 </div>
-            </header>
-            
-            <!-- Área del chat -->
-            <div class="flex-1 flex overflow-hidden">
-                
-                <!-- Mensajes -->
-                <main class="flex-1 flex flex-col">
-                    
-                    <!-- Contenedor de mensajes -->
-                    <div id="mensajes-container" class="flex-1 overflow-y-auto p-6 space-y-4">
-                        <!-- Mensajes se agregan aquí dinámicamente -->
-                    </div>
-                    
-                    <!-- Input de mensaje -->
-                    <div class="border-t bg-white p-4">
-                        <form id="mensaje-form" class="flex items-end space-x-2">
-                            <div class="flex-1">
-                                <textarea 
-                                    id="mensaje-input"
-                                    rows="3"
-                                    placeholder="Escribe tu mensaje... (Shift+Enter para nueva línea)"
-                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                                ></textarea>
-                            </div>
-                            
-                            <div class="flex flex-col space-y-2">
-                                <button 
-                                    type="button"
-                                    onclick="document.getElementById('file-input').click()"
-                                    class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-                                    title="Adjuntar archivo"
-                                >
-                                    <i class="fas fa-paperclip text-gray-600"></i>
-                                </button>
-                                
-                                <button 
-                                    type="submit"
-                                    id="send-btn"
-                                    class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
-                                >
-                                    <i class="fas fa-paper-plane"></i>
-                                </button>
-                            </div>
-                            
-                            <input type="file" id="file-input" class="hidden" multiple accept=".pdf,.docx,.jpg,.png">
-                        </form>
-                    </div>
-                </main>
-                
-                <!-- Panel lateral derecho (info del grupo) -->
-                <aside id="info-sidebar" class="w-80 bg-white border-l overflow-y-auto hidden">
-                    <div class="p-6">
-                        
-                        <!-- Estudiantes -->
-                        <div class="mb-6">
-                            <h3 class="font-semibold text-gray-900 mb-3 flex items-center justify-between">
-                                <span><i class="fas fa-users text-blue-600 mr-2"></i>Estudiantes</span>
-                                <span class="text-sm font-normal text-gray-600" id="estudiantes-count">0</span>
-                            </h3>
-                            
-                            <div id="estudiantes-list" class="space-y-2">
-                                <!-- Se llena dinámicamente -->
-                            </div>
-                            
-                            <button onclick="window.location.href='grupos.html?id=' + grupoId + '&tab=estudiantes'" class="mt-3 w-full text-sm text-blue-600 hover:text-blue-700">
-                                Gestionar estudiantes →
-                            </button>
-                        </div>
-                        
-                        <!-- Notas -->
-                        <div class="mb-6">
-                            <h3 class="font-semibold text-gray-900 mb-3">
-                                <i class="fas fa-sticky-note text-yellow-600 mr-2"></i>Notas
-                            </h3>
-                            
-                            <div id="notas-list" class="space-y-2 mb-3">
-                                <!-- Se llena dinámicamente -->
-                            </div>
-                            
-                            <button onclick="agregarNota()" class="w-full text-sm bg-yellow-50 text-yellow-700 py-2 rounded hover:bg-yellow-100">
-                                + Nueva nota
-                            </button>
-                        </div>
-                        
-                        <!-- Archivos -->
-                        <div>
-                            <h3 class="font-semibold text-gray-900 mb-3">
-                                <i class="fas fa-folder text-gray-600 mr-2"></i>Archivos
-                            </h3>
-                            
-                            <div id="archivos-list" class="space-y-2">
-                                <!-- Se llena dinámicamente -->
-                            </div>
-                        </div>
-                        
-                    </div>
-                </aside>
-                
             </div>
+            <button onclick="toggleSidebar()" title="Info del grupo"
+                class="w-9 h-9 flex items-center justify-center rounded-xl text-gray-500 hover:bg-gray-100 transition-colors">
+                <i class="fas fa-bars"></i>
+            </button>
+        </header>
+
+        <!-- Chat area -->
+        <div class="flex-1 flex min-h-0">
+
+            <!-- Mensajes -->
+            <main class="flex-1 flex flex-col min-w-0">
+
+                <!-- Burbuja de mensajes -->
+                <div id="mensajes-container" class="flex-1 overflow-y-auto px-4 py-5 space-y-4">
+                    <div id="chat-loading" class="text-center py-8 text-gray-400 text-sm">
+                        <i class="fas fa-spinner fa-spin text-2xl mb-2 block"></i>
+                        Cargando historial…
+                    </div>
+                </div>
+
+                <!-- Input -->
+                <div class="border-t bg-white px-4 py-3 flex-shrink-0">
+                    <!-- Error de límite de plan -->
+                    <div id="plan-error" class="hidden mb-2 p-2.5 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800 flex items-center gap-2">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <span id="plan-error-msg"></span>
+                        <a href="cuenta.html" onclick="sessionStorage.setItem('cuenta_tab','suscripcion')"
+                           class="ml-auto text-blue-600 font-semibold hover:underline whitespace-nowrap">Ver planes →</a>
+                    </div>
+
+                    <form id="chat-form" class="flex items-end gap-2">
+                        <div class="flex-1">
+                            <textarea
+                                id="msg-input"
+                                rows="2"
+                                placeholder="Escribe tu mensaje… (Enter para enviar, Shift+Enter nueva línea)"
+                                class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-sm leading-relaxed"
+                            ></textarea>
+                        </div>
+                        <div class="flex flex-col gap-1.5 pb-0.5">
+                            <button type="button" onclick="document.getElementById('file-input').click()"
+                                title="Adjuntar archivo"
+                                class="w-10 h-10 flex items-center justify-center border border-gray-200 rounded-xl text-gray-500 hover:bg-gray-50 transition-colors">
+                                <i class="fas fa-paperclip text-sm"></i>
+                            </button>
+                            <button type="submit" id="send-btn"
+                                class="w-10 h-10 flex items-center justify-center bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors">
+                                <i class="fas fa-paper-plane text-sm"></i>
+                            </button>
+                        </div>
+                        <input type="file" id="file-input" class="hidden" multiple accept=".pdf,.docx,.jpg,.png">
+                    </form>
+                </div>
+            </main>
+
+            <!-- Panel derecho (info grupo) -->
+            <aside id="info-sidebar" class="w-72 bg-white border-l overflow-y-auto hidden flex-shrink-0">
+                <div class="p-5 space-y-6">
+
+                    <!-- Estudiantes -->
+                    <div>
+                        <h3 class="font-semibold text-gray-800 mb-3 flex items-center justify-between text-sm">
+                            <span><i class="fas fa-users text-blue-500 mr-2"></i>Estudiantes</span>
+                            <span id="est-count" class="bg-gray-100 text-gray-600 rounded-full px-2 py-0.5 text-xs font-medium">0</span>
+                        </h3>
+                        <div id="est-list" class="space-y-2 text-sm"></div>
+                        <a href="#" id="est-link" class="mt-3 block text-xs text-blue-600 hover:underline">
+                            Gestionar estudiantes →
+                        </a>
+                    </div>
+
+                    <!-- Notas rápidas -->
+                    <div>
+                        <h3 class="font-semibold text-gray-800 mb-3 text-sm">
+                            <i class="fas fa-sticky-note text-yellow-500 mr-2"></i>Notas
+                        </h3>
+                        <div id="notas-list" class="space-y-2 mb-3"></div>
+                        <button onclick="agregarNota()"
+                            class="w-full text-xs bg-yellow-50 text-yellow-700 border border-yellow-200 py-2 rounded-lg hover:bg-yellow-100 transition-colors font-medium">
+                            <i class="fas fa-plus mr-1"></i>Nueva nota
+                        </button>
+                    </div>
+
+                    <!-- Documentos generados -->
+                    <div>
+                        <h3 class="font-semibold text-gray-800 mb-3 text-sm">
+                            <i class="fas fa-file-word text-blue-500 mr-2"></i>Documentos DOCX
+                        </h3>
+                        <p class="text-xs text-gray-400">Los documentos se generan desde los mensajes de la IA con el botón <strong>Descargar DOCX</strong>.</p>
+                    </div>
+
+                </div>
+            </aside>
+
         </div>
     </div>
-    
-    <!-- Template de mensaje docente -->
-    <template id="mensaje-docente-template">
-        <div class="flex justify-end">
-            <div class="max-w-[70%] bg-blue-600 text-white rounded-lg px-4 py-3">
-                <div class="mensaje-contenido"></div>
-                <div class="text-xs text-blue-100 mt-1 timestamp"></div>
+</div>
+
+<!-- Scripts -->
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script src="js/auth.js"></script>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+// GUARD + PARAMS
+// ══════════════════════════════════════════════════════════════
+requireAuth();
+
+const urlParams = new URLSearchParams(window.location.search);
+const grupoId   = urlParams.get('id');
+if (!grupoId) { alert('Falta grupo'); window.location.href = 'dashboard.html'; }
+
+// ── Estado global ─────────────────────────────────────────────
+let socket  = null;
+let grupo   = null;
+let user    = null;
+
+// Variables de streaming — separadas y claras
+let _streamWrap  = null;   // el .flex externo del mensaje IA
+let _streamBody  = null;   // el .msg-ia-body donde va el HTML renderizado
+let _streamRaw   = '';     // markdown acumulado (fuente de verdad)
+
+// Store de descargas: dlId → { md, titulo }
+const _dlStore = {};
+let   _dlCnt   = 0;
+
+// ══════════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════════
+async function init() {
+    try {
+        [user, grupo] = await Promise.all([api.getMe(), api.getGrupo(grupoId)]);
+        renderGrupoHeader();
+
+        // Historial
+        const historial = await api.getChatHistorial(grupoId);
+        document.getElementById('chat-loading').remove();
+        historial.forEach(m => addMsgDOM(m.remitente, m.contenido, m.timestamp));
+        scrollBottom();
+
+        // Sidebar
+        const [estudiantes, notas] = await Promise.all([
+            api.getEstudiantes(grupoId),
+            api.getNotas(grupoId),
+        ]);
+        renderEstudiantes(estudiantes);
+        renderNotas(notas);
+
+        // WebSocket
+        connectSocket();
+
+    } catch (err) {
+        console.error(err);
+        alert('Error cargando el grupo. Vuelve al dashboard.');
+        window.location.href = 'dashboard.html';
+    }
+}
+
+// ══════════════════════════════════════════════════════════════
+// RENDER HELPERS
+// ══════════════════════════════════════════════════════════════
+function renderGrupoHeader() {
+    document.getElementById('grupo-nombre').textContent = grupo.nombre_grupo;
+    document.getElementById('grupo-info').textContent =
+        `${grupo.grado} · ${grupo.asignatura} · ${grupo.cantidad_estudiantes} estudiantes`;
+    document.getElementById('est-link').href =
+        `grupos.html?tab=estudiantes&grupo=${grupoId}`;
+}
+
+function renderEstudiantes(lista) {
+    document.getElementById('est-count').textContent = lista.length;
+    const el = document.getElementById('est-list');
+    if (!lista.length) { el.innerHTML = '<p class="text-gray-400 text-xs">Sin estudiantes</p>'; return; }
+    el.innerHTML = lista.slice(0, 6).map(e => `
+        <div class="flex items-center gap-2 text-xs">
+            <div class="w-7 h-7 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
+                <i class="fas fa-user text-gray-400 text-xs"></i>
             </div>
-        </div>
-    </template>
-    
-    <!-- Template de mensaje sistema -->
-    <template id="mensaje-sistema-template">
-        <div class="flex justify-start">
-            <div class="max-w-[70%] bg-gray-100 text-gray-900 rounded-lg px-4 py-3">
-                <div class="mensaje-contenido"></div>
-                <div class="text-xs text-gray-500 mt-1 timestamp"></div>
+            <div>
+                <p class="font-medium text-gray-700">${e.codigo_estudiante}</p>
+                ${e.tiene_piar ? '<p class="text-orange-500 text-xs">⚠ PIAR</p>' : ''}
             </div>
+        </div>`).join('') +
+        (lista.length > 6 ? `<p class="text-xs text-gray-400">+${lista.length - 6} más</p>` : '');
+}
+
+function renderNotas(lista) {
+    const el = document.getElementById('notas-list');
+    if (!lista.length) { el.innerHTML = '<p class="text-gray-400 text-xs">Sin notas</p>'; return; }
+    el.innerHTML = lista.map(n => `
+        <div class="bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2 text-xs text-gray-700">
+            ${n.contenido}
+        </div>`).join('');
+}
+
+// ══════════════════════════════════════════════════════════════
+// MENSAJES — agregar al DOM
+// ══════════════════════════════════════════════════════════════
+function addMsgDOM(remitente, contenido, timestamp) {
+    const container = document.getElementById('mensajes-container');
+    const isIA = remitente === 'sistema';
+    const time = timestamp
+        ? new Date(timestamp).toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit' })
+        : '';
+
+    const wrap = document.createElement('div');
+    wrap.className = isIA
+        ? 'flex justify-start gap-2'
+        : 'flex justify-end';
+
+    if (isIA) {
+        // Avatar IA
+        const av = document.createElement('div');
+        av.className = 'w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0 mt-1';
+        av.innerHTML = '<i class="fas fa-robot text-white text-xs"></i>';
+        wrap.appendChild(av);
+
+        const bubble = document.createElement('div');
+        bubble.className = 'max-w-[75%] bg-white border border-gray-200 rounded-2xl rounded-tl-none px-4 py-3 shadow-sm';
+
+        const body = document.createElement('div');
+        body.className = 'msg-ia-body text-gray-800 text-sm leading-relaxed';
+        body.innerHTML = marked.parse(contenido);
+        bubble.appendChild(body);
+
+        const meta = document.createElement('div');
+        meta.className = 'flex items-center justify-between mt-2 gap-3';
+
+        const ts = document.createElement('span');
+        ts.className = 'text-xs text-gray-400';
+        ts.textContent = time;
+        meta.appendChild(ts);
+
+        // Botón DOCX si aplica
+        if (esDocumento(contenido)) {
+            const btn = _crearBtnDocx(contenido);
+            meta.appendChild(btn);
+        }
+
+        bubble.appendChild(meta);
+        wrap.appendChild(bubble);
+
+    } else {
+        // Mensaje del docente
+        const bubble = document.createElement('div');
+        bubble.className = 'max-w-[70%] bg-blue-600 text-white rounded-2xl rounded-tr-none px-4 py-3';
+        bubble.innerHTML = `
+            <p class="text-sm leading-relaxed whitespace-pre-wrap">${escapeHtml(contenido)}</p>
+            <p class="text-xs text-blue-200 mt-1">${time}</p>`;
+        wrap.appendChild(bubble);
+    }
+
+    container.appendChild(wrap);
+}
+
+// ══════════════════════════════════════════════════════════════
+// STREAMING
+// ══════════════════════════════════════════════════════════════
+function iniciarStreaming() {
+    const container = document.getElementById('mensajes-container');
+
+    // Avatar
+    _streamWrap = document.createElement('div');
+    _streamWrap.className = 'flex justify-start gap-2';
+
+    const av = document.createElement('div');
+    av.className = 'w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0 mt-1';
+    av.innerHTML = '<i class="fas fa-robot text-white text-xs"></i>';
+    _streamWrap.appendChild(av);
+
+    const bubble = document.createElement('div');
+    bubble.className = 'max-w-[75%] bg-white border border-gray-200 rounded-2xl rounded-tl-none px-4 py-3 shadow-sm';
+
+    _streamBody = document.createElement('div');
+    _streamBody.className = 'msg-ia-body text-gray-800 text-sm leading-relaxed';
+    bubble.appendChild(_streamBody);
+    _streamWrap.appendChild(bubble);
+    container.appendChild(_streamWrap);
+    _streamRaw = '';
+}
+
+function agregarChunk(chunk) {
+    if (!_streamBody) iniciarStreaming();
+    _streamRaw += chunk;
+    _streamBody.innerHTML = marked.parse(_streamRaw);
+    scrollBottom();
+}
+
+function finalizarStreaming(msgCompleto) {
+    // Agregar botón de descarga si la respuesta es un documento
+    if (_streamWrap && esDocumento(_streamRaw)) {
+        const bubble = _streamWrap.querySelector('.bg-white');
+        if (bubble) {
+            const meta = document.createElement('div');
+            meta.className = 'flex items-center justify-between mt-2 gap-3';
+            const ts = document.createElement('span');
+            ts.className = 'text-xs text-gray-400';
+            ts.textContent = new Date().toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit' });
+            meta.appendChild(ts);
+            meta.appendChild(_crearBtnDocx(_streamRaw));
+            bubble.appendChild(meta);
+        }
+    }
+
+    // Resetear estado streaming
+    _streamWrap = null;
+    _streamBody = null;
+    _streamRaw  = '';
+    scrollBottom();
+}
+
+// ══════════════════════════════════════════════════════════════
+// DETECCIÓN DE DOCUMENTO + BOTÓN DOCX
+// ══════════════════════════════════════════════════════════════
+
+/**
+ * Determina si la respuesta IA parece un documento estructurado.
+ * Criterio: al menos 1 encabezado markdown Y longitud > 400 chars.
+ */
+function esDocumento(md) {
+    return md.length > 400 && /^#{1,4}\s.+/m.test(md);
+}
+
+/** Extrae el primer encabezado del markdown como título. */
+function extraerTitulo(md) {
+    const m = md.match(/^#{1,4}\s+(.+)/m);
+    return m ? m[1].replace(/\*\*/g, '').trim() : 'Documento';
+}
+
+/** Crea el botón "Descargar DOCX" asociado a un contenido MD. */
+function _crearBtnDocx(md) {
+    const dlId = 'dl_' + (++_dlCnt);
+    _dlStore[dlId] = { md, titulo: extraerTitulo(md) };
+
+    const btn = document.createElement('button');
+    btn.className = 'btn-docx';
+    btn.dataset.dlId = dlId;
+    btn.innerHTML = '<i class="fas fa-file-word"></i> Descargar DOCX';
+    btn.onclick = () => descargarDocx(btn);
+    return btn;
+}
+
+/** Llama al backend y descarga el archivo .docx. */
+async function descargarDocx(btn) {
+    const { md, titulo } = _dlStore[btn.dataset.dlId] || {};
+    if (!md) return;
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generando…';
+
+    try {
+        const resp = await fetch(
+            `${window.APP_CONFIG.API_URL}/api/grupos/${grupoId}/generar-documento`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${api.getToken()}`,
+                },
+                body: JSON.stringify({ contenido_md: md, titulo }),
+            }
+        );
+
+        if (!resp.ok) {
+            const err = await resp.text();
+            throw new Error(err || `HTTP ${resp.status}`);
+        }
+
+        const blob = await resp.blob();
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href     = url;
+        a.download = `${titulo.replace(/[^\w\s-]/g, '').trim()}.docx`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        btn.innerHTML = '<i class="fas fa-check"></i> Descargado';
+        btn.classList.add('done');
+        btn.disabled = false;
+
+    } catch (err) {
+        console.error('Error descargando DOCX:', err);
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-file-word"></i> Descargar DOCX';
+        mostrarPlanError('Error al generar el documento. Intenta de nuevo.');
+    }
+}
+
+// ══════════════════════════════════════════════════════════════
+// WEBSOCKET
+// ══════════════════════════════════════════════════════════════
+function connectSocket() {
+    socket = io(window.APP_CONFIG.WS_URL, {
+        auth: { token: api.getToken() }
+    });
+
+    socket.on('connect', () => {
+        socket.emit('join_group', { grupo_id: grupoId });
+    });
+
+    socket.on('new_message', (data) => {
+        // Solo renderizar mensajes del docente (los IA van por streaming)
+        if (data.remitente === 'docente') {
+            addMsgDOM('docente', data.contenido, data.timestamp);
+            scrollBottom();
+        }
+    });
+
+    socket.on('ia_generando', () => {
+        mostrarTyping();
+    });
+
+    socket.on('ia_chunk', (chunk) => {
+        ocultarTyping();
+        if (!_streamBody) iniciarStreaming();
+        agregarChunk(chunk);
+    });
+
+    socket.on('ia_complete', (data) => {
+        ocultarTyping();
+        finalizarStreaming(data);
+        // Re-habilitar input
+        enableInput();
+    });
+
+    socket.on('ia_error', (data) => {
+        ocultarTyping();
+        if (_streamBody) {
+            // Marcar error en burbuja en curso
+            _streamBody.innerHTML = `<p class="text-red-500 text-sm">⚠ ${data.message}</p>`;
+            _streamRaw = '';
+        } else {
+            mostrarPlanError(data.message);
+        }
+        _streamWrap = null; _streamBody = null; _streamRaw = '';
+        enableInput();
+    });
+
+    socket.on('disconnect', () => {
+        console.warn('Socket desconectado');
+    });
+}
+
+// ── Typing indicator ──────────────────────────────────────────
+let _typingEl = null;
+function mostrarTyping() {
+    if (_typingEl) return;
+    const container = document.getElementById('mensajes-container');
+    _typingEl = document.createElement('div');
+    _typingEl.className = 'flex justify-start gap-2';
+    _typingEl.innerHTML = `
+        <div class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+            <i class="fas fa-robot text-white text-xs"></i>
         </div>
-    </template>
-    
-    <!-- Template typing indicator -->
-    <template id="typing-template">
-        <div class="flex justify-start" id="typing-indicator">
-            <div class="bg-gray-100 rounded-lg px-4 py-3">
-                <div class="flex space-x-2">
-                    <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                    <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
-                    <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
-                </div>
+        <div class="bg-white border border-gray-200 rounded-2xl rounded-tl-none px-4 py-3 shadow-sm">
+            <div class="flex gap-1.5 items-center h-5">
+                <span class="typing-dot"></span>
+                <span class="typing-dot"></span>
+                <span class="typing-dot"></span>
             </div>
-        </div>
-    </template>
-    
-    <!-- Scripts -->
-    <script src="js/config.js"></script>
-    <script src="js/api.js"></script>
-    <script src="js/auth.js"></script>
-    <script src="js/chat.js"></script>
-    
-    <script>
-        // Verificar autenticación
-        if (!api.getToken()) {
-            window.location.href = 'login.html';
-        }
-        
-        // Obtener ID del grupo de la URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const grupoId = urlParams.get('id');
-        
-        if (!grupoId) {
-            alert('No se especificó un grupo');
-            window.location.href = 'dashboard.html';
-        }
-        
-        // Variables globales
-        let socket = null;
-        let grupo = null;
-        let user = null;
-        let mensajes = [];
-        
-        // Inicializar
-        async function init() {
-            try {
-                // Cargar usuario
-                user = await api.getMe();
-                
-                // Cargar grupo
-                grupo = await api.getGrupo(grupoId);
-                renderGrupoInfo();
-                
-                // Cargar historial de chat
-                mensajes = await api.getChatHistorial(grupoId);
-                renderMensajes();
-                
-                // Cargar estudiantes
-                const estudiantes = await api.getEstudiantes(grupoId);
-                renderEstudiantes(estudiantes);
-                
-                // Cargar notas
-                const notas = await api.getNotas(grupoId);
-                renderNotas(notas);
-                
-                // Conectar WebSocket
-                conectarWebSocket();
-                
-            } catch (error) {
-                console.error('Error inicializando:', error);
-                alert('Error cargando el grupo');
-                window.location.href = 'dashboard.html';
-            }
-        }
-        
-        // Renderizar info del grupo
-        function renderGrupoInfo() {
-            document.getElementById('grupo-nombre').textContent = grupo.nombre_grupo;
-            document.getElementById('grupo-info').textContent = 
-                `${grupo.grado} • ${grupo.asignatura} • ${grupo.cantidad_estudiantes} estudiantes`;
-        }
-        
-        // Renderizar mensajes
-        function renderMensajes() {
-            const container = document.getElementById('mensajes-container');
-            container.innerHTML = '';
-            
-            mensajes.forEach(mensaje => {
-                agregarMensajeAlDOM(mensaje);
-            });
-            
-            scrollToBottom();
-        }
-        
-        // Agregar mensaje al DOM
-        function agregarMensajeAlDOM(mensaje) {
-            const container = document.getElementById('mensajes-container');
-            
-            const templateId = mensaje.remitente === 'docente' 
-                ? 'mensaje-docente-template' 
-                : 'mensaje-sistema-template';
-            
-            const template = document.getElementById(templateId);
-            const clone = template.content.cloneNode(true);
-            
-            // Renderizar markdown
-            const contenidoHTML = marked.parse(mensaje.contenido);
-            clone.querySelector('.mensaje-contenido').innerHTML = contenidoHTML;
-            
-            // Timestamp
-            const timestamp = new Date(mensaje.timestamp).toLocaleTimeString('es-CO', {
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-            clone.querySelector('.timestamp').textContent = timestamp;
-            
-            container.appendChild(clone);
-        }
-        
-        // Conectar WebSocket
-        function conectarWebSocket() {
-            socket = io(window.APP_CONFIG.WS_URL, {
-                auth: {
-                    token: api.getToken()
-                }
-            });
-            
-            socket.on('connect', () => {
-                console.log('WebSocket conectado');
-                socket.emit('join_group', { grupo_id: grupoId });
-            });
-            
-            socket.on('new_message', (data) => {
-                agregarMensajeAlDOM(data);
-                mensajes.push(data);
-                scrollToBottom();
-            });
-            
-            socket.on('ia_generando', () => {
-                mostrarTypingIndicator();
-            });
-            
-            socket.on('ia_chunk', (chunk) => {
-                agregarChunkStreaming(chunk);
-            });
-            
-            socket.on('ia_complete', (mensaje) => {
-                ocultarTypingIndicator();
-                scrollToBottom();
-            });
-            
-            socket.on('disconnect', () => {
-                console.log('WebSocket desconectado');
-            });
-        }
-        
-        // Mostrar typing indicator
-        function mostrarTypingIndicator() {
-            const container = document.getElementById('mensajes-container');
-            const template = document.getElementById('typing-template');
-            const clone = template.content.cloneNode(true);
-            container.appendChild(clone);
-            scrollToBottom();
-        }
-        
-        // Ocultar typing indicator
-        function ocultarTypingIndicator() {
-            const indicator = document.getElementById('typing-indicator');
-            if (indicator) {
-                indicator.remove();
-            }
-        }
-        
-        // Agregar chunk streaming
-        let streamingDiv = null;
-        function agregarChunkStreaming(chunk) {
-            const container = document.getElementById('mensajes-container');
-            
-            if (!streamingDiv) {
-                // Crear div de streaming
-                const template = document.getElementById('mensaje-sistema-template');
-                const clone = template.content.cloneNode(true);
-                
-                const div = clone.querySelector('.max-w-\\[70\\%\\]');
-                div.classList.add('streaming-message');
-                
-                container.appendChild(clone);
-                streamingDiv = container.lastElementChild.querySelector('.mensaje-contenido');
-            }
-            
-            // Agregar chunk
-            const contenidoActual = streamingDiv.textContent || '';
-            streamingDiv.innerHTML = marked.parse(contenidoActual + chunk);
-            
-            scrollToBottom();
-        }
-        
-        // Enviar mensaje
-        document.getElementById('mensaje-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const input = document.getElementById('mensaje-input');
-            const mensaje = input.value.trim();
-            
-            if (!mensaje) return;
-            
-            // Deshabilitar input
-            input.disabled = true;
-            document.getElementById('send-btn').disabled = true;
-            
-            try {
-                // Enviar vía WebSocket
-                socket.emit('send_message', {
-                    grupo_id: grupoId,
-                    mensaje,
-                    archivos: []
-                });
-                
-                // Limpiar input
-                input.value = '';
-                streamingDiv = null;
-                
-            } catch (error) {
-                console.error('Error enviando mensaje:', error);
-                alert('Error al enviar mensaje');
-            } finally {
-                input.disabled = false;
-                document.getElementById('send-btn').disabled = false;
-                input.focus();
-            }
-        });
-        
-        // Manejar Enter para enviar
-        document.getElementById('mensaje-input').addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                document.getElementById('mensaje-form').dispatchEvent(new Event('submit'));
-            }
-        });
-        
-        // Scroll to bottom
-        function scrollToBottom() {
-            const container = document.getElementById('mensajes-container');
-            container.scrollTop = container.scrollHeight;
-        }
-        
-        // Toggle sidebar
-        function toggleSidebar() {
-            document.getElementById('info-sidebar').classList.toggle('hidden');
-        }
-        
-        // Renderizar estudiantes
-        function renderEstudiantes(estudiantes) {
-            document.getElementById('estudiantes-count').textContent = estudiantes.length;
-            
-            const list = document.getElementById('estudiantes-list');
-            list.innerHTML = estudiantes.slice(0, 5).map(est => `
-                <div class="text-sm flex items-center">
-                    <div class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center mr-2">
-                        <i class="fas fa-user text-gray-600 text-xs"></i>
-                    </div>
-                    <div class="flex-1">
-                        <p class="text-gray-900">${est.codigo_estudiante}</p>
-                        ${est.tiene_piar ? '<p class="text-xs text-orange-600">⚠️ PIAR</p>' : ''}
-                    </div>
-                </div>
-            `).join('');
-            
-            if (estudiantes.length > 5) {
-                list.innerHTML += `<p class="text-sm text-gray-600">y ${estudiantes.length - 5} más...</p>`;
-            }
-        }
-        
-        // Renderizar notas
-        function renderNotas(notas) {
-            const list = document.getElementById('notas-list');
-            
-            if (notas.length === 0) {
-                list.innerHTML = '<p class="text-sm text-gray-500">No hay notas</p>';
-                return;
-            }
-            
-            list.innerHTML = notas.map(nota => `
-                <div class="bg-yellow-50 border border-yellow-200 p-2 rounded text-sm">
-                    ${nota.contenido}
-                </div>
-            `).join('');
-        }
-        
-        // Agregar nota
-        async function agregarNota() {
-            const contenido = prompt('Escribe tu nota:');
-            if (!contenido) return;
-            
-            try {
-                await api.createNota(grupoId, contenido);
-                const notas = await api.getNotas(grupoId);
-                renderNotas(notas);
-            } catch (error) {
-                alert('Error al agregar nota');
-            }
-        }
-        
-        // Logout
-        function logout() {
-            if (socket) socket.disconnect();
-            api.removeToken();
-            window.location.href = 'login.html';
-        }
-        
-        // Inicializar
-        requireAuth();
-        init();
-    </script>
+        </div>`;
+    container.appendChild(_typingEl);
+    scrollBottom();
+}
+function ocultarTyping() {
+    if (_typingEl) { _typingEl.remove(); _typingEl = null; }
+}
+
+// ── Envío de mensaje ──────────────────────────────────────────
+document.getElementById('chat-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const input = document.getElementById('msg-input');
+    const texto = input.value.trim();
+    if (!texto) return;
+
+    disableInput();
+    ocultarPlanError();
+
+    socket.emit('send_message', { grupo_id: grupoId, mensaje: texto, archivos: [] });
+    input.value = '';
+    _streamWrap = null;
+    _streamBody = null;
+    _streamRaw  = '';
+});
+
+document.getElementById('msg-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        document.getElementById('chat-form').dispatchEvent(new Event('submit'));
+    }
+});
+
+function disableInput() {
+    document.getElementById('msg-input').disabled = true;
+    document.getElementById('send-btn').disabled  = true;
+}
+function enableInput() {
+    const inp = document.getElementById('msg-input');
+    inp.disabled = false;
+    document.getElementById('send-btn').disabled = false;
+    inp.focus();
+}
+
+// ── Plan error banner ─────────────────────────────────────────
+function mostrarPlanError(msg) {
+    const el = document.getElementById('plan-error');
+    document.getElementById('plan-error-msg').textContent = msg;
+    el.classList.remove('hidden');
+}
+function ocultarPlanError() {
+    document.getElementById('plan-error').classList.add('hidden');
+}
+
+// ── Notas ──────────────────────────────────────────────────────
+async function agregarNota() {
+    const contenido = prompt('Escribe tu nota:');
+    if (!contenido?.trim()) return;
+    try {
+        await api.createNota(grupoId, contenido.trim());
+        const notas = await api.getNotas(grupoId);
+        renderNotas(notas);
+    } catch { alert('Error al agregar nota'); }
+}
+
+// ── Misc ───────────────────────────────────────────────────────
+function toggleSidebar() {
+    document.getElementById('info-sidebar').classList.toggle('hidden');
+}
+function scrollBottom() {
+    const c = document.getElementById('mensajes-container');
+    c.scrollTop = c.scrollHeight;
+}
+function escapeHtml(str) {
+    return str
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+function cerrarSesion() {
+    if (socket) socket.disconnect();
+    api.removeToken();
+    localStorage.clear();
+    window.location.href = 'login.html';
+}
+
+// ── Arranque ───────────────────────────────────────────────────
+init();
+</script>
 </body>
 </html>
