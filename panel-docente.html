@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Docente · Asistente Pedagógico</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/main.css">
+</head>
+<body class="bg-gray-50">
+
+<div class="min-h-screen">
+
+  <!-- Header -->
+  <header class="bg-white shadow-sm sticky top-0 z-20">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+      <div class="flex items-center justify-between gap-4">
+        <div class="flex items-center gap-3 min-w-0">
+          <a href="dashboard.html" class="text-gray-600 hover:text-gray-900" title="Volver al dashboard">
+            <i class="fas fa-arrow-left text-xl"></i>
+          </a>
+          <div class="min-w-0">
+            <h1 class="text-2xl font-bold text-gray-900 truncate">Panel Docente</h1>
+            <p class="text-sm text-gray-500 truncate">
+              Bienvenido, <span id="user-name" class="font-medium text-gray-700">Docente</span>
+              · <span id="today-date" class="text-gray-500"></span>
+            </p>
+          </div>
+        </div>
+        <button onclick="cargarPanel()" class="flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 text-sm">
+          <i class="fas fa-sync-alt text-gray-500"></i>Refrescar
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+    <!-- ─── KPIs cross-grupo ─────────────────────────────────── -->
+    <section>
+      <h2 class="text-lg font-bold text-gray-900 mb-3">Resumen</h2>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+          <div class="flex items-center justify-between mb-2">
+            <p class="text-gray-500 text-xs uppercase tracking-wider">Grupos</p>
+            <div class="w-9 h-9 bg-blue-100 rounded-lg flex items-center justify-center"><i class="fas fa-users text-blue-600 text-sm"></i></div>
+          </div>
+          <p id="kpi-grupos" class="text-2xl font-bold text-gray-900">—</p>
+        </div>
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+          <div class="flex items-center justify-between mb-2">
+            <p class="text-gray-500 text-xs uppercase tracking-wider">Estudiantes</p>
+            <div class="w-9 h-9 bg-green-100 rounded-lg flex items-center justify-center"><i class="fas fa-user-graduate text-green-600 text-sm"></i></div>
+          </div>
+          <p id="kpi-estudiantes" class="text-2xl font-bold text-gray-900">—</p>
+        </div>
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+          <div class="flex items-center justify-between mb-2">
+            <p class="text-gray-500 text-xs uppercase tracking-wider">Evaluaciones</p>
+            <div class="w-9 h-9 bg-purple-100 rounded-lg flex items-center justify-center"><i class="fas fa-clipboard-check text-purple-600 text-sm"></i></div>
+          </div>
+          <p id="kpi-evaluaciones" class="text-2xl font-bold text-gray-900">—</p>
+        </div>
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+          <div class="flex items-center justify-between mb-2">
+            <p class="text-gray-500 text-xs uppercase tracking-wider">Promedio general</p>
+            <div class="w-9 h-9 bg-yellow-100 rounded-lg flex items-center justify-center"><i class="fas fa-star text-yellow-600 text-sm"></i></div>
+          </div>
+          <p id="kpi-promedio" class="text-2xl font-bold text-gray-900">—</p>
+        </div>
+      </div>
+    </section>
+
+    <div class="grid gap-6 lg:grid-cols-3">
+
+      <!-- ─── Avance por grupo ─────────────────────────────── -->
+      <section class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-sm font-bold text-gray-700 uppercase tracking-wide">Avance por grupo</h3>
+          <span class="text-xs text-gray-400">Cobertura de calificaciones</span>
+        </div>
+        <div id="por-grupo" class="space-y-3">
+          <div class="animate-pulse space-y-2">
+            <div class="h-4 bg-gray-100 rounded w-2/3"></div>
+            <div class="h-2 bg-gray-100 rounded"></div>
+            <div class="h-4 bg-gray-100 rounded w-1/2"></div>
+            <div class="h-2 bg-gray-100 rounded"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─── Ranking Top 10 ────────────────────────────────── -->
+      <section class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-sm font-bold text-gray-700 uppercase tracking-wide">
+            <i class="fas fa-trophy text-yellow-500 mr-1"></i>Ranking Top 10
+          </h3>
+          <span class="text-xs text-gray-400">Promedio ponderado</span>
+        </div>
+        <div id="ranking-list" class="space-y-2">
+          <div class="animate-pulse space-y-2">
+            <div class="h-6 bg-gray-100 rounded"></div>
+            <div class="h-6 bg-gray-100 rounded"></div>
+            <div class="h-6 bg-gray-100 rounded"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─── Alertas ──────────────────────────────────────── -->
+      <section class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-sm font-bold text-gray-700 uppercase tracking-wide">
+            <i class="fas fa-exclamation-triangle text-orange-500 mr-1"></i>Alertas
+          </h3>
+          <span class="text-xs text-gray-400">Requieren atención</span>
+        </div>
+        <div id="alertas" class="space-y-2 text-sm">
+          <div class="animate-pulse space-y-2">
+            <div class="h-6 bg-gray-100 rounded"></div>
+            <div class="h-6 bg-gray-100 rounded"></div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ─── Tabla combinada estudiantes ──────────────────────── -->
+    <section class="bg-white rounded-xl shadow-sm border border-gray-100">
+      <div class="flex items-center justify-between p-4 border-b border-gray-100 gap-3 flex-wrap">
+        <div>
+          <h3 class="text-sm font-bold text-gray-700 uppercase tracking-wide">Estudiantes por grupo</h3>
+          <p class="text-xs text-gray-500 mt-0.5">Promedio ponderado por evaluaciones registradas</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <input id="search-est" type="text" placeholder="Buscar…"
+            class="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            oninput="renderTabla()">
+          <select id="filter-grupo"
+            class="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            onchange="renderTabla()">
+            <option value="">Todos los grupos</option>
+          </select>
+        </div>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="bg-gray-50 text-left text-[11px] uppercase tracking-wider text-gray-500">
+            <tr>
+              <th class="px-4 py-2.5">Código / Nombre</th>
+              <th class="px-4 py-2.5">Grupo</th>
+              <th class="px-4 py-2.5">Grado</th>
+              <th class="px-4 py-2.5">PIAR</th>
+              <th class="px-4 py-2.5"># Notas</th>
+              <th class="px-4 py-2.5 text-right">Promedio</th>
+              <th class="px-4 py-2.5"></th>
+            </tr>
+          </thead>
+          <tbody id="tabla-body" class="divide-y divide-gray-100">
+            <tr><td colspan="7" class="text-center py-10 text-gray-400">Cargando…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<div id="toast-container" class="fixed bottom-6 right-6 z-50 space-y-2 pointer-events-none"></div>
+
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script src="js/auth.js"></script>
+
+<script>
+requireAuth();
+
+// ─── Umbrales que definen las alertas ─────────────────────────
+const NOTA_BAJA = 3.0;                 // promedio ponderado < 3.0 → alerta
+const DIAS_SIN_ACTIVIDAD = 14;         // grupo sin nueva calificación en X días
+const PISO_PROMEDIO_APROB = 3.0;
+
+// ─── Estado ───────────────────────────────────────────────────
+let PAN = {
+    docente: null,
+    grupos: [],
+    // por grupo: { columnas, calificaciones, estudiantes, alumnosMap }
+    porGrupoData: {},
+    filas: [], // estudiantes enriquecidos con nombre_grupo, promedio, etc.
+};
+
+// ─── Utilidades ───────────────────────────────────────────────
+function toast(msg, type = 'success') {
+    const COLOR = { success:'bg-green-600', error:'bg-red-600', info:'bg-blue-600', warning:'bg-yellow-500' };
+    const ICON  = { success:'fa-check-circle', error:'fa-exclamation-circle', info:'fa-info-circle', warning:'fa-exclamation-triangle' };
+    const el = document.createElement('div');
+    el.className = `pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg text-white text-sm font-medium ${COLOR[type] || COLOR.info}`;
+    el.innerHTML = `<i class="fas ${ICON[type] || ICON.info}"></i><span>${msg}</span>`;
+    document.getElementById('toast-container').appendChild(el);
+    setTimeout(() => el.remove(), 3500);
+}
+
+function notaTone(n) {
+    if (n == null || Number.isNaN(n)) return 'bg-gray-100 text-gray-500';
+    if (n < 3.0) return 'bg-red-100 text-red-700';
+    if (n < 4.0) return 'bg-amber-100 text-amber-700';
+    return 'bg-emerald-100 text-emerald-700';
+}
+
+// Promedio ponderado por porcentaje de columna (si no hay porcentaje, se usa peso = 1).
+function promedioPonderado(notas) {
+    let acc = 0, peso = 0;
+    for (const n of notas) {
+        if (n.valor == null || Number.isNaN(n.valor)) continue;
+        const w = (typeof n.porcentaje === 'number' && n.porcentaje > 0) ? n.porcentaje : 1;
+        acc += n.valor * w;
+        peso += w;
+    }
+    return peso > 0 ? Math.round((acc / peso) * 10) / 10 : null;
+}
+
+function parseFechaISO(s) {
+    if (!s) return null;
+    const t = Date.parse(s);
+    return Number.isFinite(t) ? t : null;
+}
+
+// ─── Carga ────────────────────────────────────────────────────
+async function cargarPanel() {
+    document.getElementById('tabla-body').innerHTML =
+        '<tr><td colspan="7" class="text-center py-10 text-gray-400">Cargando…</td></tr>';
+
+    try {
+        const [u, grupos] = await Promise.all([api.getMe(), api.getGrupos()]);
+        PAN.docente = u;
+        PAN.grupos = grupos;
+
+        const nombre = (u.nombre_completo || 'Docente').split(' ')[0];
+        document.getElementById('user-name').textContent = nombre;
+        document.getElementById('today-date').textContent =
+            new Date().toLocaleDateString('es-CO', { weekday:'long', day:'numeric', month:'long' });
+
+        // Poblar filtro de grupos
+        const selGrupo = document.getElementById('filter-grupo');
+        selGrupo.innerHTML = '<option value="">Todos los grupos</option>' +
+            grupos.map(g => `<option value="${g.id_grupo}">${g.nombre_grupo} · ${g.grado}</option>`).join('');
+
+        // Cargar en paralelo columnas + calificaciones + estudiantes de cada grupo
+        const perGrupo = await Promise.all(grupos.map(async g => {
+            const [columnas, calificaciones, estudiantes] = await Promise.all([
+                api.getColumnas(g.id_grupo).catch(() => []),
+                api.getCalificaciones(g.id_grupo).catch(() => []),
+                api.getEstudiantes(g.id_grupo).catch(() => []),
+            ]);
+            const colsMap = Object.fromEntries((columnas || []).map(c => [c.id_columna, c]));
+            return { grupo: g, columnas, calificaciones, estudiantes, colsMap };
+        }));
+        PAN.porGrupoData = Object.fromEntries(perGrupo.map(x => [x.grupo.id_grupo, x]));
+
+        construirFilas();
+        renderKPIs();
+        renderPorGrupo();
+        renderRanking();
+        renderAlertas();
+        renderTabla();
+    } catch (err) {
+        console.error('[panel] cargar:', err);
+        if (err.message?.includes('401') || err.message?.toLowerCase().includes('token')) {
+            window.location.href = 'login.html';
+            return;
+        }
+        toast('Error al cargar el panel', 'error');
+        document.getElementById('tabla-body').innerHTML =
+            '<tr><td colspan="7" class="text-center py-10 text-red-500">' +
+            'No se pudo cargar. Refresca la página.</td></tr>';
+    }
+}
+
+// ─── Construir filas por estudiante ───────────────────────────
+function construirFilas() {
+    const filas = [];
+    for (const { grupo, calificaciones, estudiantes, colsMap } of Object.values(PAN.porGrupoData)) {
+        const porEst = {};
+        for (const c of calificaciones) {
+            const col = colsMap[c.id_columna];
+            const porcentaje = col ? col.porcentaje : c.porcentaje;
+            (porEst[c.id_estudiante] ||= []).push({ valor: c.valor, porcentaje });
+        }
+        for (const est of estudiantes) {
+            const notas = porEst[est.id_estudiante] || [];
+            const prom = promedioPonderado(notas);
+            filas.push({
+                id_estudiante: est.id_estudiante,
+                codigo: est.codigo_estudiante,
+                genero: est.genero,
+                tiene_piar: est.tiene_piar,
+                ajustes: est.ajustes,
+                id_grupo: grupo.id_grupo,
+                nombre_grupo: grupo.nombre_grupo,
+                grado: grupo.grado,
+                asignatura: grupo.asignatura,
+                num_notas: notas.filter(n => n.valor != null).length,
+                promedio: prom,
+            });
+        }
+    }
+    PAN.filas = filas;
+}
+
+// ─── KPIs ─────────────────────────────────────────────────────
+function renderKPIs() {
+    const totalG = PAN.grupos.length;
+    // Cuenta estudiantes REALES (registrados en /api/grupos/{id}/estudiantes),
+    // no la meta cantidad_estudiantes de cada grupo.
+    const totalEst = Object.values(PAN.porGrupoData)
+        .reduce((s, x) => s + (x.estudiantes?.length || 0), 0);
+    const totalCol = Object.values(PAN.porGrupoData)
+        .reduce((s, x) => s + (x.columnas?.length || 0), 0);
+    const proms = PAN.filas.map(f => f.promedio).filter(v => v != null);
+    const promG = proms.length ? (proms.reduce((a,b) => a+b, 0) / proms.length) : null;
+    document.getElementById('kpi-grupos').textContent = totalG;
+    document.getElementById('kpi-estudiantes').textContent = totalEst;
+    document.getElementById('kpi-evaluaciones').textContent = totalCol;
+    document.getElementById('kpi-promedio').textContent = promG != null ? promG.toFixed(2) : '—';
+}
+
+// ─── Avance por grupo ─────────────────────────────────────────
+function renderPorGrupo() {
+    const el = document.getElementById('por-grupo');
+    if (PAN.grupos.length === 0) {
+        el.innerHTML = '<p class="text-xs text-gray-400 text-center py-4">Aún no tienes grupos.</p>';
+        return;
+    }
+    el.innerHTML = PAN.grupos.map(g => {
+        const gd = PAN.porGrupoData[g.id_grupo];
+        const totalEst = gd.estudiantes.length;
+        const cols = gd.columnas.length;
+        const cellsEsperadas = totalEst * cols;
+        const cellsLlenas = gd.calificaciones.filter(c => c.valor != null).length;
+        const cobertura = cellsEsperadas > 0 ? Math.round((cellsLlenas / cellsEsperadas) * 100) : 0;
+        return `
+          <div>
+            <div class="flex justify-between text-xs mb-1">
+              <a href="grupo-panel.html?grupo=${g.id_grupo}" class="font-semibold text-gray-700 hover:text-blue-600 truncate mr-2">
+                ${g.nombre_grupo}
+              </a>
+              <span class="text-gray-500 whitespace-nowrap">${totalEst} est · ${cols} eval · ${cobertura}%</span>
+            </div>
+            <div class="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+              <div class="h-full bg-blue-500 rounded-full" style="width:${cobertura}%"></div>
+            </div>
+          </div>`;
+    }).join('');
+}
+
+// ─── Ranking Top 10 ───────────────────────────────────────────
+function renderRanking() {
+    const rows = PAN.filas
+        .filter(f => f.promedio != null)
+        .sort((a, b) => b.promedio - a.promedio)
+        .slice(0, 10);
+    const el = document.getElementById('ranking-list');
+    if (rows.length === 0) {
+        el.innerHTML = '<p class="text-xs text-gray-400 text-center py-4">Aún no hay notas registradas.</p>';
+        return;
+    }
+    const medals = ['🥇', '🥈', '🥉'];
+    el.innerHTML = rows.map((f, i) => `
+      <div class="flex items-center gap-2 py-1">
+        <div class="w-6 text-center text-sm">${medals[i] || `${i+1}°`}</div>
+        <div class="flex-1 min-w-0">
+          <p class="text-sm font-medium text-gray-800 truncate">${f.codigo}</p>
+          <p class="text-[11px] text-gray-500 truncate">${f.nombre_grupo} · ${f.grado}</p>
+        </div>
+        <span class="inline-block px-2 py-0.5 rounded font-mono text-xs font-bold ${notaTone(f.promedio)}">${f.promedio.toFixed(1)}</span>
+      </div>`).join('');
+}
+
+// ─── Alertas ──────────────────────────────────────────────────
+function renderAlertas() {
+    const alertas = [];
+
+    const notaBaja = PAN.filas.filter(f => f.promedio != null && f.promedio < NOTA_BAJA);
+    if (notaBaja.length > 0) {
+        alertas.push({
+            tone: 'red',
+            icon: 'fa-arrow-trend-down',
+            msg: `${notaBaja.length} estudiante(s) con promedio menor a ${NOTA_BAJA.toFixed(1)}`,
+        });
+    }
+
+    const piarSinAjustes = PAN.filas.filter(f => f.tiene_piar && !(f.ajustes && f.ajustes.trim()));
+    if (piarSinAjustes.length > 0) {
+        alertas.push({
+            tone: 'amber',
+            icon: 'fa-file-lines',
+            msg: `${piarSinAjustes.length} estudiante(s) con PIAR sin ajustes registrados`,
+        });
+    }
+
+    const gruposSinEval = PAN.grupos.filter(g =>
+        (PAN.porGrupoData[g.id_grupo].columnas.filter(c => c.periodo === g.periodo_actual).length) === 0
+    );
+    if (gruposSinEval.length > 0) {
+        alertas.push({
+            tone: 'amber',
+            icon: 'fa-table-cells',
+            msg: `${gruposSinEval.length} grupo(s) sin evaluaciones en su periodo actual`,
+        });
+    }
+
+    // Grupos sin nuevas calificaciones en los últimos N días
+    const cutoff = Date.now() - DIAS_SIN_ACTIVIDAD * 86400_000;
+    const gruposInactivos = PAN.grupos.filter(g => {
+        const cals = PAN.porGrupoData[g.id_grupo].calificaciones;
+        if (cals.length === 0) return false; // se cubre en "sin evaluaciones"
+        const maxFecha = Math.max(...cals.map(c => parseFechaISO(c.fecha) || 0));
+        return maxFecha < cutoff;
+    });
+    if (gruposInactivos.length > 0) {
+        alertas.push({
+            tone: 'amber',
+            icon: 'fa-clock',
+            msg: `${gruposInactivos.length} grupo(s) sin calificaciones nuevas hace ${DIAS_SIN_ACTIVIDAD}+ días`,
+        });
+    }
+
+    if (alertas.length === 0) {
+        alertas.push({ tone:'green', icon:'fa-check-circle', msg:'Sin alertas activas — ¡todo en orden!' });
+    }
+
+    const toneClass = {
+        green: 'bg-emerald-50 text-emerald-800 border-emerald-200',
+        amber: 'bg-amber-50 text-amber-800 border-amber-200',
+        red:   'bg-red-50 text-red-800 border-red-200',
+    };
+    document.getElementById('alertas').innerHTML = alertas.map(a =>
+        `<div class="flex items-start gap-2 px-3 py-2 rounded-lg border ${toneClass[a.tone]}">
+           <i class="fas ${a.icon} mt-0.5"></i>
+           <span class="flex-1">${a.msg}</span>
+         </div>`
+    ).join('');
+}
+
+// ─── Tabla estudiantes ────────────────────────────────────────
+function renderTabla() {
+    const q = (document.getElementById('search-est').value || '').toLowerCase().trim();
+    const grupoId = document.getElementById('filter-grupo').value;
+    let rows = [...PAN.filas];
+    if (grupoId) rows = rows.filter(f => f.id_grupo === grupoId);
+    if (q) rows = rows.filter(f =>
+        (f.codigo || '').toLowerCase().includes(q) ||
+        (f.nombre_grupo || '').toLowerCase().includes(q) ||
+        (f.grado || '').toLowerCase().includes(q)
+    );
+    rows.sort((a, b) => (b.promedio ?? -1) - (a.promedio ?? -1));
+
+    const body = document.getElementById('tabla-body');
+    if (rows.length === 0) {
+        body.innerHTML = '<tr><td colspan="7" class="text-center py-10 text-gray-400">Sin resultados.</td></tr>';
+        return;
+    }
+    body.innerHTML = rows.map(f => `
+      <tr class="hover:bg-gray-50">
+        <td class="px-4 py-2 font-medium text-gray-800">${f.codigo}</td>
+        <td class="px-4 py-2 text-gray-600">
+          <a href="grupo-panel.html?grupo=${f.id_grupo}" class="hover:text-blue-600 hover:underline">${f.nombre_grupo}</a>
+        </td>
+        <td class="px-4 py-2 text-gray-600 text-xs">${f.grado} · ${f.asignatura}</td>
+        <td class="px-4 py-2">
+          ${f.tiene_piar
+            ? '<span class="inline-flex items-center gap-1 text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded"><i class="fas fa-heart"></i>PIAR</span>'
+            : '<span class="text-xs text-gray-400">—</span>'}
+        </td>
+        <td class="px-4 py-2 text-gray-600 text-xs font-mono">${f.num_notas}</td>
+        <td class="px-4 py-2 text-right">
+          <span class="inline-block px-2 py-0.5 rounded font-mono text-xs font-bold ${notaTone(f.promedio)}">
+            ${f.promedio != null ? f.promedio.toFixed(1) : '—'}
+          </span>
+        </td>
+        <td class="px-4 py-2 text-right">
+          <a href="grupos.html?tab=calificaciones&grupo=${f.id_grupo}"
+             class="text-xs text-blue-600 hover:underline whitespace-nowrap">
+            Libro →
+          </a>
+        </td>
+      </tr>
+    `).join('');
+}
+
+cargarPanel();
+</script>
+</body>
+</html>
