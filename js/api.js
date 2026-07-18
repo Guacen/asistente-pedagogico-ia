@@ -182,6 +182,26 @@ class ApiClient {
             method: 'DELETE'
         });
     }
+
+    // Bulk import por CSV. Upsert por codigo_estudiante dentro del grupo.
+    async importarEstudiantesCsv(grupoId, file) {
+        const fd = new FormData();
+        fd.append('file', file);
+        const token = this.getToken();
+        const res = await fetch(
+            `${this.baseUrl}/api/grupos/${grupoId}/estudiantes/importar`,
+            {
+                method: 'POST',
+                headers: { ...(token && { Authorization: `Bearer ${token}` }) },
+                body: fd,
+            }
+        );
+        if (!res.ok) {
+            const txt = await res.text();
+            throw new Error(txt || `Error ${res.status}`);
+        }
+        return res.json();
+    }
     
     // ==========================================
     // NOTAS

@@ -1,9 +1,12 @@
+import csv
+import io
 import os
 import uuid
 from typing import List
 
 import aiofiles
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from auth import get_current_docente
@@ -187,6 +190,107 @@ def delete_estudiante(
         raise HTTPException(status_code=404, detail="Estudiante no encontrado")
     db.delete(est)
     db.commit()
+
+
+# ────────────────────────────────────────────────────────────────
+# IMPORTAR ESTUDIANTES DESDE CSV (bulk upsert por codigo_estudiante)
+# ────────────────────────────────────────────────────────────────
+
+class ImportEstudiantesResult(BaseModel):
+    creados: int
+    actualizados: int
+    fallidos: int
+    errores: List[str]
+
+
+def _norm_bool(raw: str) -> bool:
+    v = (raw or "").strip().lower()
+    return v in ("1", "true", "sí", "si", "yes", "y", "x")
+
+
+@router.post(
+    "/grupos/{grupo_id}/estudiantes/importar",
+    response_model=ImportEstudiantesResult,
+)
+async def importar_estudiantes_csv(
+    grupo_id: str,
+    file: UploadFile = File(...),
+    docente=Depends(get_current_docente),
+    db: Session = Depends(get_db),
+):
+    """
+    Importa estudiantes desde un CSV. Encabezados:
+      - `codigo_estudiante` (obligatorio)
+      - `genero` (opcional)
+      - `tiene_piar` (opcional — 1/0, true/false, sí/no)
+      - `diagnostico` (opcional)
+      - `ajustes` (opcional)
+
+    Upsert por `(id_grupo, codigo_estudiante)`. Devuelve conteo y errores por fila.
+    """
+    _get_grupo_or_404(grupo_id, docente.id_docente, db)
+
+    if not file.filename or not file.filename.lower().endswith(".csv"):
+        raise HTTPException(status_code=400, detail="Se esperaba un archivo .csv")
+
+    raw = (await file.read()).decode("utf-8-sig", errors="replace")
+    reader = csv.DictReader(io.StringIO(raw))
+    headers = {(h or "").lower().strip() for h in (reader.fieldnames or [])}
+    if "codigo_estudiante" not in headers:
+        raise HTTPException(
+            status_code=400,
+            detail="Falta columna obligatoria: 'codigo_estudiante'",
+        )
+
+    creados = 0
+    actualizados = 0
+    fallidos = 0
+    errores: List[str] = []
+
+    existentes = {
+        e.codigo_estudiante: e
+        for e in db.query(Estudiante).filter(Estudiante.id_grupo == grupo_id).all()
+    }
+
+    for i, row in enumerate(reader, start=2):
+        # Normaliza claves a lower-case
+        r = {(k or "").lower().strip(): (v or "").strip() for k, v in row.items()}
+        codigo = r.get("codigo_estudiante", "")
+        if not codigo:
+            fallidos += 1
+            errores.append(f"Fila {i}: codigo_estudiante vacío")
+            continue
+
+        payload = {
+            "codigo_estudiante": codigo,
+            "genero": r.get("genero") or None,
+            "tiene_piar": _norm_bool(r.get("tiene_piar", "")),
+            "diagnostico": r.get("diagnostico") or None,
+            "ajustes": r.get("ajustes") or None,
+        }
+
+        est = existentes.get(codigo)
+        try:
+            if est:
+                for k, v in payload.items():
+                    setattr(est, k, v)
+                actualizados += 1
+            else:
+                nuevo = Estudiante(id_grupo=grupo_id, **payload)
+                db.add(nuevo)
+                existentes[codigo] = nuevo
+                creados += 1
+        except Exception as exc:  # pragma: no cover — defensivo
+            fallidos += 1
+            errores.append(f"Fila {i}: {exc}")
+
+    db.commit()
+    return ImportEstudiantesResult(
+        creados=creados,
+        actualizados=actualizados,
+        fallidos=fallidos,
+        errores=errores[:50],
+    )
 
 
 # ============================================================
