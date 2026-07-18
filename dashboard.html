@@ -156,7 +156,17 @@
                 <!-- ── Acciones rápidas ───────────────────────── -->
                 <div class="mb-8">
                     <h2 class="text-lg font-bold text-gray-900 mb-3">Acciones Rápidas</h2>
-                    <div class="grid sm:grid-cols-3 gap-4">
+                    <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+
+                        <!-- Panel Docente (agregado) -->
+                        <button onclick="window.location.href='panel-docente.html'"
+                            class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 hover:shadow-md hover:border-orange-200 transition-all text-left group">
+                            <div class="w-11 h-11 bg-orange-100 rounded-xl flex items-center justify-center mb-3 group-hover:bg-orange-500 transition-colors">
+                                <i class="fas fa-chart-line text-orange-600 text-lg group-hover:text-white transition-colors"></i>
+                            </div>
+                            <h3 class="font-semibold text-gray-900 mb-1">Panel Docente</h3>
+                            <p class="text-gray-500 text-sm">KPIs cross-grupo, ranking y alertas</p>
+                        </button>
 
                         <!-- Crear grupo -->
                         <button onclick="window.location.href='grupos.html?action=nuevo'"
@@ -483,8 +493,12 @@
                 </div>
             </div>
             <div class="border-t flex rounded-b-xl overflow-hidden">
+                <a href="grupo-panel.html?grupo=${g.id_grupo}"
+                   class="flex-1 py-3 text-center text-sm font-medium text-orange-600 hover:bg-orange-50 transition-colors flex items-center justify-center gap-1.5">
+                    <i class="fas fa-chart-line text-xs"></i>Panel
+                </a>
                 <a href="chat.html?id=${g.id_grupo}"
-                   class="flex-1 py-3 text-center text-sm font-medium text-blue-600 hover:bg-blue-50 transition-colors flex items-center justify-center gap-1.5">
+                   class="flex-1 py-3 text-center text-sm font-medium text-blue-600 hover:bg-blue-50 transition-colors border-l flex items-center justify-center gap-1.5">
                     <i class="fas fa-robot text-xs"></i>Chat IA
                 </a>
                 <a href="grupos.html?tab=calificaciones&grupo=${g.id_grupo}"
