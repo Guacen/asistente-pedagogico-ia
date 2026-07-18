@@ -203,9 +203,27 @@ class ImportEstudiantesResult(BaseModel):
     errores: List[str]
 
 
-def _norm_bool(raw: str) -> bool:
+_PIAR_TRUE = {"1", "true", "sí", "si", "yes", "y", "x"}
+_PIAR_FALSE = {"0", "false", "no", "n", ""}
+
+
+def _parse_piar(raw: str) -> tuple[bool, bool]:
+    """
+    Devuelve (value, ok). ok=False cuando el valor no es reconocible como
+    booleano — el llamador reporta esa fila como fallida en `errores[]`.
+    Convención igual a la del frontend (grupos.html · parsePiarCsv):
+    1/0, true/false, sí/no, yes/no; vacío es False válido.
+    """
     v = (raw or "").strip().lower()
-    return v in ("1", "true", "sí", "si", "yes", "y", "x")
+    if v in _PIAR_TRUE:
+        return True, True
+    if v in _PIAR_FALSE:
+        return False, True
+    return False, False
+
+
+def _norm_bool(raw: str) -> bool:  # compat con eventuales llamadores externos
+    return _parse_piar(raw)[0]
 
 
 @router.post(
@@ -263,13 +281,23 @@ async def importar_estudiantes_csv(
         codigo = r.get("codigo_estudiante", "")
         if not codigo:
             fallidos += 1
-            errores.append(f"Fila {i}: codigo_estudiante vacío")
+            errores.append(f"Fila {i}: columna 'codigo_estudiante' vacía")
+            continue
+
+        piar_raw = r.get("tiene_piar", "")
+        piar_value, piar_ok = _parse_piar(piar_raw)
+        if piar_raw and not piar_ok:
+            fallidos += 1
+            errores.append(
+                f"Fila {i}: columna 'tiene_piar'={piar_raw!r} no reconocida "
+                f"(usa 1/0, true/false, sí/no)"
+            )
             continue
 
         payload = {
             "codigo_estudiante": codigo,
             "genero": r.get("genero") or None,
-            "tiene_piar": _norm_bool(r.get("tiene_piar", "")),
+            "tiene_piar": piar_value,
             "diagnostico": r.get("diagnostico") or None,
             "ajustes": r.get("ajustes") or None,
         }

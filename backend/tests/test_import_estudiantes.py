@@ -92,7 +92,30 @@ def test_fila_con_codigo_vacio_es_fallida(client, seed_docente):
     assert body["creados"] == 2
     assert body["fallidos"] == 1
     assert len(body["errores"]) == 1
-    assert "codigo_estudiante" in body["errores"][0].lower() or "vac" in body["errores"][0].lower()
+    # Mensaje debe mencionar la columna específica (no solo "fila inválida")
+    err = body["errores"][0]
+    assert "codigo_estudiante" in err.lower()
+    assert "Fila 3" in err   # el número de línea del CSV
+
+
+def test_fila_con_tiene_piar_no_reconocido_es_fallida(client, seed_docente):
+    """
+    tiene_piar='maybe' no está en {1,0,true,false,sí,no,...} → debe reportarse
+    como fallida con mensaje que mencione la columna y el valor.
+    """
+    gid = seed_docente["grupo"].id_grupo
+    csv = (
+        "codigo_estudiante,genero,tiene_piar,diagnostico,ajustes\n"
+        "E001,M,maybe,,\n"
+        "E002,F,1,,\n"
+    )
+    body = _upload(client, gid, csv).json()
+    assert body["creados"] == 1
+    assert body["fallidos"] == 1
+    err = body["errores"][0]
+    assert "tiene_piar" in err
+    assert "maybe" in err
+    assert "Fila 2" in err
 
 
 def test_filas_totalmente_vacias_se_ignoran(client, seed_docente):

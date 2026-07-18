@@ -1619,9 +1619,26 @@
             return rows.filter(r => r.some(cell => cell.trim() !== ''));
         }
 
-        function normBoolCsv(raw) {
+        // tiene_piar acepta: 1/0, true/false, sí/no, yes/no (case-insensitive,
+        // con o sin acento). Devuelve { value, valid } — permite distinguir
+        // "no reconocido" de "vacío" para dar mensaje de error específico.
+        const PIAR_TRUE  = new Set(['1','true','sí','si','yes','y','x']);
+        const PIAR_FALSE = new Set(['0','false','no','n','']);
+
+        function parsePiarCsv(raw) {
             const v = String(raw || '').trim().toLowerCase();
-            return ['1','true','sí','si','yes','y','x'].includes(v);
+            if (PIAR_TRUE.has(v))  return { value: true,  valid: true };
+            if (PIAR_FALSE.has(v)) return { value: false, valid: true };
+            return { value: false, valid: false };
+        }
+
+        // Género aceptado (case-insensitive, con o sin acento). Si viene vacío es válido (null).
+        function parseGeneroCsv(raw) {
+            const v = String(raw || '').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+            if (!v) return { value: null, valid: true };
+            const map = { m:'M', masculino:'M', f:'F', femenino:'F', o:'O', otro:'O' };
+            if (map[v]) return { value: map[v], valid: true };
+            return { value: v, valid: false };
         }
 
         function onCsvSeleccionado(evt) {
@@ -1641,24 +1658,51 @@
             reader.onload = (e) => {
                 try {
                     const rows = parseCsv(String(e.target.result || ''));
-                    if (rows.length < 2) return mostrarErrorCsv('El CSV debe tener encabezados y al menos una fila.');
+                    if (rows.length === 0) {
+                        return mostrarErrorCsv('El CSV está vacío.');
+                    }
+                    if (rows.length < 2) {
+                        return mostrarErrorCsv(
+                            'El CSV debe tener encabezado en la primera fila y al menos una fila de datos.'
+                        );
+                    }
                     const headers = rows[0].map(h => (h || '').trim().toLowerCase());
                     if (!headers.includes('codigo_estudiante')) {
-                        return mostrarErrorCsv("Falta columna obligatoria: 'codigo_estudiante'");
+                        return mostrarErrorCsv(
+                            "Falta la columna obligatoria 'codigo_estudiante'. " +
+                            `Encabezados detectados: ${headers.join(', ') || '(ninguno)'}.`
+                        );
                     }
                     csvRowsParsed = rows.slice(1).map((cells, idx) => {
                         const r = {};
                         headers.forEach((h, i) => r[h] = (cells[i] || '').trim());
                         const errors = [];
-                        if (!r.codigo_estudiante) errors.push('codigo vacío');
+
+                        // codigo_estudiante — obligatorio
+                        if (!r.codigo_estudiante) {
+                            errors.push('columna "codigo_estudiante" vacía');
+                        }
+
+                        // tiene_piar — opcional pero si viene, debe ser reconocible
+                        const piar = parsePiarCsv(r.tiene_piar);
+                        if (r.tiene_piar && !piar.valid) {
+                            errors.push(`columna "tiene_piar"="${r.tiene_piar}" no reconocida (usa 1/0, true/false, sí/no)`);
+                        }
+
+                        // genero — opcional pero si viene, se normaliza
+                        const genero = parseGeneroCsv(r.genero);
+                        if (r.genero && !genero.valid) {
+                            errors.push(`columna "genero"="${r.genero}" no reconocida (usa M/F/O o Masculino/Femenino/Otro)`);
+                        }
+
                         return {
                             lineNo: idx + 2,
                             valid: errors.length === 0,
                             errors,
                             payload: {
                                 codigo_estudiante: r.codigo_estudiante,
-                                genero: r.genero || null,
-                                tiene_piar: normBoolCsv(r.tiene_piar),
+                                genero: genero.value,
+                                tiene_piar: piar.value,
                                 diagnostico: r.diagnostico || null,
                                 ajustes: r.ajustes || null,
                             },
