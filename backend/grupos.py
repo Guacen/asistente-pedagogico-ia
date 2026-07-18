@@ -255,6 +255,11 @@ async def importar_estudiantes_csv(
     for i, row in enumerate(reader, start=2):
         # Normaliza claves a lower-case
         r = {(k or "").lower().strip(): (v or "").strip() for k, v in row.items()}
+        # Fila completamente vacía → se ignora silenciosamente (mismo criterio
+        # que el preview del frontend: `.filter(r => r.some(cell => cell.trim() !== ''))`).
+        # Así el conteo entre preview y respuesta del import siempre coincide.
+        if not any(r.values()):
+            continue
         codigo = r.get("codigo_estudiante", "")
         if not codigo:
             fallidos += 1
