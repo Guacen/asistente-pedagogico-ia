@@ -24,10 +24,12 @@ from fastapi.staticfiles import StaticFiles
 
 from config import settings
 from database import create_tables
+from migrate import apply_migrations, seed_pro_user
 
 # Importar routers
 import auth
 import chat
+import documento
 import grupos
 import suscripciones
 
@@ -75,6 +77,7 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(grupos.router)
 app.include_router(chat.router)
+app.include_router(documento.router)
 app.include_router(suscripciones.router)
 
 # ============================================================
@@ -100,6 +103,8 @@ def health():
 def on_startup():
     create_tables()
     print("✅ Tablas creadas / verificadas")
+    apply_migrations()
+    seed_pro_user()
     print(f"🌐 Frontend servido desde: {FRONTEND_DIR}")
     print(f"🤖 Claude model: {settings.CLAUDE_MODEL}")
     print(f"🔑 Claude API Key: {'configurada ✅' if settings.CLAUDE_API_KEY and 'XXXX' not in settings.CLAUDE_API_KEY else 'NO configurada ❌ — edita el .env'}")

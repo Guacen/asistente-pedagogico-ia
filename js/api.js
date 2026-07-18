@@ -43,7 +43,10 @@ class ApiClient {
                 const error = await response.text();
                 throw new Error(error || `Error ${response.status}`);
             }
-            
+
+            // 204 No Content (DELETE) — no body to parse
+            if (response.status === 204) return null;
+
             return await response.json();
         } catch (error) {
             console.error('API Error:', error);
@@ -91,7 +94,27 @@ class ApiClient {
     async getMe() {
         return this.request('/api/auth/me');
     }
-    
+
+    async updatePerfil(data) {
+        return this.request('/api/auth/perfil', {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        });
+    }
+
+    async changePassword(passwordActual, passwordNuevo) {
+        return this.request('/api/auth/cambiar-password', {
+            method: 'POST',
+            body: JSON.stringify({ password_actual: passwordActual, password_nuevo: passwordNuevo })
+        });
+    }
+
+    async deleteAccount() {
+        return this.request('/api/auth/cuenta', {
+            method: 'DELETE'
+        });
+    }
+
     // ==========================================
     // GRUPOS
     // ==========================================
@@ -159,6 +182,26 @@ class ApiClient {
             method: 'DELETE'
         });
     }
+
+    // Bulk import por CSV. Upsert por codigo_estudiante dentro del grupo.
+    async importarEstudiantesCsv(grupoId, file) {
+        const fd = new FormData();
+        fd.append('file', file);
+        const token = this.getToken();
+        const res = await fetch(
+            `${this.baseUrl}/api/grupos/${grupoId}/estudiantes/importar`,
+            {
+                method: 'POST',
+                headers: { ...(token && { Authorization: `Bearer ${token}` }) },
+                body: fd,
+            }
+        );
+        if (!res.ok) {
+            const txt = await res.text();
+            throw new Error(txt || `Error ${res.status}`);
+        }
+        return res.json();
+    }
     
     // ==========================================
     // NOTAS
@@ -200,6 +243,79 @@ class ApiClient {
         return await response.json();
     }
     
+    // ==========================================
+    // INICIALIZAR IA
+    // ==========================================
+
+    async inicializarContextoIA(grupoId) {
+        return this.request(`/api/grupos/${grupoId}/inicializar-ia`, { method: 'POST' });
+    }
+
+    // ==========================================
+    // CALIFICACIONES
+    // ==========================================
+
+    async getCalificaciones(grupoId) {
+        return this.request(`/api/grupos/${grupoId}/calificaciones`);
+    }
+
+    async createCalificacion(grupoId, data) {
+        return this.request(`/api/grupos/${grupoId}/calificaciones`, {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+    }
+
+    async updateCalificacion(grupoId, calId, data) {
+        return this.request(`/api/grupos/${grupoId}/calificaciones/${calId}`, {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        });
+    }
+
+    async deleteCalificacion(grupoId, calId) {
+        return this.request(`/api/grupos/${grupoId}/calificaciones/${calId}`, {
+            method: 'DELETE'
+        });
+    }
+
+    // Upsert: crear o actualizar nota por (estudiante, columna, periodo)
+    async upsertCalificacion(grupoId, idEstudiante, idColumna, valor, periodo = 1) {
+        return this.request(`/api/grupos/${grupoId}/calificaciones/upsert`, {
+            method: 'POST',
+            body: JSON.stringify({ id_estudiante: idEstudiante, id_columna: idColumna, valor, periodo })
+        });
+    }
+
+    // ==========================================
+    // COLUMNAS DE EVALUACIÓN (libro de notas)
+    // ==========================================
+
+    async getColumnas(grupoId, periodo = null) {
+        const qs = periodo !== null ? `?periodo=${periodo}` : '';
+        return this.request(`/api/grupos/${grupoId}/columnas${qs}`);
+    }
+
+    async createColumna(grupoId, data) {
+        return this.request(`/api/grupos/${grupoId}/columnas`, {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+    }
+
+    async updateColumna(grupoId, colId, data) {
+        return this.request(`/api/grupos/${grupoId}/columnas/${colId}`, {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        });
+    }
+
+    async deleteColumna(grupoId, colId) {
+        return this.request(`/api/grupos/${grupoId}/columnas/${colId}`, {
+            method: 'DELETE'
+        });
+    }
+
     // ==========================================
     // SUSCRIPCIONES
     // ==========================================

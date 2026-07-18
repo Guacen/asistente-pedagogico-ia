@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel del Grupo · Asistente Pedagógico</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/main.css">
+</head>
+<body class="bg-gray-50">
+
+<div class="min-h-screen">
+
+  <!-- Header -->
+  <header class="bg-white shadow-sm sticky top-0 z-20">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+      <div class="flex items-center justify-between gap-4">
+        <div class="flex items-center gap-3 min-w-0">
+          <a href="panel-docente.html" class="text-gray-600 hover:text-gray-900" title="Volver al panel">
+            <i class="fas fa-arrow-left text-xl"></i>
+          </a>
+          <div class="min-w-0">
+            <p class="text-xs uppercase tracking-widest text-blue-600 font-bold">Panel del Grupo</p>
+            <h1 id="grupo-nombre" class="text-2xl font-bold text-gray-900 truncate">—</h1>
+            <p id="grupo-meta" class="text-sm text-gray-500 truncate"></p>
+          </div>
+        </div>
+        <div class="flex gap-2 flex-wrap">
+          <a id="link-chat" href="#" class="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 text-sm">
+            <i class="fas fa-robot text-blue-600"></i>Chat IA
+          </a>
+          <a id="link-libro" href="#" class="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 text-sm font-semibold">
+            <i class="fas fa-table"></i>Libro de notas
+          </a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+    <!-- ─── KPIs del grupo ─────────────────────────────────── -->
+    <section class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+        <p class="text-gray-500 text-xs uppercase tracking-wider">Estudiantes</p>
+        <p id="kpi-est" class="text-2xl font-bold text-gray-900 mt-1">—</p>
+        <p class="text-xs text-gray-400 mt-0.5">Registrados / <span id="kpi-est-esperados">—</span> esperados</p>
+      </div>
+      <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+        <p class="text-gray-500 text-xs uppercase tracking-wider">Evaluaciones · P<span id="kpi-periodo">1</span></p>
+        <p id="kpi-cols" class="text-2xl font-bold text-gray-900 mt-1">—</p>
+        <p id="kpi-pesos" class="text-xs text-gray-400 mt-0.5">— % de peso total</p>
+      </div>
+      <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+        <p class="text-gray-500 text-xs uppercase tracking-wider">Cobertura de notas</p>
+        <p id="kpi-cobertura" class="text-2xl font-bold text-gray-900 mt-1">—</p>
+        <p id="kpi-cobertura-sub" class="text-xs text-gray-400 mt-0.5">— / — celdas</p>
+      </div>
+      <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+        <p class="text-gray-500 text-xs uppercase tracking-wider">Promedio del grupo</p>
+        <p id="kpi-prom" class="text-2xl font-bold text-gray-900 mt-1">—</p>
+        <p class="text-xs text-gray-400 mt-0.5">Ponderado por peso de columna</p>
+      </div>
+    </section>
+
+    <!-- ─── Toolbar periodo ─────────────────────────────────── -->
+    <section class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex flex-wrap items-center gap-3">
+      <label class="text-xs font-bold uppercase tracking-wider text-gray-500">Período</label>
+      <select id="filter-periodo"
+        class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+        onchange="cambiarPeriodo(this.value)">
+        <option value="1">Período 1</option>
+        <option value="2">Período 2</option>
+        <option value="3">Período 3</option>
+        <option value="4">Período 4</option>
+      </select>
+      <div class="flex-1"></div>
+      <input id="search" type="text" placeholder="Buscar estudiante…"
+        class="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+        oninput="renderTabla()">
+      <div class="text-xs text-gray-500">
+        <i class="fas fa-info-circle"></i>
+        Notas 🟢≥4.0 · 🟡 3.0–3.9 · 🔴 &lt;3.0
+      </div>
+    </section>
+
+    <!-- ─── Alertas del grupo ─────────────────────────────── -->
+    <section id="alertas-grupo-wrap" class="hidden">
+      <div id="alertas-grupo" class="space-y-2"></div>
+    </section>
+
+    <!-- ─── Tabla estudiantes ──────────────────────────────── -->
+    <section class="bg-white rounded-xl shadow-sm border border-gray-100">
+      <div class="p-4 border-b border-gray-100 flex items-center justify-between">
+        <h2 class="text-sm font-bold text-gray-700 uppercase tracking-wide">Estudiantes</h2>
+        <span id="tabla-count" class="text-xs text-gray-500"></span>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="bg-gray-50 text-left text-[11px] uppercase tracking-wider text-gray-500">
+            <tr>
+              <th class="px-4 py-2.5">#</th>
+              <th class="px-4 py-2.5">Código / Nombre</th>
+              <th class="px-4 py-2.5">Género</th>
+              <th class="px-4 py-2.5">PIAR</th>
+              <th class="px-4 py-2.5"># Notas</th>
+              <th class="px-4 py-2.5 text-right">Promedio</th>
+              <th class="px-4 py-2.5"></th>
+            </tr>
+          </thead>
+          <tbody id="tabla-body" class="divide-y divide-gray-100">
+            <tr><td colspan="7" class="text-center py-10 text-gray-400">Cargando…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ─── Evaluaciones del periodo ────────────────────────── -->
+    <section class="bg-white rounded-xl shadow-sm border border-gray-100">
+      <div class="p-4 border-b border-gray-100 flex items-center justify-between">
+        <h2 class="text-sm font-bold text-gray-700 uppercase tracking-wide">
+          Evaluaciones del periodo
+        </h2>
+        <a id="link-libro-2" href="#" class="text-xs text-blue-600 hover:underline">Gestionar en el libro →</a>
+      </div>
+      <div id="cols-list" class="p-4 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+        <div class="animate-pulse h-16 bg-gray-100 rounded-lg"></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<div id="toast-container" class="fixed bottom-6 right-6 z-50 space-y-2 pointer-events-none"></div>
+
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script src="js/auth.js"></script>
+
+<script>
+requireAuth();
+
+const NOTA_BAJA = 3.0;
+
+// ─── Estado ───────────────────────────────────────────────────
+let GP = {
+    grupoId: null,
+    grupo: null,
+    estudiantes: [],
+    columnas: [],        // todas las columnas
+    columnasPeriodo: [], // columnas filtradas por periodo actual
+    calificaciones: [],
+    periodo: 1,
+};
+
+// ─── Utils ────────────────────────────────────────────────────
+function toast(msg, type = 'info') {
+    const COLOR = { success:'bg-green-600', error:'bg-red-600', info:'bg-blue-600', warning:'bg-yellow-500' };
+    const el = document.createElement('div');
+    el.className = `pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg text-white text-sm font-medium ${COLOR[type] || COLOR.info}`;
+    el.textContent = msg;
+    document.getElementById('toast-container').appendChild(el);
+    setTimeout(() => el.remove(), 3500);
+}
+
+function notaTone(n) {
+    if (n == null || Number.isNaN(n)) return 'bg-gray-100 text-gray-500';
+    if (n < 3.0) return 'bg-red-100 text-red-700';
+    if (n < 4.0) return 'bg-amber-100 text-amber-700';
+    return 'bg-emerald-100 text-emerald-700';
+}
+
+function promedioPonderado(notas) {
+    let acc = 0, peso = 0;
+    for (const n of notas) {
+        if (n.valor == null || Number.isNaN(n.valor)) continue;
+        const w = (typeof n.porcentaje === 'number' && n.porcentaje > 0) ? n.porcentaje : 1;
+        acc += n.valor * w;
+        peso += w;
+    }
+    return peso > 0 ? Math.round((acc / peso) * 10) / 10 : null;
+}
+
+function qs(name) {
+    return new URLSearchParams(window.location.search).get(name);
+}
+
+// ─── Carga ────────────────────────────────────────────────────
+async function cargar() {
+    GP.grupoId = qs('grupo');
+    if (!GP.grupoId) {
+        document.getElementById('grupo-nombre').textContent = 'Grupo no especificado';
+        document.getElementById('grupo-meta').textContent = 'Añade ?grupo=<id> a la URL';
+        document.getElementById('tabla-body').innerHTML =
+            '<tr><td colspan="7" class="text-center py-10 text-red-500">Falta el parámetro <code>?grupo=&lt;id&gt;</code>.</td></tr>';
+        return;
+    }
+
+    try {
+        const [grupo, estudiantes, columnas, calificaciones] = await Promise.all([
+            api.getGrupo(GP.grupoId),
+            api.getEstudiantes(GP.grupoId),
+            api.getColumnas(GP.grupoId),
+            api.getCalificaciones(GP.grupoId),
+        ]);
+        GP.grupo = grupo;
+        GP.estudiantes = estudiantes;
+        GP.columnas = columnas;
+        GP.calificaciones = calificaciones;
+
+        GP.periodo = grupo.periodo_actual || 1;
+        document.getElementById('filter-periodo').value = String(GP.periodo);
+
+        renderHeader();
+        renderPorPeriodo();
+    } catch (err) {
+        console.error('[grupo-panel] cargar:', err);
+        if (err.message?.includes('401') || err.message?.toLowerCase().includes('token')) {
+            window.location.href = 'login.html';
+            return;
+        }
+        if (err.message?.includes('404') || err.message?.toLowerCase().includes('no encontrado')) {
+            document.getElementById('grupo-nombre').textContent = 'Grupo no encontrado';
+            document.getElementById('grupo-meta').textContent = 'El grupo no existe o no te pertenece.';
+            document.getElementById('tabla-body').innerHTML =
+                '<tr><td colspan="7" class="text-center py-10 text-red-500">Grupo no encontrado.</td></tr>';
+            return;
+        }
+        toast('Error al cargar el grupo', 'error');
+    }
+}
+
+function cambiarPeriodo(p) {
+    GP.periodo = parseInt(p, 10);
+    renderPorPeriodo();
+}
+
+// ─── Header ───────────────────────────────────────────────────
+function renderHeader() {
+    document.getElementById('grupo-nombre').textContent = GP.grupo.nombre_grupo;
+    document.getElementById('grupo-meta').textContent =
+        `${GP.grupo.grado} · ${GP.grupo.asignatura} · ${GP.grupo.anio_lectivo}`;
+    document.getElementById('link-chat').href = `chat.html?id=${GP.grupoId}`;
+    document.getElementById('link-libro').href = `grupos.html?tab=calificaciones&grupo=${GP.grupoId}`;
+    document.getElementById('link-libro-2').href = `grupos.html?tab=calificaciones&grupo=${GP.grupoId}`;
+    document.getElementById('kpi-est-esperados').textContent = GP.grupo.cantidad_estudiantes ?? '—';
+}
+
+// ─── Render dependiente del periodo ───────────────────────────
+function renderPorPeriodo() {
+    GP.columnasPeriodo = GP.columnas.filter(c => c.periodo === GP.periodo);
+    document.getElementById('kpi-periodo').textContent = String(GP.periodo);
+    renderKPIs();
+    renderAlertas();
+    renderTabla();
+    renderColumnas();
+}
+
+// ─── KPIs ─────────────────────────────────────────────────────
+function renderKPIs() {
+    document.getElementById('kpi-est').textContent = GP.estudiantes.length;
+
+    const cols = GP.columnasPeriodo;
+    document.getElementById('kpi-cols').textContent = cols.length;
+    const pesoTotal = cols.reduce((s, c) => s + (c.porcentaje || 0), 0);
+    const pesoEl = document.getElementById('kpi-pesos');
+    if (cols.length === 0) {
+        pesoEl.textContent = 'Sin evaluaciones aún';
+        pesoEl.className = 'text-xs text-gray-400 mt-0.5';
+    } else if (Math.round(pesoTotal) === 100) {
+        pesoEl.textContent = '100% total ✓';
+        pesoEl.className = 'text-xs text-emerald-600 mt-0.5';
+    } else {
+        pesoEl.textContent = `${pesoTotal.toFixed(0)}% total (debería ser 100%)`;
+        pesoEl.className = 'text-xs text-amber-600 mt-0.5';
+    }
+
+    const colIds = new Set(cols.map(c => c.id_columna));
+    const calsPeriodo = GP.calificaciones.filter(c => colIds.has(c.id_columna));
+    const cellsEsperadas = cols.length * GP.estudiantes.length;
+    const cellsLlenas = calsPeriodo.filter(c => c.valor != null).length;
+    const cobertura = cellsEsperadas > 0 ? Math.round((cellsLlenas / cellsEsperadas) * 100) : 0;
+    document.getElementById('kpi-cobertura').textContent = `${cobertura}%`;
+    document.getElementById('kpi-cobertura-sub').textContent = `${cellsLlenas} / ${cellsEsperadas} celdas`;
+
+    // Promedio del grupo (promedio de los promedios individuales del periodo)
+    const promsInd = GP.estudiantes.map(e => promedioEstudiante(e.id_estudiante, calsPeriodo)).filter(v => v != null);
+    const promG = promsInd.length ? (promsInd.reduce((a,b) => a+b, 0) / promsInd.length) : null;
+    document.getElementById('kpi-prom').textContent = promG != null ? promG.toFixed(2) : '—';
+}
+
+function promedioEstudiante(estId, calsPeriodo) {
+    const cols = Object.fromEntries(GP.columnasPeriodo.map(c => [c.id_columna, c]));
+    const notas = calsPeriodo
+        .filter(c => c.id_estudiante === estId)
+        .map(c => ({
+            valor: c.valor,
+            porcentaje: cols[c.id_columna]?.porcentaje ?? c.porcentaje,
+        }));
+    return promedioPonderado(notas);
+}
+
+function contarNotas(estId, calsPeriodo) {
+    return calsPeriodo.filter(c => c.id_estudiante === estId && c.valor != null).length;
+}
+
+// ─── Tabla ────────────────────────────────────────────────────
+function renderTabla() {
+    const q = (document.getElementById('search').value || '').toLowerCase().trim();
+    const colIds = new Set(GP.columnasPeriodo.map(c => c.id_columna));
+    const calsPeriodo = GP.calificaciones.filter(c => colIds.has(c.id_columna));
+
+    let rows = GP.estudiantes.map(e => ({
+        est: e,
+        promedio: promedioEstudiante(e.id_estudiante, calsPeriodo),
+        num_notas: contarNotas(e.id_estudiante, calsPeriodo),
+    }));
+    if (q) rows = rows.filter(r => (r.est.codigo_estudiante || '').toLowerCase().includes(q));
+    rows.sort((a, b) => (b.promedio ?? -1) - (a.promedio ?? -1));
+
+    document.getElementById('tabla-count').textContent = `${rows.length} de ${GP.estudiantes.length}`;
+
+    const body = document.getElementById('tabla-body');
+    if (rows.length === 0) {
+        body.innerHTML = '<tr><td colspan="7" class="text-center py-10 text-gray-400">Sin resultados.</td></tr>';
+        return;
+    }
+    body.innerHTML = rows.map((r, i) => `
+      <tr class="hover:bg-gray-50">
+        <td class="px-4 py-2 text-gray-400 font-mono text-xs">${i + 1}</td>
+        <td class="px-4 py-2 font-medium text-gray-800">${r.est.codigo_estudiante}</td>
+        <td class="px-4 py-2 text-gray-600 text-xs">${r.est.genero || '—'}</td>
+        <td class="px-4 py-2">
+          ${r.est.tiene_piar
+            ? `<span class="inline-flex items-center gap-1 text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded" title="${(r.est.ajustes || 'Sin ajustes').replace(/"/g,'&quot;')}"><i class="fas fa-heart"></i>PIAR</span>`
+            : '<span class="text-xs text-gray-400">—</span>'}
+        </td>
+        <td class="px-4 py-2 text-gray-600 text-xs font-mono">${r.num_notas} / ${GP.columnasPeriodo.length}</td>
+        <td class="px-4 py-2 text-right">
+          <span class="inline-block px-2 py-0.5 rounded font-mono text-xs font-bold ${notaTone(r.promedio)}">
+            ${r.promedio != null ? r.promedio.toFixed(1) : '—'}
+          </span>
+        </td>
+        <td class="px-4 py-2 text-right">
+          <a href="grupos.html?tab=calificaciones&grupo=${GP.grupoId}"
+             class="text-xs text-blue-600 hover:underline whitespace-nowrap">Editar notas →</a>
+        </td>
+      </tr>
+    `).join('');
+}
+
+// ─── Columnas de evaluación ───────────────────────────────────
+function renderColumnas() {
+    const el = document.getElementById('cols-list');
+    const cols = [...GP.columnasPeriodo].sort((a, b) => (a.orden || 0) - (b.orden || 0));
+    if (cols.length === 0) {
+        el.innerHTML = `
+          <div class="col-span-full text-center py-10">
+            <i class="fas fa-table text-4xl text-gray-300 mb-2"></i>
+            <p class="text-sm text-gray-500">No hay evaluaciones creadas para este período.</p>
+            <a href="grupos.html?tab=calificaciones&grupo=${GP.grupoId}"
+               class="inline-block mt-3 text-sm text-blue-600 hover:underline">
+              ➕ Crear la primera en el libro
+            </a>
+          </div>`;
+        return;
+    }
+    const colIds = new Set(cols.map(c => c.id_columna));
+    const calsPeriodo = GP.calificaciones.filter(c => colIds.has(c.id_columna));
+
+    el.innerHTML = cols.map(c => {
+        const notas = calsPeriodo.filter(x => x.id_columna === c.id_columna && x.valor != null);
+        const prom = notas.length
+            ? Math.round((notas.reduce((s, x) => s + x.valor, 0) / notas.length) * 10) / 10
+            : null;
+        const cobertura = GP.estudiantes.length
+            ? Math.round((notas.length / GP.estudiantes.length) * 100)
+            : 0;
+        return `
+          <div class="border border-gray-200 rounded-xl p-4">
+            <div class="flex items-start justify-between gap-2 mb-2">
+              <div class="min-w-0">
+                <p class="font-semibold text-gray-800 truncate">${c.nombre}</p>
+                <p class="text-xs text-gray-500">${c.tipo || 'evaluación'} · ${c.porcentaje ?? 0}%</p>
+              </div>
+              <span class="inline-block px-2 py-0.5 rounded font-mono text-xs font-bold ${notaTone(prom)}">
+                ${prom != null ? prom.toFixed(1) : '—'}
+              </span>
+            </div>
+            <div class="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+              <div class="h-full bg-blue-500 rounded-full" style="width:${cobertura}%"></div>
+            </div>
+            <p class="text-[11px] text-gray-500 mt-1">${notas.length} / ${GP.estudiantes.length} notas registradas</p>
+          </div>`;
+    }).join('');
+}
+
+// ─── Alertas del grupo ────────────────────────────────────────
+function renderAlertas() {
+    const colIds = new Set(GP.columnasPeriodo.map(c => c.id_columna));
+    const calsPeriodo = GP.calificaciones.filter(c => colIds.has(c.id_columna));
+    const alertas = [];
+
+    // Estudiantes con promedio < 3.0
+    const estBajos = GP.estudiantes
+        .map(e => ({ e, p: promedioEstudiante(e.id_estudiante, calsPeriodo) }))
+        .filter(x => x.p != null && x.p < NOTA_BAJA);
+    if (estBajos.length > 0) {
+        alertas.push({
+            tone: 'red',
+            icon: 'fa-arrow-trend-down',
+            msg: `${estBajos.length} estudiante(s) con promedio menor a ${NOTA_BAJA.toFixed(1)}`,
+        });
+    }
+
+    // Estudiantes con PIAR sin ajustes registrados
+    const piarSinAjustes = GP.estudiantes.filter(e => e.tiene_piar && !(e.ajustes && e.ajustes.trim()));
+    if (piarSinAjustes.length > 0) {
+        alertas.push({
+            tone: 'amber',
+            icon: 'fa-file-lines',
+            msg: `${piarSinAjustes.length} estudiante(s) con PIAR sin ajustes registrados`,
+        });
+    }
+
+    // Pesos no suman 100
+    const pesoTotal = GP.columnasPeriodo.reduce((s, c) => s + (c.porcentaje || 0), 0);
+    if (GP.columnasPeriodo.length > 0 && Math.round(pesoTotal) !== 100) {
+        alertas.push({
+            tone: 'amber',
+            icon: 'fa-percent',
+            msg: `Los pesos de las evaluaciones suman ${pesoTotal.toFixed(0)}% (deberían sumar 100%)`,
+        });
+    }
+
+    // Estudiantes sin ninguna nota registrada en este periodo
+    if (GP.columnasPeriodo.length > 0) {
+        const sinNotas = GP.estudiantes.filter(e =>
+            contarNotas(e.id_estudiante, calsPeriodo) === 0
+        );
+        if (sinNotas.length > 0) {
+            alertas.push({
+                tone: 'amber',
+                icon: 'fa-user-slash',
+                msg: `${sinNotas.length} estudiante(s) sin ninguna nota registrada en el período ${GP.periodo}`,
+            });
+        }
+    }
+
+    const wrap = document.getElementById('alertas-grupo-wrap');
+    const el = document.getElementById('alertas-grupo');
+    if (alertas.length === 0) {
+        wrap.classList.add('hidden');
+        return;
+    }
+    wrap.classList.remove('hidden');
+    const toneClass = {
+        amber: 'bg-amber-50 text-amber-800 border-amber-200',
+        red:   'bg-red-50 text-red-800 border-red-200',
+    };
+    el.innerHTML = alertas.map(a =>
+        `<div class="flex items-start gap-2 px-3 py-2 rounded-lg border ${toneClass[a.tone]} text-sm">
+           <i class="fas ${a.icon} mt-0.5"></i>
+           <span class="flex-1">${a.msg}</span>
+         </div>`
+    ).join('');
+}
+
+cargar();
+</script>
+</body>
+</html>

@@ -4,21 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestionar Grupos - Asistente Pedagógico IA</title>
-    
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <!-- CSS Custom -->
     <link rel="stylesheet" href="css/main.css">
 </head>
 <body class="bg-gray-50">
-    
-    <!-- Layout principal -->
+
     <div class="min-h-screen">
-        
+
         <!-- Header -->
         <header class="bg-white shadow-sm sticky top-0 z-10">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
@@ -32,69 +25,54 @@
                             <p class="text-sm text-gray-600">Gestiona tus grupos de estudiantes</p>
                         </div>
                     </div>
-                    
-                    <button 
-                        onclick="abrirModalNuevoGrupo()"
-                        class="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors flex items-center shadow-lg"
-                    >
-                        <i class="fas fa-plus mr-2"></i>
-                        Nuevo Grupo
+                    <button onclick="abrirModalNuevoGrupo()"
+                        class="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors flex items-center shadow-lg">
+                        <i class="fas fa-plus mr-2"></i>Nuevo Grupo
                     </button>
                 </div>
             </div>
         </header>
-        
+
         <!-- Contenido principal -->
         <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            
+
             <!-- Tabs -->
             <div class="mb-6">
                 <div class="border-b border-gray-200">
                     <nav class="-mb-px flex space-x-8">
-                        <button 
-                            onclick="cambiarTab('grupos')"
-                            id="tab-grupos"
-                            class="tab-button border-b-2 border-blue-600 py-4 px-1 text-sm font-medium text-blue-600"
-                        >
-                            <i class="fas fa-users mr-2"></i>
-                            Grupos
+                        <button onclick="cambiarTab('grupos')" id="tab-grupos"
+                            class="tab-button border-b-2 border-blue-600 py-4 px-1 text-sm font-medium text-blue-600">
+                            <i class="fas fa-users mr-2"></i>Grupos
                         </button>
-                        <button 
-                            onclick="cambiarTab('estudiantes')"
-                            id="tab-estudiantes"
-                            class="tab-button border-b-2 border-transparent py-4 px-1 text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                        >
-                            <i class="fas fa-user-graduate mr-2"></i>
-                            Estudiantes
+                        <button onclick="cambiarTab('estudiantes')" id="tab-estudiantes"
+                            class="tab-button border-b-2 border-transparent py-4 px-1 text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300">
+                            <i class="fas fa-user-graduate mr-2"></i>Estudiantes
+                        </button>
+                        <button onclick="cambiarTab('calificaciones')" id="tab-calificaciones"
+                            class="tab-button border-b-2 border-transparent py-4 px-1 text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300">
+                            <i class="fas fa-star mr-2"></i>Calificaciones
                         </button>
                     </nav>
                 </div>
             </div>
-            
-            <!-- Tab Content: Grupos -->
+
+            <!-- ==================== TAB: GRUPOS ==================== -->
             <div id="content-grupos" class="tab-content">
-                
+
                 <!-- Filtros -->
                 <div class="bg-white rounded-lg shadow p-4 mb-6">
                     <div class="grid md:grid-cols-4 gap-4">
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Buscar</label>
-                            <input 
-                                type="text" 
-                                id="search-grupos"
-                                placeholder="Nombre del grupo..."
+                            <input type="text" id="search-grupos" placeholder="Nombre del grupo..."
                                 class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                oninput="filtrarGrupos()"
-                            >
+                                oninput="filtrarGrupos()">
                         </div>
-                        
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Grado</label>
-                            <select 
-                                id="filter-grado"
+                            <select id="filter-grado"
                                 class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                onchange="filtrarGrupos()"
-                            >
+                                onchange="filtrarGrupos()">
                                 <option value="">Todos</option>
                                 <option value="8°">8°</option>
                                 <option value="9°">9°</option>
@@ -102,27 +80,21 @@
                                 <option value="11°">11°</option>
                             </select>
                         </div>
-                        
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Asignatura</label>
-                            <select 
-                                id="filter-asignatura"
+                            <select id="filter-asignatura"
                                 class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                onchange="filtrarGrupos()"
-                            >
+                                onchange="filtrarGrupos()">
                                 <option value="">Todas</option>
                                 <option value="álgebra">Álgebra</option>
                                 <option value="física">Física</option>
                             </select>
                         </div>
-                        
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Año</label>
-                            <select 
-                                id="filter-año"
+                            <select id="filter-año"
                                 class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                onchange="filtrarGrupos()"
-                            >
+                                onchange="filtrarGrupos()">
                                 <option value="">Todos</option>
                                 <option value="2026" selected>2026</option>
                                 <option value="2025">2025</option>
@@ -130,362 +102,441 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- Grid de grupos -->
                 <div id="grupos-grid" class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <!-- Se llenan dinámicamente -->
                     <div class="col-span-full text-center py-12">
                         <i class="fas fa-spinner fa-spin text-4xl text-gray-400 mb-4"></i>
                         <p class="text-gray-600">Cargando grupos...</p>
                     </div>
                 </div>
-                
+
                 <!-- Mensaje vacío -->
                 <div id="empty-grupos" class="hidden text-center py-12">
                     <i class="fas fa-inbox text-6xl text-gray-300 mb-4"></i>
                     <p class="text-xl text-gray-600 mb-2">No tienes grupos aún</p>
                     <p class="text-gray-500 mb-6">Crea tu primer grupo para comenzar</p>
-                    <button 
-                        onclick="abrirModalNuevoGrupo()"
-                        class="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700"
-                    >
-                        <i class="fas fa-plus mr-2"></i>
-                        Crear Primer Grupo
+                    <button onclick="abrirModalNuevoGrupo()"
+                        class="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700">
+                        <i class="fas fa-plus mr-2"></i>Crear Primer Grupo
                     </button>
                 </div>
             </div>
-            
-            <!-- Tab Content: Estudiantes -->
+
+            <!-- ==================== TAB: ESTUDIANTES ==================== -->
             <div id="content-estudiantes" class="tab-content hidden">
-                
+
                 <!-- Seleccionar grupo -->
                 <div class="bg-white rounded-lg shadow p-4 mb-6">
                     <label class="block text-sm font-medium text-gray-700 mb-2">Selecciona un grupo</label>
-                    <select 
-                        id="select-grupo-estudiantes"
+                    <select id="select-grupo-estudiantes"
                         class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        onchange="cargarEstudiantesGrupo(this.value)"
-                    >
+                        onchange="cargarEstudiantesGrupo(this.value)">
                         <option value="">-- Selecciona un grupo --</option>
                     </select>
                 </div>
-                
+
                 <!-- Tabla de estudiantes -->
                 <div id="estudiantes-container" class="bg-white rounded-lg shadow overflow-hidden hidden">
-                    <div class="p-4 border-b flex justify-between items-center">
+                    <div class="p-4 border-b flex justify-between items-center gap-2 flex-wrap">
                         <h3 class="font-semibold text-lg">Estudiantes</h3>
-                        <button 
-                            onclick="abrirModalNuevoEstudiante()"
-                            class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center"
-                        >
-                            <i class="fas fa-user-plus mr-2"></i>
-                            Agregar Estudiante
-                        </button>
+                        <div class="flex gap-2">
+                            <button onclick="abrirModalImportarCsv()"
+                                class="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 flex items-center">
+                                <i class="fas fa-file-csv mr-2 text-blue-600"></i>Importar CSV
+                            </button>
+                            <button onclick="abrirModalNuevoEstudiante()"
+                                class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center">
+                                <i class="fas fa-user-plus mr-2"></i>Agregar Estudiante
+                            </button>
+                        </div>
                     </div>
-                    
                     <div class="overflow-x-auto">
                         <table class="w-full">
                             <thead class="bg-gray-50">
                                 <tr>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Código/Nombre
-                                    </th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Género
-                                    </th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        PIAR
-                                    </th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Acciones
-                                    </th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Código/Nombre</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Género</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PIAR</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
                                 </tr>
                             </thead>
-                            <tbody id="estudiantes-table-body" class="bg-white divide-y divide-gray-200">
-                                <!-- Se llena dinámicamente -->
-                            </tbody>
+                            <tbody id="estudiantes-table-body" class="bg-white divide-y divide-gray-200"></tbody>
                         </table>
                     </div>
                 </div>
-                
+
                 <!-- Mensaje vacío estudiantes -->
                 <div id="empty-estudiantes" class="text-center py-12">
                     <i class="fas fa-user-graduate text-6xl text-gray-300 mb-4"></i>
                     <p class="text-gray-600">Selecciona un grupo para ver sus estudiantes</p>
                 </div>
             </div>
-            
-        </main>
-    </div>
-    
-    <!-- ============================================ -->
-    <!-- MODAL: NUEVO/EDITAR GRUPO -->
-    <!-- ============================================ -->
-    <div id="modal-grupo" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div class="p-6">
-                <!-- Header -->
-                <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-2xl font-bold text-gray-900" id="modal-grupo-title">Nuevo Grupo</h2>
-                    <button onclick="cerrarModalGrupo()" class="text-gray-400 hover:text-gray-600">
-                        <i class="fas fa-times text-2xl"></i>
-                    </button>
-                </div>
-                
-                <!-- Formulario -->
-                <form id="form-grupo" class="space-y-4">
-                    <input type="hidden" id="grupo-id">
-                    
-                    <!-- Nombre del grupo -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">
-                            Nombre del Grupo <span class="text-red-600">*</span>
-                        </label>
-                        <input 
-                            type="text" 
-                            id="grupo-nombre"
-                            required
-                            placeholder="Ej: 9°A, 10°2 Mañana"
-                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        >
-                    </div>
-                    
-                    <!-- Grado y Asignatura -->
-                    <div class="grid md:grid-cols-2 gap-4">
+
+            <!-- ==================== TAB: CALIFICACIONES ==================== -->
+            <div id="content-calificaciones" class="tab-content hidden">
+
+                <!-- Toolbar: grupo + período + botones -->
+                <div class="bg-white rounded-lg shadow p-4 mb-6">
+                    <div class="grid md:grid-cols-3 gap-4">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">
-                                Grado <span class="text-red-600">*</span>
-                            </label>
-                            <select 
-                                id="grupo-grado"
-                                required
-                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            >
-                                <option value="">Selecciona...</option>
-                                <option value="8°">8°</option>
-                                <option value="9°">9°</option>
-                                <option value="10°">10°</option>
-                                <option value="11°">11°</option>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Grupo</label>
+                            <select id="select-grupo-cal"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                onchange="cargarLibroNotas()">
+                                <option value="">-- Selecciona un grupo --</option>
                             </select>
                         </div>
-                        
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">
-                                Asignatura <span class="text-red-600">*</span>
-                            </label>
-                            <select 
-                                id="grupo-asignatura"
-                                required
-                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            >
-                                <option value="">Selecciona...</option>
-                                <option value="álgebra">Álgebra</option>
-                                <option value="física">Física</option>
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <!-- Año lectivo y Período -->
-                    <div class="grid md:grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">
-                                Año Lectivo <span class="text-red-600">*</span>
-                            </label>
-                            <input 
-                                type="number" 
-                                id="grupo-año"
-                                required
-                                value="2026"
-                                min="2020"
-                                max="2030"
-                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            >
-                        </div>
-                        
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">
-                                Período Actual <span class="text-red-600">*</span>
-                            </label>
-                            <select 
-                                id="grupo-periodo"
-                                required
-                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            >
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Período</label>
+                            <select id="filter-periodo-cal"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                onchange="cargarLibroNotas()">
                                 <option value="1">Período 1</option>
                                 <option value="2">Período 2</option>
                                 <option value="3">Período 3</option>
                                 <option value="4">Período 4</option>
                             </select>
                         </div>
-                    </div>
-                    
-                    <!-- Cantidad de estudiantes -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">
-                            Cantidad de Estudiantes <span class="text-red-600">*</span>
-                        </label>
-                        <input 
-                            type="number" 
-                            id="grupo-cantidad"
-                            required
-                            min="1"
-                            max="50"
-                            placeholder="Ej: 32"
-                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        >
-                        <p class="text-xs text-gray-500 mt-1">Puedes agregar estudiantes individuales después</p>
-                    </div>
-                    
-                    <!-- Recursos disponibles -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">
-                            Recursos Disponibles
-                        </label>
-                        <div class="grid grid-cols-2 gap-3">
-                            <label class="flex items-center">
-                                <input type="checkbox" id="recurso-laboratorio" class="mr-2 h-4 w-4 text-blue-600 rounded">
-                                <span class="text-sm">Laboratorio de Física</span>
-                            </label>
-                            <label class="flex items-center">
-                                <input type="checkbox" id="recurso-informatica" class="mr-2 h-4 w-4 text-blue-600 rounded">
-                                <span class="text-sm">Sala de Informática</span>
-                            </label>
-                            <label class="flex items-center">
-                                <input type="checkbox" id="recurso-internet" class="mr-2 h-4 w-4 text-blue-600 rounded">
-                                <span class="text-sm">Internet Estable</span>
-                            </label>
-                            <label class="flex items-center">
-                                <input type="checkbox" id="recurso-proyector" class="mr-2 h-4 w-4 text-blue-600 rounded">
-                                <span class="text-sm">Proyector</span>
-                            </label>
+                        <div class="flex items-end">
+                            <button onclick="abrirModalColumna()"
+                                class="w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center justify-center">
+                                <i class="fas fa-plus mr-2"></i>Agregar Evaluación
+                            </button>
                         </div>
                     </div>
-                    
-                    <!-- Botones -->
-                    <div class="flex justify-end space-x-3 pt-4">
-                        <button 
-                            type="button"
-                            onclick="cerrarModalGrupo()"
-                            class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-                        >
-                            Cancelar
+                </div>
+
+                <!-- Libro Excel de notas -->
+                <div id="cal-container" class="hidden">
+                    <div class="bg-white rounded-lg shadow overflow-hidden">
+                        <div class="p-4 border-b flex justify-between items-center">
+                            <h3 class="font-semibold text-lg" id="cal-titulo">Libro de Notas</h3>
+                            <span class="text-sm text-gray-500 font-medium" id="cal-promedio-general"></span>
+                        </div>
+                        <!-- Tabla scrollable horizontal -->
+                        <div class="overflow-x-auto">
+                            <div id="libro-notas-wrapper"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Empty state -->
+                <div id="empty-calificaciones" class="text-center py-12">
+                    <i class="fas fa-table text-6xl text-gray-300 mb-4"></i>
+                    <p class="text-xl text-gray-600 mb-2">Libro de calificaciones</p>
+                    <p class="text-gray-500">Selecciona un grupo para ver y registrar las notas</p>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- ================================================== -->
+    <!-- MODAL: NUEVO/EDITAR GRUPO (2 pasos)                -->
+    <!-- ================================================== -->
+    <div id="modal-grupo" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div class="p-6">
+
+                <!-- Header -->
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-bold text-gray-900" id="modal-grupo-title">Nuevo Grupo</h2>
+                    <button onclick="cerrarModalGrupo()" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times text-2xl"></i>
+                    </button>
+                </div>
+
+                <!-- Indicador de pasos (solo para nuevo grupo) -->
+                <div id="modal-grupo-progress" class="hidden mb-6">
+                    <div class="flex items-center justify-center">
+                        <div class="flex items-center">
+                            <div id="prog-step1-circle"
+                                class="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold">1</div>
+                            <span id="prog-step1-label" class="ml-2 text-sm font-medium text-blue-600">Datos del Grupo</span>
+                        </div>
+                        <div class="w-12 h-0.5 bg-gray-300 mx-4" id="prog-line"></div>
+                        <div class="flex items-center">
+                            <div id="prog-step2-circle"
+                                class="w-8 h-8 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center text-sm font-bold">2</div>
+                            <span id="prog-step2-label" class="ml-2 text-sm font-medium text-gray-500">Agregar Estudiantes</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ===== PASO 1: Datos del grupo ===== -->
+                <div id="modal-step-1">
+                    <form id="form-grupo" class="space-y-4">
+                        <input type="hidden" id="grupo-id">
+
+                        <!-- Nombre -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Nombre del Grupo <span class="text-red-600">*</span>
+                            </label>
+                            <input type="text" id="grupo-nombre" required
+                                placeholder="Ej: 9°A, 10°2 Mañana"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        </div>
+
+                        <!-- Grado y Asignatura -->
+                        <div class="grid md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Grado <span class="text-red-600">*</span>
+                                </label>
+                                <select id="grupo-grado" required
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                    <option value="">Selecciona...</option>
+                                    <option value="6°">6°</option>
+                                    <option value="7°">7°</option>
+                                    <option value="8°">8°</option>
+                                    <option value="9°">9°</option>
+                                    <option value="10°">10°</option>
+                                    <option value="11°">11°</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Asignatura <span class="text-red-600">*</span>
+                                </label>
+                                <select id="grupo-asignatura" required
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                    <option value="">Selecciona...</option>
+                                    <option value="álgebra">Álgebra</option>
+                                    <option value="física">Física</option>
+                                    <option value="geometría">Geometría</option>
+                                    <option value="cálculo">Cálculo</option>
+                                    <option value="estadística">Estadística</option>
+                                    <option value="matemáticas">Matemáticas</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Año lectivo y Período -->
+                        <div class="grid md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Año Lectivo <span class="text-red-600">*</span>
+                                </label>
+                                <input type="number" id="grupo-año" required value="2026" min="2020" max="2030"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Período Actual <span class="text-red-600">*</span>
+                                </label>
+                                <select id="grupo-periodo" required
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                    <option value="1">Período 1</option>
+                                    <option value="2">Período 2</option>
+                                    <option value="3">Período 3</option>
+                                    <option value="4">Período 4</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Cantidad de estudiantes -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Cantidad de Estudiantes <span class="text-red-600">*</span>
+                            </label>
+                            <input type="number" id="grupo-cantidad" required min="1" max="50" placeholder="Ej: 32"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <p class="text-xs text-gray-500 mt-1">Podrás agregar los datos individuales en el siguiente paso</p>
+                        </div>
+
+                        <!-- Recursos disponibles -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Recursos Disponibles</label>
+                            <div class="grid grid-cols-2 gap-3">
+                                <label class="flex items-center">
+                                    <input type="checkbox" id="recurso-laboratorio" class="mr-2 h-4 w-4 text-blue-600 rounded">
+                                    <span class="text-sm">Laboratorio de Física</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" id="recurso-informatica" class="mr-2 h-4 w-4 text-blue-600 rounded">
+                                    <span class="text-sm">Sala de Informática</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" id="recurso-internet" class="mr-2 h-4 w-4 text-blue-600 rounded">
+                                    <span class="text-sm">Internet Estable</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" id="recurso-proyector" class="mr-2 h-4 w-4 text-blue-600 rounded">
+                                    <span class="text-sm">Proyector / Video Beam</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" id="recurso-tablero" class="mr-2 h-4 w-4 text-blue-600 rounded">
+                                    <span class="text-sm">Tablero y Marcadores</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" id="recurso-impresiones" class="mr-2 h-4 w-4 text-blue-600 rounded">
+                                    <span class="text-sm">Algunas Impresiones</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Botones paso 1 -->
+                        <div class="flex justify-end space-x-3 pt-4">
+                            <button type="button" onclick="cerrarModalGrupo()"
+                                class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                                Cancelar
+                            </button>
+                            <button type="submit" id="btn-guardar-grupo"
+                                class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center">
+                                <span id="btn-guardar-text">Crear Grupo</span>
+                                <i id="btn-guardar-spinner" class="fas fa-spinner fa-spin ml-2 hidden"></i>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- ===== PASO 2: Agregar estudiantes ===== -->
+                <div id="modal-step-2" class="hidden">
+
+                    <!-- Banner de éxito -->
+                    <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-5 flex items-center">
+                        <i class="fas fa-check-circle text-green-500 text-2xl mr-3"></i>
+                        <div>
+                            <p class="font-semibold text-green-800">¡Grupo creado exitosamente!</p>
+                            <p class="text-sm text-green-600">Ahora agrega los estudiantes. Puedes omitir esto y hacerlo luego.</p>
+                        </div>
+                    </div>
+
+                    <!-- Lista de estudiantes ya agregados -->
+                    <div id="est-creados-lista" class="mb-3 max-h-36 overflow-y-auto space-y-1"></div>
+
+                    <!-- Mini formulario estudiante -->
+                    <form id="form-est-rapido" class="space-y-3 bg-gray-50 rounded-lg p-4 mb-4">
+                        <p class="text-sm font-semibold text-gray-700">
+                            <i class="fas fa-user-plus mr-1 text-blue-500"></i> Agregar estudiante:
+                        </p>
+                        <div class="grid md:grid-cols-2 gap-3">
+                            <input type="text" id="est-rapido-codigo"
+                                placeholder="Nombre o código del estudiante"
+                                class="px-3 py-2 border border-gray-300 rounded-lg text-sm w-full focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <select id="est-rapido-genero"
+                                class="px-3 py-2 border border-gray-300 rounded-lg text-sm w-full focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                <option value="">Género (opcional)</option>
+                                <option value="masculino">Masculino</option>
+                                <option value="femenino">Femenino</option>
+                                <option value="otro">Otro</option>
+                            </select>
+                        </div>
+                        <label class="flex items-center cursor-pointer">
+                            <input type="checkbox" id="est-rapido-piar" class="mr-2 h-4 w-4 text-yellow-500 rounded"
+                                onchange="togglePiarRapido()">
+                            <span class="text-sm text-gray-700">Tiene PIAR (Plan Individual de Ajustes Razonables)</span>
+                        </label>
+                        <!-- Campos PIAR rápido -->
+                        <div id="piar-rapido-fields" class="hidden space-y-2 pl-4 border-l-2 border-yellow-400">
+                            <input type="text" id="est-rapido-diagnostico"
+                                placeholder="Diagnóstico (Ej: Dislexia, TEA, Discapacidad visual...)"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <textarea id="est-rapido-ajustes" rows="2"
+                                placeholder="Ajustes necesarios (Ej: Tiempo adicional 50%, evaluación oral...)"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"></textarea>
+                        </div>
+                        <button type="submit"
+                            class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 text-sm flex items-center justify-center">
+                            <i class="fas fa-user-plus mr-2"></i>Agregar Estudiante
                         </button>
-                        <button 
-                            type="submit"
-                            id="btn-guardar-grupo"
-                            class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center"
-                        >
-                            <span id="btn-guardar-text">Crear Grupo</span>
-                            <i id="btn-guardar-spinner" class="fas fa-spinner fa-spin ml-2 hidden"></i>
+                    </form>
+
+                    <!-- Estado de inicialización IA -->
+                    <div id="ia-init-status" class="hidden bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 flex items-center">
+                        <i class="fas fa-robot text-blue-500 mr-2 text-lg"></i>
+                        <span class="text-sm text-blue-700" id="ia-init-text">
+                            Configurando asistente IA para este grupo...
+                        </span>
+                    </div>
+
+                    <!-- Botón finalizar -->
+                    <div class="flex justify-between items-center pt-4 border-t">
+                        <p class="text-sm text-gray-500" id="est-counter">0 estudiantes agregados</p>
+                        <button type="button" onclick="finalizarCreacionGrupo()"
+                            class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center">
+                            <i class="fas fa-check mr-2"></i>Finalizar
                         </button>
                     </div>
-                </form>
+                </div>
+
             </div>
         </div>
     </div>
-    
-    <!-- ============================================ -->
-    <!-- MODAL: NUEVO/EDITAR ESTUDIANTE -->
-    <!-- ============================================ -->
+
+    <!-- ================================================== -->
+    <!-- MODAL: NUEVO/EDITAR ESTUDIANTE                     -->
+    <!-- ================================================== -->
     <div id="modal-estudiante" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
         <div class="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
             <div class="p-6">
-                <!-- Header -->
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="text-2xl font-bold text-gray-900" id="modal-estudiante-title">Nuevo Estudiante</h2>
                     <button onclick="cerrarModalEstudiante()" class="text-gray-400 hover:text-gray-600">
                         <i class="fas fa-times text-2xl"></i>
                     </button>
                 </div>
-                
-                <!-- Formulario -->
                 <form id="form-estudiante" class="space-y-4">
                     <input type="hidden" id="estudiante-id">
                     <input type="hidden" id="estudiante-grupo-id">
-                    
-                    <!-- Código/Nombre -->
+
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">
                             Código o Nombre del Estudiante <span class="text-red-600">*</span>
                         </label>
-                        <input 
-                            type="text" 
-                            id="estudiante-codigo"
-                            required
-                            placeholder="Ej: EST-001, Estudiante A"
-                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        >
+                        <input type="text" id="estudiante-codigo" required
+                            placeholder="Ej: EST-001, Juan P."
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                         <p class="text-xs text-gray-500 mt-1">
-                            Por privacidad, usa códigos o seudónimos en vez de nombres reales
+                            Por privacidad, puedes usar códigos o iniciales en vez de nombres completos
                         </p>
                     </div>
-                    
-                    <!-- Género -->
+
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Género</label>
-                        <select 
-                            id="estudiante-genero"
-                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        >
+                        <select id="estudiante-genero"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                             <option value="">No especifica</option>
                             <option value="masculino">Masculino</option>
                             <option value="femenino">Femenino</option>
                             <option value="otro">Otro</option>
                         </select>
                     </div>
-                    
-                    <!-- Tiene PIAR -->
+
                     <div>
-                        <label class="flex items-center">
-                            <input 
-                                type="checkbox" 
-                                id="estudiante-piar"
-                                class="mr-2 h-4 w-4 text-blue-600 rounded"
-                                onchange="togglePiarFields()"
-                            >
+                        <label class="flex items-center cursor-pointer">
+                            <input type="checkbox" id="estudiante-piar" class="mr-2 h-4 w-4 text-blue-600 rounded"
+                                onchange="togglePiarFields()">
                             <span class="text-sm font-medium text-gray-700">
                                 Este estudiante tiene PIAR (Plan Individual de Ajustes Razonables)
                             </span>
                         </label>
                     </div>
-                    
-                    <!-- Campos PIAR (ocultos por defecto) -->
+
                     <div id="piar-fields" class="hidden space-y-3 pl-6 border-l-2 border-yellow-400">
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Diagnóstico</label>
-                            <input 
-                                type="text" 
-                                id="estudiante-diagnostico"
+                            <input type="text" id="estudiante-diagnostico"
                                 placeholder="Ej: Dislexia, TEA, Discapacidad visual"
-                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            >
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                         </div>
-                        
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Ajustes Necesarios</label>
-                            <textarea 
-                                id="estudiante-ajustes"
-                                rows="3"
+                            <textarea id="estudiante-ajustes" rows="3"
                                 placeholder="Ej: Tiempo adicional 50%, Evaluación oral, Uso de calculadora..."
-                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            ></textarea>
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"></textarea>
                         </div>
                     </div>
-                    
-                    <!-- Botones -->
+
                     <div class="flex justify-end space-x-3 pt-4">
-                        <button 
-                            type="button"
-                            onclick="cerrarModalEstudiante()"
-                            class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-                        >
+                        <button type="button" onclick="cerrarModalEstudiante()"
+                            class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
                             Cancelar
                         </button>
-                        <button 
-                            type="submit"
-                            id="btn-guardar-estudiante"
-                            class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center"
-                        >
+                        <button type="submit" id="btn-guardar-estudiante"
+                            class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center">
                             <span id="btn-guardar-est-text">Agregar Estudiante</span>
                             <i id="btn-guardar-est-spinner" class="fas fa-spinner fa-spin ml-2 hidden"></i>
                         </button>
@@ -494,26 +545,188 @@
             </div>
         </div>
     </div>
-    
+
+    <!-- ================================================== -->
+    <!-- MODAL: AGREGAR / EDITAR COLUMNA DE EVALUACIÓN      -->
+    <!-- ================================================== -->
+    <div id="modal-columna" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-bold text-gray-900" id="modal-col-title">Agregar Evaluación</h2>
+                    <button onclick="cerrarModalColumna()" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                <form id="form-columna" class="space-y-4">
+                    <input type="hidden" id="col-id">
+
+                    <!-- Nombre -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Nombre de la Evaluación <span class="text-red-600">*</span>
+                        </label>
+                        <input type="text" id="col-nombre" required
+                            placeholder="Ej: Taller 1, Parcial Unidad 2, Quiz de Fracciones..."
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                    </div>
+
+                    <!-- Tipo -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Tipo</label>
+                        <select id="col-tipo"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                            <option value="taller">Taller</option>
+                            <option value="parcial">Parcial</option>
+                            <option value="quiz">Quiz / Prueba corta</option>
+                            <option value="examen">Examen Final</option>
+                            <option value="tarea">Tarea</option>
+                            <option value="proyecto">Proyecto</option>
+                            <option value="oral">Evaluación Oral</option>
+                            <option value="otro">Otro</option>
+                        </select>
+                    </div>
+
+                    <!-- Porcentaje -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Porcentaje sobre la nota final (%)
+                        </label>
+                        <input type="number" id="col-porcentaje" min="0" max="100" step="1"
+                            placeholder="Ej: 20"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        <p class="text-xs text-gray-500 mt-1">Deja en blanco si no deseas ponderar</p>
+                    </div>
+
+                    <div class="flex justify-end space-x-3 pt-4">
+                        <button type="button" onclick="cerrarModalColumna()"
+                            class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                            Cancelar
+                        </button>
+                        <button type="submit" id="btn-guardar-col"
+                            class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center">
+                            <span id="btn-col-text">Guardar</span>
+                            <i id="btn-col-spinner" class="fas fa-spinner fa-spin ml-2 hidden"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================================================== -->
+    <!-- MODAL: IMPORTAR ESTUDIANTES DESDE CSV              -->
+    <!-- ================================================== -->
+    <div id="modal-importar-csv" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[92vh] overflow-y-auto">
+            <div class="p-6">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-900">Importar estudiantes desde CSV</h2>
+                        <p class="text-sm text-gray-500 mt-1">
+                            Upsert por <code class="bg-gray-100 px-1 rounded">codigo_estudiante</code> dentro del grupo seleccionado.
+                        </p>
+                    </div>
+                    <button onclick="cerrarModalImportarCsv()" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times text-2xl"></i>
+                    </button>
+                </div>
+
+                <!-- Formato esperado -->
+                <div class="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-4">
+                    <p class="text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Formato esperado</p>
+                    <p class="font-mono text-xs text-gray-700 bg-white border border-gray-200 rounded px-2 py-1.5">
+                        codigo_estudiante,genero,tiene_piar,diagnostico,ajustes
+                    </p>
+                    <p class="text-xs text-gray-500 mt-2">
+                        Sólo <strong>codigo_estudiante</strong> es obligatorio. <br>
+                        <code>tiene_piar</code> acepta: 1/0, true/false, sí/no. Los demás pueden ir vacíos.
+                    </p>
+                </div>
+
+                <!-- Selector de archivo -->
+                <label class="flex items-center gap-3 px-4 py-3 border-2 border-dashed border-gray-300 rounded-xl bg-gray-50 hover:bg-white cursor-pointer">
+                    <input id="csv-file-input" type="file" accept=".csv" class="hidden" onchange="onCsvSeleccionado(event)">
+                    <i class="fas fa-file-csv text-2xl text-blue-500"></i>
+                    <span id="csv-file-label" class="text-sm font-semibold text-gray-700">Clic para seleccionar archivo .csv</span>
+                </label>
+
+                <!-- Errores de parseo -->
+                <div id="csv-parse-error" class="hidden mt-4 bg-red-50 border border-red-200 text-red-700 rounded-lg px-3 py-2 text-sm"></div>
+
+                <!-- Preview -->
+                <div id="csv-preview" class="hidden mt-4">
+                    <div class="flex items-center justify-between text-sm mb-2">
+                        <div>
+                            <span id="csv-preview-total" class="font-bold">0</span> fila(s):
+                            <span id="csv-preview-ok" class="text-emerald-700 font-semibold ml-2">✅ 0 válidas</span>
+                            <span id="csv-preview-bad" class="text-red-700 font-semibold ml-2 hidden">❌ 0 con error</span>
+                        </div>
+                    </div>
+                    <div class="border border-gray-200 rounded-lg overflow-hidden">
+                        <div class="max-h-72 overflow-y-auto">
+                            <table class="w-full text-sm">
+                                <thead class="bg-gray-50 text-left text-[11px] uppercase tracking-wider text-gray-500 sticky top-0">
+                                    <tr>
+                                        <th class="px-3 py-2">#</th>
+                                        <th class="px-3 py-2">Código</th>
+                                        <th class="px-3 py-2">Género</th>
+                                        <th class="px-3 py-2">PIAR</th>
+                                        <th class="px-3 py-2">Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="csv-preview-body" class="divide-y divide-gray-100"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Resultado post-import -->
+                <div id="csv-result" class="hidden mt-4 border border-gray-200 rounded-lg p-4 bg-gray-50">
+                    <div class="flex items-center gap-3 mb-3">
+                        <i id="csv-result-icon" class="fas fa-check-circle text-2xl text-emerald-600"></i>
+                        <div>
+                            <p id="csv-result-title" class="font-bold text-gray-900">Importación completada</p>
+                            <p id="csv-result-sub" class="text-sm text-gray-600"></p>
+                        </div>
+                    </div>
+                    <div id="csv-result-errores" class="hidden mt-2 max-h-40 overflow-y-auto space-y-1 text-xs text-red-700"></div>
+                </div>
+
+                <div class="flex justify-end gap-2 mt-6">
+                    <button onclick="cerrarModalImportarCsv()"
+                        class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                        Cancelar
+                    </button>
+                    <button id="btn-confirmar-import" onclick="confirmarImportCsv()" disabled
+                        class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2">
+                        <span id="btn-confirmar-import-text">Importar</span>
+                        <i id="btn-confirmar-import-spinner" class="fas fa-spinner fa-spin hidden"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Scripts -->
     <script src="js/config.js"></script>
     <script src="js/api.js"></script>
     <script src="js/auth.js"></script>
-    
+
     <script>
-        // Verificar autenticación
-        if (!api.getToken()) {
-            window.location.href = 'login.html';
-        }
-        
-        // Variables globales
+        // =========================================================
+        // ESTADO GLOBAL
+        // =========================================================
         let grupos = [];
-        let grupoSeleccionado = null;
-        
-        // ==========================================
-        // CARGAR DATOS
-        // ==========================================
-        
+        let grupoSeleccionado = null;       // para tab Estudiantes
+        let grupoSeleccionadoCal = null;    // para tab Calificaciones
+        let estudiantesActuales = [];       // estudiantes del grupo en cal
+        let nuevaGrupoId = null;            // ID del grupo recién creado (step 2)
+        let estudiantesAgregados = 0;       // contador step 2
+
+        // =========================================================
+        // CARGAR GRUPOS
+        // =========================================================
         async function cargarGrupos() {
             try {
                 grupos = await api.getGrupos();
@@ -521,211 +734,272 @@
                 poblarSelectGrupos();
             } catch (error) {
                 console.error('Error cargando grupos:', error);
-                alert('Error al cargar grupos');
             }
         }
-        
-        // ==========================================
+
+        // =========================================================
         // RENDERIZAR GRUPOS
-        // ==========================================
-        
+        // =========================================================
         function renderGrupos() {
-            const grid = document.getElementById('grupos-grid');
+            const grid  = document.getElementById('grupos-grid');
             const empty = document.getElementById('empty-grupos');
-            
+
             if (grupos.length === 0) {
                 grid.classList.add('hidden');
                 empty.classList.remove('hidden');
                 return;
             }
-            
             grid.classList.remove('hidden');
             empty.classList.add('hidden');
-            
-            grid.innerHTML = grupos.map(grupo => `
+
+            const colorMap = {
+                'álgebra':    { bg: 'blue',   icon: 'square-root-alt' },
+                'física':     { bg: 'green',  icon: 'flask' },
+                'geometría':  { bg: 'purple', icon: 'draw-polygon' },
+                'cálculo':    { bg: 'red',    icon: 'infinity' },
+                'estadística':{ bg: 'yellow', icon: 'chart-bar' },
+                'matemáticas':{ bg: 'indigo', icon: 'calculator' },
+            };
+
+            grid.innerHTML = grupos.map(grupo => {
+                const c = colorMap[grupo.asignatura] || { bg: 'gray', icon: 'book' };
+                const recursos = grupo.recursos_disponibles || [];
+                const recursosStr = Array.isArray(recursos) && recursos.length
+                    ? recursos.slice(0,3).join(' · ') + (recursos.length > 3 ? '…' : '')
+                    : 'Sin recursos especificados';
+
+                return `
                 <div class="bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow overflow-hidden">
                     <div class="p-6">
                         <div class="flex items-center justify-between mb-4">
                             <div class="flex items-center">
-                                <div class="w-12 h-12 bg-${grupo.asignatura === 'álgebra' ? 'blue' : 'green'}-100 rounded-lg flex items-center justify-center mr-3">
-                                    <i class="fas fa-${grupo.asignatura === 'álgebra' ? 'square-root-alt' : 'flask'} text-2xl text-${grupo.asignatura === 'álgebra' ? 'blue' : 'green'}-600"></i>
+                                <div class="w-12 h-12 bg-${c.bg}-100 rounded-lg flex items-center justify-center mr-3">
+                                    <i class="fas fa-${c.icon} text-2xl text-${c.bg}-600"></i>
                                 </div>
                                 <div>
                                     <h3 class="font-bold text-lg">${grupo.nombre_grupo}</h3>
-                                    <p class="text-sm text-gray-600">${grupo.grado} • ${grupo.asignatura}</p>
+                                    <p class="text-sm text-gray-600">${grupo.grado} · ${grupo.asignatura}</p>
                                 </div>
                             </div>
                         </div>
-                        
-                        <div class="space-y-2 mb-4">
-                            <div class="flex items-center text-sm text-gray-600">
+                        <div class="space-y-1 mb-4 text-sm text-gray-600">
+                            <div class="flex items-center">
                                 <i class="fas fa-users w-5"></i>
                                 <span>${grupo.cantidad_estudiantes} estudiantes</span>
                             </div>
-                            <div class="flex items-center text-sm text-gray-600">
+                            <div class="flex items-center">
                                 <i class="fas fa-calendar w-5"></i>
-                                <span>${grupo.año_lectivo} • Período ${grupo.periodo_actual}</span>
+                                <span>${grupo.anio_lectivo} · Período ${grupo.periodo_actual}</span>
+                            </div>
+                            <div class="flex items-start">
+                                <i class="fas fa-box w-5 mt-0.5"></i>
+                                <span class="text-xs">${recursosStr}</span>
                             </div>
                         </div>
-                        
                         <div class="flex space-x-2">
-                            <a href="chat.html?id=${grupo.id_grupo}" class="flex-1 bg-blue-600 text-white py-2 rounded-lg text-center hover:bg-blue-700 transition-colors">
-                                <i class="fas fa-comments mr-1"></i>
-                                Chat
+                            <a href="chat.html?id=${grupo.id_grupo}"
+                                class="flex-1 bg-blue-600 text-white py-2 rounded-lg text-center hover:bg-blue-700 transition-colors text-sm">
+                                <i class="fas fa-comments mr-1"></i>Chat IA
                             </a>
-                            <button onclick="editarGrupo('${grupo.id_grupo}')" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+                            <button onclick="editarGrupo('${grupo.id_grupo}')"
+                                class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50" title="Editar">
                                 <i class="fas fa-edit"></i>
                             </button>
-                            <button onclick="eliminarGrupo('${grupo.id_grupo}', '${grupo.nombre_grupo}')" class="px-4 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50">
+                            <button onclick="eliminarGrupo('${grupo.id_grupo}', '${grupo.nombre_grupo}')"
+                                class="px-4 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50" title="Eliminar">
                                 <i class="fas fa-trash"></i>
                             </button>
                         </div>
                     </div>
-                </div>
-            `).join('');
+                </div>`;
+            }).join('');
         }
-        
-        // ==========================================
+
+        // =========================================================
         // FILTRAR GRUPOS
-        // ==========================================
-        
+        // =========================================================
         function filtrarGrupos() {
-            const search = document.getElementById('search-grupos').value.toLowerCase();
-            const grado = document.getElementById('filter-grado').value;
+            const search     = document.getElementById('search-grupos').value.toLowerCase();
+            const grado      = document.getElementById('filter-grado').value;
             const asignatura = document.getElementById('filter-asignatura').value;
-            const año = document.getElementById('filter-año').value;
-            
-            const gruposFiltrados = grupos.filter(grupo => {
-                return (
-                    grupo.nombre_grupo.toLowerCase().includes(search) &&
-                    (grado === '' || grupo.grado === grado) &&
-                    (asignatura === '' || grupo.asignatura === asignatura) &&
-                    (año === '' || grupo.año_lectivo.toString() === año)
-                );
-            });
-            
+            const año        = document.getElementById('filter-año').value;
+
+            const filtrados = grupos.filter(g =>
+                g.nombre_grupo.toLowerCase().includes(search) &&
+                (grado      === '' || g.grado      === grado) &&
+                (asignatura === '' || g.asignatura === asignatura) &&
+                (año        === '' || g.anio_lectivo.toString() === año)
+            );
+
             const grid = document.getElementById('grupos-grid');
-            
-            if (gruposFiltrados.length === 0) {
-                grid.innerHTML = `
-                    <div class="col-span-full text-center py-12">
-                        <i class="fas fa-search text-6xl text-gray-300 mb-4"></i>
-                        <p class="text-gray-600">No se encontraron grupos con esos filtros</p>
-                    </div>
-                `;
+            if (filtrados.length === 0) {
+                grid.innerHTML = `<div class="col-span-full text-center py-12">
+                    <i class="fas fa-search text-6xl text-gray-300 mb-4"></i>
+                    <p class="text-gray-600">No se encontraron grupos con esos filtros</p>
+                </div>`;
             } else {
-                // Renderizar solo los filtrados (temporal)
-                const gruposOriginales = grupos;
-                grupos = gruposFiltrados;
+                const orig = grupos;
+                grupos = filtrados;
                 renderGrupos();
-                grupos = gruposOriginales;
+                grupos = orig;
             }
         }
-        
-        // ==========================================
+
+        // =========================================================
         // TABS
-        // ==========================================
-        
+        // =========================================================
         function cambiarTab(tab) {
-            // Actualizar botones
             document.querySelectorAll('.tab-button').forEach(btn => {
                 btn.classList.remove('border-blue-600', 'text-blue-600');
                 btn.classList.add('border-transparent', 'text-gray-500');
             });
-            
             document.getElementById(`tab-${tab}`).classList.add('border-blue-600', 'text-blue-600');
             document.getElementById(`tab-${tab}`).classList.remove('border-transparent', 'text-gray-500');
-            
-            // Mostrar contenido
-            document.querySelectorAll('.tab-content').forEach(content => {
-                content.classList.add('hidden');
-            });
-            
+
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
             document.getElementById(`content-${tab}`).classList.remove('hidden');
+
+            // Poblar selectores de calificaciones cuando se abre ese tab
+            if (tab === 'calificaciones') {
+                poblarSelectCalificaciones();
+            }
         }
-        
-        // ==========================================
-        // MODAL GRUPO
-        // ==========================================
-        
+
+        // =========================================================
+        // POBLAR SELECTS
+        // =========================================================
+        function poblarSelectGrupos() {
+            const opts = '<option value="">-- Selecciona un grupo --</option>' +
+                grupos.map(g => `<option value="${g.id_grupo}">${g.nombre_grupo} (${g.grado} ${g.asignatura})</option>`).join('');
+            document.getElementById('select-grupo-estudiantes').innerHTML = opts;
+        }
+
+        function poblarSelectCalificaciones() {
+            const opts = '<option value="">-- Selecciona un grupo --</option>' +
+                grupos.map(g => `<option value="${g.id_grupo}">${g.nombre_grupo} (${g.grado} ${g.asignatura})</option>`).join('');
+            document.getElementById('select-grupo-cal').innerHTML = opts;
+        }
+
+        // =========================================================
+        // MODAL GRUPO — apertura / cierre
+        // =========================================================
         function abrirModalNuevoGrupo() {
             document.getElementById('modal-grupo-title').textContent = 'Nuevo Grupo';
             document.getElementById('form-grupo').reset();
             document.getElementById('grupo-id').value = '';
             document.getElementById('btn-guardar-text').textContent = 'Crear Grupo';
+            document.getElementById('modal-grupo-progress').classList.remove('hidden');
+            document.getElementById('modal-step-1').classList.remove('hidden');
+            document.getElementById('modal-step-2').classList.add('hidden');
+            // Resetear indicador de pasos
+            document.getElementById('prog-step1-circle').className = 'w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold';
+            document.getElementById('prog-step1-label').className = 'ml-2 text-sm font-medium text-blue-600';
+            document.getElementById('prog-step2-circle').className = 'w-8 h-8 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center text-sm font-bold';
+            document.getElementById('prog-step2-label').className = 'ml-2 text-sm font-medium text-gray-500';
+            nuevaGrupoId = null;
+            estudiantesAgregados = 0;
             document.getElementById('modal-grupo').classList.remove('hidden');
         }
-        
+
         function cerrarModalGrupo() {
             document.getElementById('modal-grupo').classList.add('hidden');
+            nuevaGrupoId = null;
         }
-        
+
+        // Editar grupo: solo paso 1, sin indicador de pasos
         async function editarGrupo(grupoId) {
             try {
                 const grupo = await api.getGrupo(grupoId);
-                
+
                 document.getElementById('modal-grupo-title').textContent = 'Editar Grupo';
-                document.getElementById('grupo-id').value = grupo.id_grupo;
-                document.getElementById('grupo-nombre').value = grupo.nombre_grupo;
-                document.getElementById('grupo-grado').value = grupo.grado;
+                document.getElementById('grupo-id').value       = grupo.id_grupo;
+                document.getElementById('grupo-nombre').value   = grupo.nombre_grupo;
+                document.getElementById('grupo-grado').value    = grupo.grado;
                 document.getElementById('grupo-asignatura').value = grupo.asignatura;
-                document.getElementById('grupo-año').value = grupo.año_lectivo;
-                document.getElementById('grupo-periodo').value = grupo.periodo_actual;
+                document.getElementById('grupo-año').value      = grupo.anio_lectivo;
+                document.getElementById('grupo-periodo').value  = grupo.periodo_actual;
                 document.getElementById('grupo-cantidad').value = grupo.cantidad_estudiantes;
-                
-                // Recursos
-                if (grupo.recursos_disponibles) {
-                    document.getElementById('recurso-laboratorio').checked = grupo.recursos_disponibles.laboratorio_fisica || false;
-                    document.getElementById('recurso-informatica').checked = grupo.recursos_disponibles.sala_informatica || false;
-                    document.getElementById('recurso-internet').checked = grupo.recursos_disponibles.internet_estable || false;
-                    document.getElementById('recurso-proyector').checked = grupo.recursos_disponibles.proyector || false;
-                }
-                
+
+                // Recursos como lista de strings
+                const recursos = Array.isArray(grupo.recursos_disponibles) ? grupo.recursos_disponibles : [];
+                document.getElementById('recurso-laboratorio').checked  = recursos.includes('Laboratorio de Física');
+                document.getElementById('recurso-informatica').checked  = recursos.includes('Sala de Informática');
+                document.getElementById('recurso-internet').checked     = recursos.includes('Internet Estable');
+                document.getElementById('recurso-proyector').checked    = recursos.includes('Proyector / Video Beam');
+                document.getElementById('recurso-tablero').checked      = recursos.includes('Tablero y Marcadores');
+                document.getElementById('recurso-impresiones').checked  = recursos.includes('Algunas Impresiones');
+
                 document.getElementById('btn-guardar-text').textContent = 'Guardar Cambios';
+                document.getElementById('modal-grupo-progress').classList.add('hidden');
+                document.getElementById('modal-step-1').classList.remove('hidden');
+                document.getElementById('modal-step-2').classList.add('hidden');
                 document.getElementById('modal-grupo').classList.remove('hidden');
-                
+
             } catch (error) {
                 alert('Error al cargar datos del grupo');
             }
         }
-        
-        // Enviar formulario grupo
+
+        // =========================================================
+        // SUBMIT FORMULARIO GRUPO
+        // =========================================================
         document.getElementById('form-grupo').addEventListener('submit', async (e) => {
             e.preventDefault();
-            
+
             const grupoId = document.getElementById('grupo-id').value;
+
+            // Construir lista de recursos como strings
+            const recursos = [];
+            if (document.getElementById('recurso-laboratorio').checked)  recursos.push('Laboratorio de Física');
+            if (document.getElementById('recurso-informatica').checked)  recursos.push('Sala de Informática');
+            if (document.getElementById('recurso-internet').checked)     recursos.push('Internet Estable');
+            if (document.getElementById('recurso-proyector').checked)    recursos.push('Proyector / Video Beam');
+            if (document.getElementById('recurso-tablero').checked)      recursos.push('Tablero y Marcadores');
+            if (document.getElementById('recurso-impresiones').checked)  recursos.push('Algunas Impresiones');
+
             const data = {
-                nombre_grupo: document.getElementById('grupo-nombre').value,
-                grado: document.getElementById('grupo-grado').value,
-                asignatura: document.getElementById('grupo-asignatura').value,
-                año_lectivo: parseInt(document.getElementById('grupo-año').value),
-                periodo_actual: parseInt(document.getElementById('grupo-periodo').value),
+                nombre_grupo:         document.getElementById('grupo-nombre').value,
+                grado:                document.getElementById('grupo-grado').value,
+                asignatura:           document.getElementById('grupo-asignatura').value,
+                anio_lectivo:         parseInt(document.getElementById('grupo-año').value),
+                periodo_actual:       parseInt(document.getElementById('grupo-periodo').value),
                 cantidad_estudiantes: parseInt(document.getElementById('grupo-cantidad').value),
-                recursos_disponibles: {
-                    laboratorio_fisica: document.getElementById('recurso-laboratorio').checked,
-                    sala_informatica: document.getElementById('recurso-informatica').checked,
-                    internet_estable: document.getElementById('recurso-internet').checked,
-                    proyector: document.getElementById('recurso-proyector').checked
-                }
+                recursos_disponibles: recursos,
             };
-            
-            const btn = document.getElementById('btn-guardar-grupo');
+
+            const btn     = document.getElementById('btn-guardar-grupo');
             const btnText = document.getElementById('btn-guardar-text');
             const spinner = document.getElementById('btn-guardar-spinner');
-            
             btn.disabled = true;
             spinner.classList.remove('hidden');
-            
+
             try {
                 if (grupoId) {
+                    // EDITAR → cerrar y recargar
                     await api.updateGrupo(grupoId, data);
+                    cerrarModalGrupo();
+                    await cargarGrupos();
                 } else {
-                    await api.createGrupo(data);
+                    // CREAR → avanzar a paso 2
+                    const grupoNuevo = await api.createGrupo(data);
+                    nuevaGrupoId = grupoNuevo.id_grupo;
+                    estudiantesAgregados = 0;
+
+                    // Actualizar indicador
+                    document.getElementById('prog-step1-circle').className = 'w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center text-sm font-bold';
+                    document.getElementById('prog-step2-circle').className = 'w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold';
+                    document.getElementById('prog-step2-label').className  = 'ml-2 text-sm font-medium text-blue-600';
+
+                    document.getElementById('modal-step-1').classList.add('hidden');
+                    document.getElementById('modal-step-2').classList.remove('hidden');
+                    document.getElementById('est-creados-lista').innerHTML = '';
+                    document.getElementById('est-counter').textContent = '0 estudiantes agregados';
+                    document.getElementById('form-est-rapido').reset();
+                    document.getElementById('piar-rapido-fields').classList.add('hidden');
+                    document.getElementById('ia-init-status').classList.add('hidden');
+
+                    await cargarGrupos();
                 }
-                
-                cerrarModalGrupo();
-                await cargarGrupos();
-                
             } catch (error) {
                 alert('Error: ' + error.message);
             } finally {
@@ -733,13 +1007,75 @@
                 spinner.classList.add('hidden');
             }
         });
-        
-        // Eliminar grupo
-        async function eliminarGrupo(grupoId, nombreGrupo) {
-            if (!confirm(`¿Estás seguro de eliminar el grupo "${nombreGrupo}"? Esta acción no se puede deshacer.`)) {
-                return;
+
+        // =========================================================
+        // PASO 2 — Agregar estudiante rápido
+        // =========================================================
+        document.getElementById('form-est-rapido').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const codigo = document.getElementById('est-rapido-codigo').value.trim();
+            if (!codigo || !nuevaGrupoId) return;
+
+            const data = {
+                codigo_estudiante: codigo,
+                genero:     document.getElementById('est-rapido-genero').value || null,
+                tiene_piar: document.getElementById('est-rapido-piar').checked,
+            };
+            if (data.tiene_piar) {
+                data.diagnostico = document.getElementById('est-rapido-diagnostico').value;
+                data.ajustes     = document.getElementById('est-rapido-ajustes').value;
             }
-            
+
+            try {
+                await api.createEstudiante(nuevaGrupoId, data);
+                estudiantesAgregados++;
+
+                // Agregar chip a la lista visual
+                const lista = document.getElementById('est-creados-lista');
+                const piarBadge = data.tiene_piar
+                    ? '<span class="ml-1 bg-yellow-100 text-yellow-700 text-xs px-1 rounded">PIAR</span>' : '';
+                lista.insertAdjacentHTML('beforeend', `
+                    <div class="flex items-center bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-sm">
+                        <i class="fas fa-user text-gray-400 mr-2"></i>
+                        <span>${codigo}</span>${piarBadge}
+                    </div>`);
+
+                document.getElementById('est-counter').textContent =
+                    `${estudiantesAgregados} estudiante${estudiantesAgregados !== 1 ? 's' : ''} agregado${estudiantesAgregados !== 1 ? 's' : ''}`;
+
+                document.getElementById('form-est-rapido').reset();
+                document.getElementById('piar-rapido-fields').classList.add('hidden');
+
+            } catch (err) {
+                alert('Error al agregar estudiante: ' + err.message);
+            }
+        });
+
+        function togglePiarRapido() {
+            const checked = document.getElementById('est-rapido-piar').checked;
+            document.getElementById('piar-rapido-fields').classList.toggle('hidden', !checked);
+        }
+
+        async function finalizarCreacionGrupo() {
+            cerrarModalGrupo();
+
+            if (nuevaGrupoId) {
+                // Inicializar IA en segundo plano
+                try {
+                    await api.inicializarContextoIA(nuevaGrupoId);
+                } catch (err) {
+                    console.warn('No se pudo inicializar IA:', err.message);
+                }
+            }
+
+            await cargarGrupos();
+        }
+
+        // =========================================================
+        // ELIMINAR GRUPO
+        // =========================================================
+        async function eliminarGrupo(grupoId, nombreGrupo) {
+            if (!confirm(`¿Eliminar el grupo "${nombreGrupo}"? Esta acción no se puede deshacer.`)) return;
             try {
                 await api.deleteGrupo(grupoId);
                 await cargarGrupos();
@@ -747,42 +1083,26 @@
                 alert('Error al eliminar grupo: ' + error.message);
             }
         }
-        
-        // ==========================================
-        // ESTUDIANTES
-        // ==========================================
-        
-        function poblarSelectGrupos() {
-            const select = document.getElementById('select-grupo-estudiantes');
-            select.innerHTML = '<option value="">-- Selecciona un grupo --</option>' + 
-                grupos.map(g => `<option value="${g.id_grupo}">${g.nombre_grupo} (${g.grado} ${g.asignatura})</option>`).join('');
-        }
-        
+
+        // =========================================================
+        // ESTUDIANTES — tab
+        // =========================================================
         async function cargarEstudiantesGrupo(grupoId) {
             if (!grupoId) {
                 document.getElementById('estudiantes-container').classList.add('hidden');
                 document.getElementById('empty-estudiantes').classList.remove('hidden');
                 return;
             }
-            
             grupoSeleccionado = grupoId;
-            
             try {
                 const estudiantes = await api.getEstudiantes(grupoId);
-                
                 document.getElementById('estudiantes-container').classList.remove('hidden');
                 document.getElementById('empty-estudiantes').classList.add('hidden');
-                
+
                 const tbody = document.getElementById('estudiantes-table-body');
-                
                 if (estudiantes.length === 0) {
-                    tbody.innerHTML = `
-                        <tr>
-                            <td colspan="4" class="px-6 py-12 text-center text-gray-500">
-                                No hay estudiantes agregados aún
-                            </td>
-                        </tr>
-                    `;
+                    tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-12 text-center text-gray-500">
+                        No hay estudiantes en este grupo todavía</td></tr>`;
                 } else {
                     tbody.innerHTML = estudiantes.map(est => `
                         <tr>
@@ -794,92 +1114,100 @@
                                     <span class="font-medium">${est.codigo_estudiante}</span>
                                 </div>
                             </td>
+                            <td class="px-6 py-4 capitalize">${est.genero || 'No especifica'}</td>
                             <td class="px-6 py-4">
-                                ${est.genero || 'No especifica'}
+                                ${est.tiene_piar
+                                    ? '<span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-xs font-semibold">Sí</span>'
+                                    : '<span class="text-gray-400 text-sm">No</span>'}
                             </td>
                             <td class="px-6 py-4">
-                                ${est.tiene_piar ? '<span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-xs">Sí</span>' : '<span class="text-gray-400">No</span>'}
-                            </td>
-                            <td class="px-6 py-4">
-                                <button onclick="editarEstudiante('${est.id_estudiante}')" class="text-blue-600 hover:text-blue-800 mr-3">
+                                <button onclick="editarEstudiante('${est.id_estudiante}')"
+                                    class="text-blue-600 hover:text-blue-800 mr-3" title="Editar">
                                     <i class="fas fa-edit"></i>
                                 </button>
-                                <button onclick="eliminarEstudiante('${est.id_estudiante}', '${est.codigo_estudiante}')" class="text-red-600 hover:text-red-800">
+                                <button onclick="eliminarEstudiante('${est.id_estudiante}', '${est.codigo_estudiante}')"
+                                    class="text-red-600 hover:text-red-800" title="Eliminar">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </td>
-                        </tr>
-                    `).join('');
+                        </tr>`).join('');
                 }
-                
             } catch (error) {
                 alert('Error al cargar estudiantes');
             }
         }
-        
+
         function abrirModalNuevoEstudiante() {
-            if (!grupoSeleccionado) {
-                alert('Primero selecciona un grupo');
-                return;
-            }
-            
+            if (!grupoSeleccionado) { alert('Primero selecciona un grupo'); return; }
             document.getElementById('modal-estudiante-title').textContent = 'Nuevo Estudiante';
             document.getElementById('form-estudiante').reset();
-            document.getElementById('estudiante-id').value = '';
+            document.getElementById('estudiante-id').value       = '';
             document.getElementById('estudiante-grupo-id').value = grupoSeleccionado;
             document.getElementById('piar-fields').classList.add('hidden');
+            document.getElementById('btn-guardar-est-text').textContent = 'Agregar Estudiante';
             document.getElementById('modal-estudiante').classList.remove('hidden');
         }
-        
+
+        async function editarEstudiante(estudianteId) {
+            try {
+                // Obtener datos del estudiante desde la lista cargada
+                const estudiantes = await api.getEstudiantes(grupoSeleccionado);
+                const est = estudiantes.find(e => e.id_estudiante === estudianteId);
+                if (!est) { alert('Estudiante no encontrado'); return; }
+
+                document.getElementById('modal-estudiante-title').textContent = 'Editar Estudiante';
+                document.getElementById('estudiante-id').value       = est.id_estudiante;
+                document.getElementById('estudiante-grupo-id').value = grupoSeleccionado;
+                document.getElementById('estudiante-codigo').value   = est.codigo_estudiante;
+                document.getElementById('estudiante-genero').value   = est.genero || '';
+                document.getElementById('estudiante-piar').checked   = est.tiene_piar;
+                document.getElementById('estudiante-diagnostico').value = est.diagnostico || '';
+                document.getElementById('estudiante-ajustes').value  = est.ajustes || '';
+                document.getElementById('piar-fields').classList.toggle('hidden', !est.tiene_piar);
+                document.getElementById('btn-guardar-est-text').textContent = 'Guardar Cambios';
+                document.getElementById('modal-estudiante').classList.remove('hidden');
+            } catch (err) {
+                alert('Error al cargar estudiante');
+            }
+        }
+
         function cerrarModalEstudiante() {
             document.getElementById('modal-estudiante').classList.add('hidden');
         }
-        
+
         function togglePiarFields() {
-            const checked = document.getElementById('estudiante-piar').checked;
-            const fields = document.getElementById('piar-fields');
-            
-            if (checked) {
-                fields.classList.remove('hidden');
-            } else {
-                fields.classList.add('hidden');
-            }
+            document.getElementById('piar-fields').classList.toggle(
+                'hidden', !document.getElementById('estudiante-piar').checked);
         }
-        
-        // Enviar formulario estudiante
+
         document.getElementById('form-estudiante').addEventListener('submit', async (e) => {
             e.preventDefault();
-            
             const estudianteId = document.getElementById('estudiante-id').value;
-            const grupoId = document.getElementById('estudiante-grupo-id').value || grupoSeleccionado;
-            
+            const grupoId      = document.getElementById('estudiante-grupo-id').value || grupoSeleccionado;
+
             const data = {
                 codigo_estudiante: document.getElementById('estudiante-codigo').value,
-                genero: document.getElementById('estudiante-genero').value || null,
-                tiene_piar: document.getElementById('estudiante-piar').checked
+                genero:     document.getElementById('estudiante-genero').value || null,
+                tiene_piar: document.getElementById('estudiante-piar').checked,
             };
-            
             if (data.tiene_piar) {
                 data.diagnostico = document.getElementById('estudiante-diagnostico').value;
-                data.ajustes = document.getElementById('estudiante-ajustes').value;
+                data.ajustes     = document.getElementById('estudiante-ajustes').value;
             }
-            
-            const btn = document.getElementById('btn-guardar-estudiante');
+
+            const btn     = document.getElementById('btn-guardar-estudiante');
             const spinner = document.getElementById('btn-guardar-est-spinner');
-            
             btn.disabled = true;
             spinner.classList.remove('hidden');
-            
+
             try {
                 if (estudianteId) {
                     await api.updateEstudiante(grupoId, estudianteId, data);
                 } else {
                     await api.createEstudiante(grupoId, data);
                 }
-                
                 cerrarModalEstudiante();
                 await cargarEstudiantesGrupo(grupoId);
-                
             } catch (error) {
                 alert('Error: ' + error.message);
             } finally {
@@ -887,10 +1215,9 @@
                 spinner.classList.add('hidden');
             }
         });
-        
+
         async function eliminarEstudiante(estudianteId, codigo) {
             if (!confirm(`¿Eliminar estudiante "${codigo}"?`)) return;
-            
             try {
                 await api.deleteEstudiante(grupoSeleccionado, estudianteId);
                 await cargarEstudiantesGrupo(grupoSeleccionado);
@@ -898,13 +1225,586 @@
                 alert('Error al eliminar');
             }
         }
-        
-        // ==========================================
-        // INICIALIZAR
-        // ==========================================
 
+        // =========================================================
+        // LIBRO DE NOTAS — Tabla estilo Excel
+        // =========================================================
+
+        // Datos cacheados para el libro de notas actual
+        let columnasCal = [];   // EvaluacionColumna[]
+        let calMap = {};        // { "estId_colId": valor }
+
+        async function cargarLibroNotas() {
+            const grupoId = document.getElementById('select-grupo-cal').value;
+            const periodo = parseInt(document.getElementById('filter-periodo-cal').value);
+
+            if (!grupoId) {
+                document.getElementById('cal-container').classList.add('hidden');
+                document.getElementById('empty-calificaciones').classList.remove('hidden');
+                return;
+            }
+
+            grupoSeleccionadoCal = grupoId;
+
+            try {
+                const [columnas, calificaciones, estudiantes] = await Promise.all([
+                    api.getColumnas(grupoId, periodo),
+                    api.getCalificaciones(grupoId),
+                    api.getEstudiantes(grupoId),
+                ]);
+
+                columnasCal = columnas;
+                estudiantesActuales = estudiantes;
+
+                // Construir mapa de notas: clave = "estId|colId"
+                calMap = {};
+                calificaciones
+                    .filter(c => c.periodo === periodo && c.id_columna)
+                    .forEach(c => {
+                        calMap[`${c.id_estudiante}|${c.id_columna}`] = c.valor;
+                    });
+
+                const grupo = grupos.find(g => g.id_grupo === grupoId);
+                document.getElementById('cal-container').classList.remove('hidden');
+                document.getElementById('empty-calificaciones').classList.add('hidden');
+
+                if (grupo) {
+                    document.getElementById('cal-titulo').textContent =
+                        `${grupo.nombre_grupo} — ${grupo.grado} ${grupo.asignatura} — Período ${periodo}`;
+                }
+
+                renderLibroNotas(estudiantes, columnas);
+
+            } catch (err) {
+                console.error('Error libro notas:', err);
+                alert('Error al cargar el libro de notas: ' + err.message);
+            }
+        }
+
+        function notaColor(val) {
+            if (val == null) return '';
+            if (val >= 3.5) return 'color:#15803d;font-weight:700';
+            if (val >= 3.0) return 'color:#92400e;font-weight:700';
+            return 'color:#dc2626;font-weight:700';
+        }
+
+        function estadoBadge(prom) {
+            if (prom == null) return '<span style="color:#9ca3af;font-size:0.75rem">Sin notas</span>';
+            if (prom >= 3.5) return '<span style="background:#dcfce7;color:#166534;font-size:0.7rem;padding:2px 8px;border-radius:9999px">Aprobado</span>';
+            if (prom >= 3.0) return '<span style="background:#fef9c3;color:#854d0e;font-size:0.7rem;padding:2px 8px;border-radius:9999px">En riesgo</span>';
+            return '<span style="background:#fee2e2;color:#991b1b;font-size:0.7rem;padding:2px 8px;border-radius:9999px">Reprobado</span>';
+        }
+
+        function renderLibroNotas(estudiantes, columnas) {
+            const grupoId = grupoSeleccionadoCal;
+            const periodo = parseInt(document.getElementById('filter-periodo-cal').value);
+            const wrapper = document.getElementById('libro-notas-wrapper');
+
+            // ---- Construir tabla ----
+            const thStyle = 'padding:10px 12px;text-align:center;font-size:0.7rem;font-weight:600;text-transform:uppercase;color:#4b5563;background:#f9fafb;white-space:nowrap;border-bottom:2px solid #e5e7eb';
+            const thLeft  = 'padding:10px 12px;text-align:left;font-size:0.7rem;font-weight:600;text-transform:uppercase;color:#4b5563;background:#f9fafb;white-space:nowrap;border-bottom:2px solid #e5e7eb;min-width:160px;position:sticky;left:0;z-index:1';
+            const tdSt    = 'padding:8px 12px;font-size:0.82rem;background:#fff;border-bottom:1px solid #f0f0f0;position:sticky;left:0;z-index:1;min-width:160px;font-weight:500';
+            const tdCell  = 'padding:4px 6px;text-align:center;background:#fff;border-bottom:1px solid #f0f0f0;';
+            const tdFoot  = 'padding:8px 12px;text-align:center;font-size:0.75rem;font-weight:600;background:#f9fafb;color:#374151;border-top:2px solid #e5e7eb';
+
+            // ---- Encabezados de columnas ----
+            let headerRow = `<tr>
+                <th style="${thLeft}">Estudiante</th>`;
+            columnas.forEach(col => {
+                const pct = col.porcentaje ? `<div style="color:#6b7280;font-weight:400">${col.porcentaje}%</div>` : '';
+                const tipoLabel = { taller:'Taller',parcial:'Parcial',quiz:'Quiz',examen:'Examen',tarea:'Tarea',proyecto:'Proyecto',oral:'Oral',otro:'Otro' }[col.tipo] || col.tipo || '';
+                headerRow += `<th style="${thStyle}">
+                    <div>${col.nombre}</div>
+                    <div style="color:#6b7280;font-weight:400;font-size:0.65rem">${tipoLabel}</div>
+                    ${pct}
+                    <button onclick="eliminarColumna('${col.id_columna}','${col.nombre.replace(/'/g,'\\\'')}')"
+                        title="Eliminar evaluación"
+                        style="display:inline-block;margin-top:4px;color:#ef4444;font-size:0.7rem;cursor:pointer;background:none;border:none;padding:0">
+                        <i class="fas fa-times-circle"></i>
+                    </button>
+                </th>`;
+            });
+            headerRow += `<th style="${thStyle}">Promedio</th><th style="${thStyle}">Estado</th></tr>`;
+
+            // ---- Filas de estudiantes ----
+            let bodyRows = '';
+            const colSumas = {};  // para pie de página
+            const colConts = {};
+            columnas.forEach(c => { colSumas[c.id_columna] = 0; colConts[c.id_columna] = 0; });
+
+            let grupoSuma = 0; let grupoCont = 0;
+
+            estudiantes.forEach(est => {
+                const piarBadge = est.tiene_piar
+                    ? ' <span style="background:#fef9c3;color:#92400e;font-size:0.65rem;padding:1px 5px;border-radius:4px">PIAR</span>' : '';
+                let row = `<tr>
+                    <td style="${tdSt}">${est.codigo_estudiante}${piarBadge}</td>`;
+
+                // Celdas por columna
+                const colVals = [];
+                columnas.forEach(col => {
+                    const key = `${est.id_estudiante}|${col.id_columna}`;
+                    const val = calMap[key];
+                    if (val != null) { colSumas[col.id_columna] += val; colConts[col.id_columna]++; colVals.push({ val, pct: col.porcentaje }); }
+                    const inputVal = val != null ? val : '';
+                    row += `<td style="${tdCell}">
+                        <input type="number" min="0" max="5" step="0.1"
+                            value="${inputVal}"
+                            data-est="${est.id_estudiante}"
+                            data-col="${col.id_columna}"
+                            data-grupo="${grupoId}"
+                            data-periodo="${periodo}"
+                            onblur="guardarNota(this)"
+                            onkeydown="if(event.key==='Enter'){this.blur()}"
+                            style="width:60px;text-align:center;border:1px solid #d1d5db;border-radius:6px;padding:4px;font-size:0.85rem;outline:none"
+                            onfocus="this.style.borderColor='#3b82f6'"
+                            onblur_extra="this.style.borderColor='#d1d5db'"
+                            placeholder="—">
+                    </td>`;
+                });
+
+                // Promedio del estudiante
+                let promEst = null;
+                const conVal = colVals.filter(v => v.val != null);
+                if (conVal.length > 0) {
+                    const conPct = conVal.filter(v => v.pct != null && v.pct > 0);
+                    if (conPct.length === conVal.length) {
+                        const sp = conPct.reduce((a, v) => a + v.pct, 0);
+                        promEst = conPct.reduce((a, v) => a + v.val * v.pct, 0) / sp;
+                    } else {
+                        promEst = conVal.reduce((a, v) => a + v.val, 0) / conVal.length;
+                    }
+                    grupoSuma += promEst; grupoCont++;
+                }
+                row += `<td style="${tdCell};font-weight:700;${notaColor(promEst)}">${promEst != null ? promEst.toFixed(2) : '—'}</td>`;
+                row += `<td style="${tdCell}">${estadoBadge(promEst)}</td>`;
+                row += '</tr>';
+                bodyRows += row;
+            });
+
+            // ---- Fila de promedios por columna (pie) ----
+            let footRow = `<tr><td style="${tdSt};background:#f9fafb;font-size:0.72rem;color:#6b7280">Promedio columna</td>`;
+            columnas.forEach(col => {
+                const avg = colConts[col.id_columna] > 0
+                    ? (colSumas[col.id_columna] / colConts[col.id_columna]).toFixed(2) : '—';
+                footRow += `<td style="${tdFoot}">${avg}</td>`;
+            });
+            const promGrupo = grupoCont > 0 ? (grupoSuma / grupoCont).toFixed(2) : '—';
+            footRow += `<td style="${tdFoot}">${promGrupo}</td><td style="${tdFoot}"></td></tr>`;
+
+            if (grupoCont > 0) {
+                document.getElementById('cal-promedio-general').textContent = `Promedio grupo: ${promGrupo}`;
+            } else {
+                document.getElementById('cal-promedio-general').textContent = '';
+            }
+
+            const emptyMsg = columnas.length === 0
+                ? `<tr><td colspan="3" style="padding:48px;text-align:center;color:#6b7280">
+                        No hay evaluaciones para este período.<br>
+                        <button onclick="abrirModalColumna()" style="margin-top:12px;color:#3b82f6;cursor:pointer;background:none;border:none;font-size:0.9rem">
+                            <i class="fas fa-plus mr-1"></i>Agregar la primera evaluación
+                        </button>
+                    </td></tr>` : '';
+
+            wrapper.innerHTML = `
+                <table style="border-collapse:collapse;min-width:100%;font-family:inherit">
+                    <thead>${headerRow}</thead>
+                    <tbody>${emptyMsg || bodyRows}</tbody>
+                    ${columnas.length > 0 ? `<tfoot>${footRow}</tfoot>` : ''}
+                </table>`;
+
+            // Re-attach onblur for style reset (inline event handlers conflict)
+            wrapper.querySelectorAll('input[data-col]').forEach(inp => {
+                inp.addEventListener('focus', () => { inp.style.borderColor = '#3b82f6'; });
+                inp.addEventListener('blur', () => { inp.style.borderColor = '#d1d5db'; });
+            });
+        }
+
+        async function guardarNota(input) {
+            const grupoId = input.dataset.grupo;
+            const estId   = input.dataset.est;
+            const colId   = input.dataset.col;
+            const periodo = parseInt(input.dataset.periodo);
+            const raw     = input.value.trim();
+
+            // Si está vacío se guarda null (borrar nota)
+            const valor = raw === '' ? null : parseFloat(raw);
+            if (raw !== '' && (isNaN(valor) || valor < 0 || valor > 5)) {
+                input.style.borderColor = '#ef4444';
+                input.title = 'Nota debe estar entre 0.0 y 5.0';
+                return;
+            }
+            input.style.borderColor = '#d1d5db';
+            input.title = '';
+
+            try {
+                await api.upsertCalificacion(grupoId, estId, colId, valor, periodo);
+                // Actualizar calMap local
+                const key = `${estId}|${colId}`;
+                calMap[key] = valor;
+                // Recalcular promedios sin recargar toda la tabla
+                renderLibroNotas(estudiantesActuales, columnasCal);
+                // Restaurar foco en la misma celda después del re-render
+                const newInput = document.querySelector(
+                    `input[data-est="${estId}"][data-col="${colId}"]`);
+                if (newInput) newInput.focus();
+            } catch (err) {
+                console.error('Error guardando nota:', err);
+                input.style.borderColor = '#ef4444';
+            }
+        }
+
+        // ---- Modal columna ----
+        function abrirModalColumna(colId = null) {
+            if (!grupoSeleccionadoCal) {
+                alert('Primero selecciona un grupo en la pestaña Calificaciones');
+                return;
+            }
+            document.getElementById('form-columna').reset();
+            document.getElementById('col-id').value = '';
+            if (colId) {
+                const col = columnasCal.find(c => c.id_columna === colId);
+                if (col) {
+                    document.getElementById('modal-col-title').textContent = 'Editar Evaluación';
+                    document.getElementById('col-id').value      = col.id_columna;
+                    document.getElementById('col-nombre').value  = col.nombre;
+                    document.getElementById('col-tipo').value    = col.tipo || 'taller';
+                    document.getElementById('col-porcentaje').value = col.porcentaje || '';
+                    document.getElementById('btn-col-text').textContent = 'Guardar Cambios';
+                }
+            } else {
+                document.getElementById('modal-col-title').textContent = 'Agregar Evaluación';
+                document.getElementById('btn-col-text').textContent = 'Guardar';
+            }
+            document.getElementById('modal-columna').classList.remove('hidden');
+        }
+
+        function cerrarModalColumna() {
+            document.getElementById('modal-columna').classList.add('hidden');
+        }
+
+        document.getElementById('form-columna').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const colId   = document.getElementById('col-id').value;
+            const grupoId = grupoSeleccionadoCal;
+            const periodo = parseInt(document.getElementById('filter-periodo-cal').value);
+
+            const data = {
+                nombre:      document.getElementById('col-nombre').value.trim(),
+                tipo:        document.getElementById('col-tipo').value,
+                porcentaje:  document.getElementById('col-porcentaje').value
+                             ? parseFloat(document.getElementById('col-porcentaje').value) : null,
+                periodo,
+            };
+
+            const btn     = document.getElementById('btn-guardar-col');
+            const spinner = document.getElementById('btn-col-spinner');
+            btn.disabled = true;
+            spinner.classList.remove('hidden');
+
+            try {
+                if (colId) {
+                    await api.updateColumna(grupoId, colId, data);
+                } else {
+                    await api.createColumna(grupoId, data);
+                }
+                cerrarModalColumna();
+                await cargarLibroNotas();
+            } catch (err) {
+                alert('Error: ' + err.message);
+            } finally {
+                btn.disabled = false;
+                spinner.classList.add('hidden');
+            }
+        });
+
+        async function eliminarColumna(colId, nombre) {
+            if (!confirm(`¿Eliminar la evaluación "${nombre}" y todas sus notas?`)) return;
+            try {
+                await api.deleteColumna(grupoSeleccionadoCal, colId);
+                await cargarLibroNotas();
+            } catch (err) {
+                alert('Error al eliminar evaluación: ' + err.message);
+            }
+        }
+
+        // =========================================================
+        // INICIALIZAR
+        // =========================================================
         requireAuth();
-        cargarGrupos();
+        cargarGrupos().then(() => {
+            const params = new URLSearchParams(window.location.search);
+
+            // ?action=nuevo → abrir modal de nuevo grupo
+            if (params.get('action') === 'nuevo') {
+                abrirModalNuevoGrupo();
+                return;
+            }
+
+            // ?tab=calificaciones&grupo=<id> → ir a la tab de calificaciones con ese grupo
+            const tabParam   = params.get('tab');
+            const grupoParam = params.get('grupo');
+            if (tabParam) {
+                cambiarTab(tabParam);
+                if (tabParam === 'calificaciones' && grupoParam) {
+                    const sel = document.getElementById('select-grupo-cal');
+                    if (sel) {
+                        sel.value = grupoParam;
+                        cargarLibroNotas();
+                    }
+                }
+                if ((tabParam === 'estudiantes' || tabParam === 'grupo') && grupoParam) {
+                    const sel = document.getElementById('select-grupo-est');
+                    if (sel) {
+                        sel.value = grupoParam;
+                        cargarEstudiantesGrupo(grupoParam);
+                    }
+                }
+            }
+        });
+
+        // =========================================================
+        // IMPORTAR ESTUDIANTES DESDE CSV
+        // =========================================================
+        // Estado del import
+        let csvFile = null;
+        let csvRowsParsed = [];   // [{lineNo, valid, errors, payload}]
+
+        function abrirModalImportarCsv() {
+            if (!grupoSeleccionado) {
+                alert('Primero selecciona un grupo en el desplegable.');
+                return;
+            }
+            resetImportModal();
+            document.getElementById('modal-importar-csv').classList.remove('hidden');
+        }
+
+        function cerrarModalImportarCsv() {
+            document.getElementById('modal-importar-csv').classList.add('hidden');
+        }
+
+        function resetImportModal() {
+            csvFile = null;
+            csvRowsParsed = [];
+            document.getElementById('csv-file-input').value = '';
+            document.getElementById('csv-file-label').textContent = 'Clic para seleccionar archivo .csv';
+            document.getElementById('csv-parse-error').classList.add('hidden');
+            document.getElementById('csv-preview').classList.add('hidden');
+            document.getElementById('csv-result').classList.add('hidden');
+            const btn = document.getElementById('btn-confirmar-import');
+            btn.disabled = true;
+            document.getElementById('btn-confirmar-import-text').textContent = 'Importar';
+            document.getElementById('btn-confirmar-import-spinner').classList.add('hidden');
+        }
+
+        // Parser CSV (soporta comillas dobles y comas dentro de comillas)
+        function parseCsv(text) {
+            const rows = [];
+            let curr = [], field = '', inQuotes = false;
+            for (let i = 0; i < text.length; i++) {
+                const c = text[i];
+                if (inQuotes) {
+                    if (c === '"' && text[i+1] === '"') { field += '"'; i++; }
+                    else if (c === '"') inQuotes = false;
+                    else field += c;
+                } else {
+                    if (c === '"') inQuotes = true;
+                    else if (c === ',') { curr.push(field); field = ''; }
+                    else if (c === '\n') { curr.push(field); rows.push(curr); curr = []; field = ''; }
+                    else if (c === '\r') { /* skip */ }
+                    else field += c;
+                }
+            }
+            if (field.length > 0 || curr.length > 0) { curr.push(field); rows.push(curr); }
+            return rows.filter(r => r.some(cell => cell.trim() !== ''));
+        }
+
+        // tiene_piar acepta: 1/0, true/false, sí/no, yes/no (case-insensitive,
+        // con o sin acento). Devuelve { value, valid } — permite distinguir
+        // "no reconocido" de "vacío" para dar mensaje de error específico.
+        const PIAR_TRUE  = new Set(['1','true','sí','si','yes','y','x']);
+        const PIAR_FALSE = new Set(['0','false','no','n','']);
+
+        function parsePiarCsv(raw) {
+            const v = String(raw || '').trim().toLowerCase();
+            if (PIAR_TRUE.has(v))  return { value: true,  valid: true };
+            if (PIAR_FALSE.has(v)) return { value: false, valid: true };
+            return { value: false, valid: false };
+        }
+
+        // Género aceptado (case-insensitive, con o sin acento). Si viene vacío es válido (null).
+        function parseGeneroCsv(raw) {
+            const v = String(raw || '').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+            if (!v) return { value: null, valid: true };
+            const map = { m:'M', masculino:'M', f:'F', femenino:'F', o:'O', otro:'O' };
+            if (map[v]) return { value: map[v], valid: true };
+            return { value: v, valid: false };
+        }
+
+        function onCsvSeleccionado(evt) {
+            const f = evt.target.files?.[0];
+            document.getElementById('csv-parse-error').classList.add('hidden');
+            document.getElementById('csv-preview').classList.add('hidden');
+            document.getElementById('csv-result').classList.add('hidden');
+            if (!f) return;
+            if (!f.name.toLowerCase().endsWith('.csv')) {
+                mostrarErrorCsv('El archivo debe tener extensión .csv');
+                return;
+            }
+            csvFile = f;
+            document.getElementById('csv-file-label').textContent = f.name;
+            const reader = new FileReader();
+            reader.onerror = () => mostrarErrorCsv('No se pudo leer el archivo.');
+            reader.onload = (e) => {
+                try {
+                    const rows = parseCsv(String(e.target.result || ''));
+                    if (rows.length === 0) {
+                        return mostrarErrorCsv('El CSV está vacío.');
+                    }
+                    if (rows.length < 2) {
+                        return mostrarErrorCsv(
+                            'El CSV debe tener encabezado en la primera fila y al menos una fila de datos.'
+                        );
+                    }
+                    const headers = rows[0].map(h => (h || '').trim().toLowerCase());
+                    if (!headers.includes('codigo_estudiante')) {
+                        return mostrarErrorCsv(
+                            "Falta la columna obligatoria 'codigo_estudiante'. " +
+                            `Encabezados detectados: ${headers.join(', ') || '(ninguno)'}.`
+                        );
+                    }
+                    csvRowsParsed = rows.slice(1).map((cells, idx) => {
+                        const r = {};
+                        headers.forEach((h, i) => r[h] = (cells[i] || '').trim());
+                        const errors = [];
+
+                        // codigo_estudiante — obligatorio
+                        if (!r.codigo_estudiante) {
+                            errors.push('columna "codigo_estudiante" vacía');
+                        }
+
+                        // tiene_piar — opcional pero si viene, debe ser reconocible
+                        const piar = parsePiarCsv(r.tiene_piar);
+                        if (r.tiene_piar && !piar.valid) {
+                            errors.push(`columna "tiene_piar"="${r.tiene_piar}" no reconocida (usa 1/0, true/false, sí/no)`);
+                        }
+
+                        // genero — opcional pero si viene, se normaliza
+                        const genero = parseGeneroCsv(r.genero);
+                        if (r.genero && !genero.valid) {
+                            errors.push(`columna "genero"="${r.genero}" no reconocida (usa M/F/O o Masculino/Femenino/Otro)`);
+                        }
+
+                        return {
+                            lineNo: idx + 2,
+                            valid: errors.length === 0,
+                            errors,
+                            payload: {
+                                codigo_estudiante: r.codigo_estudiante,
+                                genero: genero.value,
+                                tiene_piar: piar.value,
+                                diagnostico: r.diagnostico || null,
+                                ajustes: r.ajustes || null,
+                            },
+                        };
+                    });
+                    renderPreviewCsv();
+                } catch (err) {
+                    mostrarErrorCsv(err.message || 'Error parseando CSV');
+                }
+            };
+            reader.readAsText(f, 'utf-8');
+        }
+
+        function mostrarErrorCsv(msg) {
+            const el = document.getElementById('csv-parse-error');
+            el.textContent = msg;
+            el.classList.remove('hidden');
+            document.getElementById('csv-preview').classList.add('hidden');
+            document.getElementById('btn-confirmar-import').disabled = true;
+        }
+
+        function renderPreviewCsv() {
+            const total = csvRowsParsed.length;
+            const ok = csvRowsParsed.filter(r => r.valid).length;
+            const bad = total - ok;
+            document.getElementById('csv-preview-total').textContent = total;
+            document.getElementById('csv-preview-ok').textContent = `✅ ${ok} válidas`;
+            const badEl = document.getElementById('csv-preview-bad');
+            if (bad > 0) {
+                badEl.textContent = `❌ ${bad} con error`;
+                badEl.classList.remove('hidden');
+            } else {
+                badEl.classList.add('hidden');
+            }
+            document.getElementById('csv-preview-body').innerHTML = csvRowsParsed.map(r => `
+                <tr class="${r.valid ? '' : 'bg-red-50'}">
+                    <td class="px-3 py-1.5 text-gray-400 font-mono text-xs">${r.lineNo}</td>
+                    <td class="px-3 py-1.5 font-medium">${r.payload.codigo_estudiante || '—'}</td>
+                    <td class="px-3 py-1.5 text-gray-600 text-xs">${r.payload.genero || '—'}</td>
+                    <td class="px-3 py-1.5 text-gray-600 text-xs">${r.payload.tiene_piar ? 'Sí' : '—'}</td>
+                    <td class="px-3 py-1.5">
+                        ${r.valid
+                            ? '<span class="text-emerald-700 text-xs font-bold">✅ OK</span>'
+                            : `<span class="text-red-700 text-xs">❌ ${r.errors.join(' · ')}</span>`}
+                    </td>
+                </tr>`).join('');
+            document.getElementById('csv-preview').classList.remove('hidden');
+            document.getElementById('btn-confirmar-import').disabled = ok === 0;
+        }
+
+        async function confirmarImportCsv() {
+            if (!csvFile || !grupoSeleccionado) return;
+            const btn = document.getElementById('btn-confirmar-import');
+            const spinner = document.getElementById('btn-confirmar-import-spinner');
+            const txt = document.getElementById('btn-confirmar-import-text');
+            btn.disabled = true;
+            spinner.classList.remove('hidden');
+            txt.textContent = 'Importando…';
+            try {
+                const result = await api.importarEstudiantesCsv(grupoSeleccionado, csvFile);
+                mostrarResultCsv(result);
+                // Refrescar tabla de estudiantes
+                await cargarEstudiantesGrupo(grupoSeleccionado);
+            } catch (err) {
+                mostrarErrorCsv('Error del servidor: ' + err.message);
+            } finally {
+                spinner.classList.add('hidden');
+                txt.textContent = 'Importar';
+                btn.disabled = false;
+            }
+        }
+
+        function mostrarResultCsv(result) {
+            const box = document.getElementById('csv-result');
+            const icon = document.getElementById('csv-result-icon');
+            const title = document.getElementById('csv-result-title');
+            const sub = document.getElementById('csv-result-sub');
+            const errBox = document.getElementById('csv-result-errores');
+            const total = (result.creados || 0) + (result.actualizados || 0);
+            const hayErrores = (result.fallidos || 0) > 0;
+            title.textContent = hayErrores ? '⚠️ Importación parcial' : '✅ Importación completada';
+            icon.className = hayErrores
+                ? 'fas fa-exclamation-circle text-2xl text-amber-600'
+                : 'fas fa-check-circle text-2xl text-emerald-600';
+            sub.textContent =
+                `${result.creados} creado(s) · ${result.actualizados} actualizado(s) · ${result.fallidos} fallido(s)`;
+            if (result.errores && result.errores.length > 0) {
+                errBox.innerHTML = result.errores.map(e => `<div>❌ ${e}</div>`).join('');
+                errBox.classList.remove('hidden');
+            } else {
+                errBox.classList.add('hidden');
+            }
+            box.classList.remove('hidden');
+            document.getElementById('csv-preview').classList.add('hidden');
+        }
+
+        // Cerrar con Escape
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && !document.getElementById('modal-importar-csv').classList.contains('hidden')) {
+                cerrarModalImportarCsv();
+            }
+        });
     </script>
 </body>
 </html>

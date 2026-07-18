@@ -164,6 +164,81 @@ class ArchivoOut(BaseModel):
 
 
 # ============================================================
+# CALIFICACIONES
+# ============================================================
+
+class CalificacionCreate(BaseModel):
+    id_estudiante: str
+    periodo: int = 1
+    tipo: Optional[str] = None
+    descripcion: Optional[str] = None
+    valor: Optional[float] = None
+    porcentaje: Optional[float] = None
+
+
+class CalificacionUpdate(BaseModel):
+    tipo: Optional[str] = None
+    descripcion: Optional[str] = None
+    valor: Optional[float] = None
+    porcentaje: Optional[float] = None
+
+
+class CalificacionOut(BaseModel):
+    id_calificacion: str
+    id_estudiante: str
+    id_grupo: str
+    id_columna: Optional[str]
+    periodo: int
+    tipo: Optional[str]
+    descripcion: Optional[str]
+    valor: Optional[float]
+    porcentaje: Optional[float]
+    fecha: datetime
+
+    model_config = {"from_attributes": True}
+
+
+# Upsert: crear o actualizar la nota de un estudiante en una columna
+class CalificacionUpsert(BaseModel):
+    id_estudiante: str
+    id_columna: str
+    valor: Optional[float] = None
+    periodo: int = 1
+
+
+# ============================================================
+# COLUMNAS DE EVALUACIÓN
+# ============================================================
+
+class EvaluacionColumnaCreate(BaseModel):
+    nombre: str
+    periodo: int = 1
+    tipo: Optional[str] = "taller"
+    porcentaje: Optional[float] = None
+    orden: Optional[int] = 0
+
+
+class EvaluacionColumnaUpdate(BaseModel):
+    nombre: Optional[str] = None
+    tipo: Optional[str] = None
+    porcentaje: Optional[float] = None
+    orden: Optional[int] = None
+
+
+class EvaluacionColumnaOut(BaseModel):
+    id_columna: str
+    id_grupo: str
+    periodo: int
+    nombre: str
+    tipo: Optional[str]
+    porcentaje: Optional[float]
+    orden: int
+    fecha_creacion: datetime
+
+    model_config = {"from_attributes": True}
+
+
+# ============================================================
 # SUSCRIPCIONES
 # ============================================================
 
