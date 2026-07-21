@@ -198,10 +198,16 @@
                                 <option value="4">Período 4</option>
                             </select>
                         </div>
-                        <div class="flex items-end">
+                        <div class="flex items-end gap-2">
                             <button onclick="abrirModalColumna()"
-                                class="w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center justify-center">
+                                class="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center justify-center">
                                 <i class="fas fa-plus mr-2"></i>Agregar Evaluación
+                            </button>
+                            <button onclick="descargarBoletinDelGrupo()"
+                                id="btn-boletin-grupo"
+                                title="Descargar boletín consolidado del grupo (DOCX)"
+                                class="bg-white border border-blue-600 text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-50 flex items-center justify-center whitespace-nowrap">
+                                <i class="fas fa-file-word mr-2"></i>Boletín grupo
                             </button>
                         </div>
                     </div>
@@ -1324,7 +1330,7 @@
                     </button>
                 </th>`;
             });
-            headerRow += `<th style="${thStyle}">Promedio</th><th style="${thStyle}">Estado</th></tr>`;
+            headerRow += `<th style="${thStyle}">Promedio</th><th style="${thStyle}">Estado</th><th style="${thStyle}">Boletín</th></tr>`;
 
             // ---- Filas de estudiantes ----
             let bodyRows = '';
@@ -1378,6 +1384,13 @@
                 }
                 row += `<td style="${tdCell};font-weight:700;${notaColor(promEst)}">${promEst != null ? promEst.toFixed(2) : '—'}</td>`;
                 row += `<td style="${tdCell}">${estadoBadge(promEst)}</td>`;
+                row += `<td style="${tdCell}">
+                    <button onclick="descargarBoletinDe('${est.id_estudiante}')"
+                        title="Descargar boletín DOCX de este estudiante"
+                        style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;border-radius:6px;padding:3px 8px;font-size:0.72rem;cursor:pointer;font-weight:600">
+                        <i class="fas fa-download"></i> DOCX
+                    </button>
+                </td>`;
                 row += '</tr>';
                 bodyRows += row;
             });
@@ -1390,7 +1403,7 @@
                 footRow += `<td style="${tdFoot}">${avg}</td>`;
             });
             const promGrupo = grupoCont > 0 ? (grupoSuma / grupoCont).toFixed(2) : '—';
-            footRow += `<td style="${tdFoot}">${promGrupo}</td><td style="${tdFoot}"></td></tr>`;
+            footRow += `<td style="${tdFoot}">${promGrupo}</td><td style="${tdFoot}"></td><td style="${tdFoot}"></td></tr>`;
 
             if (grupoCont > 0) {
                 document.getElementById('cal-promedio-general').textContent = `Promedio grupo: ${promGrupo}`;
@@ -1805,6 +1818,44 @@
                 cerrarModalImportarCsv();
             }
         });
+
+        // =========================================================
+        // BOLETINES DOCX (Fase D)
+        // =========================================================
+        async function descargarBoletinDelGrupo() {
+            if (!grupoSeleccionadoCal) {
+                alert('Selecciona un grupo primero para descargar el boletín consolidado.');
+                return;
+            }
+            const periodo = parseInt(document.getElementById('filter-periodo-cal').value);
+            const btn = document.getElementById('btn-boletin-grupo');
+            const originalHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Generando…';
+            try {
+                await api.descargarBoletinGrupo(grupoSeleccionadoCal, periodo);
+            } catch (err) {
+                const msg = String(err.message || err);
+                if (msg.includes('400') || msg.toLowerCase().includes('estudiantes')) {
+                    alert('El grupo no tiene estudiantes registrados. Agrega estudiantes primero.');
+                } else {
+                    alert('No se pudo generar el boletín del grupo: ' + msg);
+                }
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+            }
+        }
+
+        async function descargarBoletinDe(estudianteId) {
+            if (!grupoSeleccionadoCal) return;
+            const periodo = parseInt(document.getElementById('filter-periodo-cal').value);
+            try {
+                await api.descargarBoletinEstudiante(grupoSeleccionadoCal, estudianteId, periodo);
+            } catch (err) {
+                alert('No se pudo generar el boletín: ' + (err.message || err));
+            }
+        }
     </script>
 </body>
 </html>

@@ -296,6 +296,55 @@ class ApiClient {
         return this.request(`/api/grupos/${grupoId}/columnas${qs}`);
     }
 
+    // ==========================================
+    // BOLETINES DOCX
+    // ==========================================
+    // Ambos endpoints devuelven un stream DOCX que descargamos directo.
+    // Helper: encapsula fetch + Blob download y valida el Content-Type.
+
+    async _descargarBlob(url, filenameFallback) {
+        const token = this.getToken();
+        const res = await fetch(`${this.baseUrl}${url}`, {
+            method: 'GET',
+            headers: { ...(token && { Authorization: `Bearer ${token}` }) },
+        });
+        if (!res.ok) {
+            const txt = await res.text();
+            throw new Error(txt || `Error ${res.status}`);
+        }
+        // Sacar nombre del Content-Disposition si viene
+        let filename = filenameFallback;
+        const cd = res.headers.get('content-disposition');
+        if (cd) {
+            const m = cd.match(/filename="?([^";]+)"?/i);
+            if (m) filename = m[1];
+        }
+        const blob = await res.blob();
+        const objUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = objUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(objUrl);
+        return { filename, size: blob.size };
+    }
+
+    async descargarBoletinEstudiante(grupoId, estudianteId, periodo) {
+        return this._descargarBlob(
+            `/api/grupos/${grupoId}/boletin/${estudianteId}?periodo=${periodo}`,
+            `boletin_${estudianteId}_P${periodo}.docx`,
+        );
+    }
+
+    async descargarBoletinGrupo(grupoId, periodo) {
+        return this._descargarBlob(
+            `/api/grupos/${grupoId}/boletin?periodo=${periodo}`,
+            `boletin_grupo_${grupoId}_P${periodo}.docx`,
+        );
+    }
+
     async createColumna(grupoId, data) {
         return this.request(`/api/grupos/${grupoId}/columnas`, {
             method: 'POST',

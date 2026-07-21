@@ -33,6 +33,10 @@
           <a id="link-libro" href="#" class="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 text-sm font-semibold">
             <i class="fas fa-table"></i>Libro de notas
           </a>
+          <button id="btn-boletin-grupo" onclick="descargarBoletinGrupoPanel()" title="Descargar boletín consolidado del grupo (DOCX)"
+            class="flex items-center gap-2 px-3 py-2 rounded-lg border border-blue-600 text-blue-600 hover:bg-blue-50 text-sm font-semibold">
+            <i class="fas fa-file-word"></i>Boletín grupo
+          </button>
         </div>
       </div>
     </div>
@@ -342,12 +346,46 @@ function renderTabla() {
             ${r.promedio != null ? r.promedio.toFixed(1) : '—'}
           </span>
         </td>
-        <td class="px-4 py-2 text-right">
+        <td class="px-4 py-2 text-right whitespace-nowrap">
+          <button onclick="descargarBoletinEst('${r.est.id_estudiante}')"
+             class="text-xs text-blue-600 hover:underline mr-2" title="Descargar boletín DOCX">
+             <i class="fas fa-file-word"></i> Boletín
+          </button>
           <a href="grupos.html?tab=calificaciones&grupo=${GP.grupoId}"
-             class="text-xs text-blue-600 hover:underline whitespace-nowrap">Editar notas →</a>
+             class="text-xs text-blue-600 hover:underline">Notas →</a>
         </td>
       </tr>
     `).join('');
+}
+
+async function descargarBoletinEst(estudianteId) {
+    if (!GP.grupoId) return;
+    try {
+        await api.descargarBoletinEstudiante(GP.grupoId, estudianteId, GP.periodo);
+    } catch (err) {
+        alert('No se pudo generar el boletín: ' + (err.message || err));
+    }
+}
+
+async function descargarBoletinGrupoPanel() {
+    if (!GP.grupoId) return;
+    const btn = document.getElementById('btn-boletin-grupo');
+    const original = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>Generando…';
+    try {
+        await api.descargarBoletinGrupo(GP.grupoId, GP.periodo);
+    } catch (err) {
+        const msg = String(err.message || err);
+        if (msg.includes('400') || msg.toLowerCase().includes('estudiantes')) {
+            alert('El grupo no tiene estudiantes. Agrega estudiantes primero.');
+        } else {
+            alert('No se pudo generar el boletín del grupo: ' + msg);
+        }
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = original;
+    }
 }
 
 // ─── Columnas de evaluación ───────────────────────────────────
