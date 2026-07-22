@@ -125,6 +125,7 @@ class MensajeOut(BaseModel):
     id_grupo: str
     remitente: str
     contenido: str
+    modo: str = "planeacion"   # default por retro-compat con mensajes legacy
     timestamp: datetime
 
     model_config = {"from_attributes": True}

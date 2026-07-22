@@ -106,6 +106,10 @@ class Mensaje(Base):
     id_grupo = Column(String(36), ForeignKey("grupos.id_grupo"), nullable=False)
     remitente = Column(String(20), nullable=False)  # 'docente' o 'sistema'
     contenido = Column(Text, nullable=False)
+    # Modo del asistente en el que se emitió el mensaje. Valores en
+    # prompts.MODOS_ACTIVOS ∪ {'piar'}. Default 'planeacion' preserva la
+    # semántica de los mensajes previos al sprint de modos.
+    modo = Column(String(32), nullable=False, default="planeacion", index=True)
     timestamp = Column(DateTime, default=datetime.utcnow)
 
     grupo = relationship("Grupo", back_populates="mensajes")
