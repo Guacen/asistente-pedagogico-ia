@@ -3,35 +3,57 @@ Módulo de integración con Claude (Anthropic).
 
 La API Key se lee desde la variable de entorno CLAUDE_API_KEY
 definida en el archivo .env
+
+Los system prompts por modo viven en backend/prompts.py — este módulo
+solo arma el contexto dinámico (grupo, estudiantes) y lo concatena.
 """
 
-from typing import Callable, List
+from typing import Callable, List, Optional
 
 import anthropic
 
 from config import settings
 from models import Estudiante, Grupo, Mensaje
+from prompts import (
+    MODO_DEFAULT,
+    normalizar_modo,
+    prompt_para_modo,
+)
 
-# Cliente async de Anthropic (usa CLAUDE_API_KEY del .env)
+# Cliente async de Anthropic (usa CLAUDE_API_KEY del .env).
+# Si no hay clave real (placeholder 'sk-ant-XXXXXXXXXX'), el cliente se
+# instancia igual pero las llamadas fallarán — es responsabilidad del
+# endpoint capturar y devolver el error al frontend.
 client = anthropic.AsyncAnthropic(api_key=settings.CLAUDE_API_KEY)
 
 
+def _api_key_configurada() -> bool:
+    """
+    True si la clave de Claude parece real (no es el placeholder por defecto
+    ni está vacía). Se usa para deshabilitar el botón/mostrar mensaje explícito
+    en vez de hacer requests que van a fallar.
+    """
+    key = (settings.CLAUDE_API_KEY or "").strip()
+    if not key:
+        return False
+    if "XXXX" in key or "xxxx" in key:
+        return False
+    return key.startswith("sk-ant-")
+
+
 # ============================================================
-# SYSTEM PROMPT PEDAGÓGICO
+# CONTEXTO DEL GRUPO — común a todos los modos
 # ============================================================
 
-def construir_system_prompt(grupo: Grupo, estudiantes: List[Estudiante]) -> str:
+def _bloque_contexto_grupo(grupo: Grupo, estudiantes: List[Estudiante]) -> str:
     """
-    Construye el system prompt contextualizado para el grupo.
-    Incluye información sobre estudiantes con PIAR para orientar
-    las respuestas pedagógicas.
+    Sección de contexto del grupo que se inyecta después del system prompt del modo.
+    Incluye datos del grupo + resumen de estudiantes con PIAR.
     """
     piar = [e for e in estudiantes if e.tiene_piar]
     recursos = grupo.recursos_disponibles or []
 
-    prompt = f"""Eres un asistente pedagógico especializado en educación inclusiva para Colombia.
-Apoyas a docentes de educación básica y media en la planificación de clases adaptadas.
-
+    ctx = f"""
 ═══════════════════════════════════════════
 CONTEXTO DEL GRUPO
 ═══════════════════════════════════════════
@@ -40,44 +62,43 @@ CONTEXTO DEL GRUPO
 • Año lectivo: {grupo.anio_lectivo} — Período {grupo.periodo_actual}
 • Total estudiantes: {grupo.cantidad_estudiantes}
 • Recursos disponibles: {', '.join(recursos) if recursos else 'No especificados'}
-
 """
 
     if piar:
-        prompt += f"""═══════════════════════════════════════════
+        ctx += f"""
+═══════════════════════════════════════════
 ESTUDIANTES CON PIAR ({len(piar)} estudiante{'s' if len(piar) > 1 else ''})
 ═══════════════════════════════════════════
 """
         for e in piar:
-            prompt += f"""
-• Estudiante {e.codigo_estudiante}
-  - Diagnóstico : {e.diagnostico or 'No especificado'}
-  - Ajustes PIAR: {e.ajustes or 'No especificados'}
-"""
+            ctx += (
+                f"\n• Estudiante {e.codigo_estudiante}"
+                f"\n  - Diagnóstico : {e.diagnostico or 'No especificado'}"
+                f"\n  - Ajustes PIAR: {e.ajustes or 'No especificados'}\n"
+            )
     else:
-        prompt += "• Ningún estudiante tiene PIAR registrado actualmente.\n"
+        ctx += "\n• Ningún estudiante tiene PIAR registrado actualmente.\n"
 
-    prompt += """
-═══════════════════════════════════════════
-TU ROL Y FORMA DE RESPONDER
-═══════════════════════════════════════════
-1. Ayuda al docente a planear clases INCLUSIVAS basadas en DUA
-   (Diseño Universal para el Aprendizaje).
-2. Sugiere estrategias concretas y aplicables para los estudiantes con PIAR.
-3. Diseña evaluaciones adaptadas cuando se solicite.
-4. Propón actividades diferenciadas según los niveles del grupo.
-5. Brinda fundamentación pedagógica respaldada por teoría.
-6. Considera siempre el contexto de las instituciones educativas públicas colombianas.
+    return ctx
 
-FORMATO:
-- Responde siempre en español.
-- Usa markdown para estructurar (listas, negritas, encabezados).
-- Sé concreto y práctico; evita respuestas genéricas.
-- Si diseñas actividades, incluye tiempo estimado y materiales.
-- Si hay estudiantes con PIAR, incluye SIEMPRE una sección de adaptaciones específicas.
-"""
 
-    return prompt
+def construir_system_prompt(
+    grupo: Grupo,
+    estudiantes: List[Estudiante],
+    modo: Optional[str] = None,
+) -> str:
+    """
+    Construye el system prompt completo para una llamada a Claude:
+      [prompt base + prompt del modo activo] + [contexto del grupo]
+
+    `modo` es opcional para retro-compat con los llamadores previos al sprint
+    de modos — si no se pasa, cae a MODO_DEFAULT (planeacion), que preserva
+    el comportamiento histórico del asistente.
+    """
+    modo_final = normalizar_modo(modo)
+    base_y_modo = prompt_para_modo(modo_final)
+    contexto = _bloque_contexto_grupo(grupo, estudiantes)
+    return f"{base_y_modo}\n{contexto}"
 
 
 # ============================================================
@@ -90,12 +111,17 @@ async def generar_respuesta(
     grupo: Grupo,
     estudiantes: List[Estudiante],
     on_chunk: Callable[[str], None],
+    modo: Optional[str] = None,
 ) -> str:
     """
     Llama a Claude con streaming y dispara on_chunk() por cada token recibido.
     Retorna el texto completo al finalizar.
+
+    El `modo` define qué system prompt se activa (planeacion / socioemocional /
+    calificacion / piar). Si no se pasa, cae al MODO_DEFAULT — retro-compat
+    con callers previos al sprint de modos.
     """
-    system_prompt = construir_system_prompt(grupo, estudiantes)
+    system_prompt = construir_system_prompt(grupo, estudiantes, modo=modo)
 
     # Construir historial de conversación (últimos 20 mensajes)
     messages = []

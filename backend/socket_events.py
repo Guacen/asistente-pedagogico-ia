@@ -21,6 +21,7 @@ from auth import verify_token_for_socket
 from database import SessionLocal
 from ia import generar_respuesta
 from models import Docente, Estudiante, Grupo, Mensaje, Suscripcion, UsoMensual
+from prompts import MODO_DEFAULT, MODOS_ACTIVOS, normalizar_modo
 
 # ============================================================
 # INSTANCIA DE SOCKET.IO
@@ -148,6 +149,11 @@ async def send_message(sid, data):
     """
     grupo_id = data.get("grupo_id")
     mensaje_texto = (data.get("mensaje") or "").strip()
+    # Normaliza el modo: si el frontend no lo envía o envía basura → planeacion.
+    # Cualquier modo no aceptado explícitamente cae al DEFAULT en vez de fallar,
+    # así el pipeline queda a prueba de clientes desactualizados.
+    modo_recibido = (data.get("modo") or "").strip().lower()
+    modo = normalizar_modo(modo_recibido)
 
     if not grupo_id or not mensaje_texto:
         return
@@ -174,11 +180,12 @@ async def send_message(sid, data):
             }, to=sid)
             return
 
-        # 3. Guardar mensaje del docente
+        # 3. Guardar mensaje del docente (con el modo activo)
         msg_docente = Mensaje(
             id_grupo=grupo_id,
             remitente="docente",
             contenido=mensaje_texto,
+            modo=modo,
         )
         db.add(msg_docente)
         db.commit()
@@ -190,16 +197,24 @@ async def send_message(sid, data):
             "id_grupo": grupo_id,
             "remitente": "docente",
             "contenido": mensaje_texto,
+            "modo": modo,
             "timestamp": msg_docente.timestamp.isoformat(),
         }, room=grupo_id)
 
-        # 5. Señal de que la IA está generando
-        await sio.emit("ia_generando", {}, room=grupo_id)
+        # 5. Señal de que la IA está generando (con el modo activo)
+        await sio.emit("ia_generando", {"modo": modo}, room=grupo_id)
 
-        # 6. Obtener historial y estudiantes para contexto
+        # 6. Obtener historial y estudiantes para contexto.
+        # Filtramos por modo activo para que la conversación no cruce
+        # contextos (ej. socioemocional no ve historial de planeacion).
+        # El mensaje recién guardado ya tiene el modo correcto, así que
+        # entra en su propia conversación.
         historial = (
             db.query(Mensaje)
-            .filter(Mensaje.id_grupo == grupo_id)
+            .filter(
+                Mensaje.id_grupo == grupo_id,
+                Mensaje.modo == modo,
+            )
             .order_by(Mensaje.timestamp.asc())
             .all()
         )
@@ -209,7 +224,7 @@ async def send_message(sid, data):
             .all()
         )
 
-        # 7. Generar respuesta con streaming
+        # 7. Generar respuesta con streaming (system prompt según modo)
         respuesta_completa = ""
 
         async def on_chunk(chunk: str):
@@ -223,24 +238,27 @@ async def send_message(sid, data):
             grupo=grupo,
             estudiantes=estudiantes,
             on_chunk=on_chunk,
+            modo=modo,
         )
 
-        # 8. Guardar respuesta completa de la IA
+        # 8. Guardar respuesta completa de la IA (mismo modo del mensaje)
         msg_ia = Mensaje(
             id_grupo=grupo_id,
             remitente="sistema",
             contenido=respuesta_completa,
+            modo=modo,
         )
         db.add(msg_ia)
         db.commit()
         db.refresh(msg_ia)
 
-        # 9. Emitir evento de completado
+        # 9. Emitir evento de completado (incluye el modo)
         await sio.emit("ia_complete", {
             "id_mensaje": msg_ia.id_mensaje,
             "id_grupo": grupo_id,
             "remitente": "sistema",
             "contenido": respuesta_completa,
+            "modo": modo,
             "timestamp": msg_ia.timestamp.isoformat(),
         }, room=grupo_id)
 

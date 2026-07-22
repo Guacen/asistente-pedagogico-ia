@@ -34,6 +34,17 @@ def apply_migrations():
             conn.commit()
             print("✅ Migración: columna 'id_columna' agregada a 'calificaciones'")
 
+        # ── mensajes.modo ──────────────────────────────────────────────
+        # Fase B chat multi-modo — mensajes previos quedan como 'planeacion'
+        # (era el único modo hasta este sprint).
+        cols_msg = [c["name"] for c in inspector.get_columns("mensajes")]
+        if "modo" not in cols_msg:
+            conn.execute(text(
+                "ALTER TABLE mensajes ADD COLUMN modo VARCHAR(32) NOT NULL DEFAULT 'planeacion'"
+            ))
+            conn.commit()
+            print("✅ Migración: columna 'modo' agregada a 'mensajes' (default planeacion)")
+
     print("✅ Migraciones aplicadas")
 
 
