@@ -151,8 +151,11 @@ class ApiClient {
     // CHAT
     // ==========================================
     
-    async getChatHistorial(grupoId, limit = 50) {
-        return this.request(`/api/grupos/${grupoId}/chat/historial?limit=${limit}`);
+    async getChatHistorial(grupoId, limit = 50, modo = null) {
+        // Fase B: filtra por modo si se pasa (planeacion/socioemocional/calificacion/piar)
+        const params = new URLSearchParams({ limit: String(limit) });
+        if (modo) params.set('modo', modo);
+        return this.request(`/api/grupos/${grupoId}/chat/historial?${params.toString()}`);
     }
     
     // ==========================================

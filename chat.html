@@ -255,6 +255,52 @@ const _dlStore = {};
 let   _dlCnt   = 0;
 
 // ══════════════════════════════════════════════════════════════
+// HISTORIAL POR MODO (Fase B · subtask 8)
+// ══════════════════════════════════════════════════════════════
+
+// Etiquetas legibles para el empty state por modo
+const MODO_LABEL = {
+    planeacion: 'planeación',
+    socioemocional: 'socioemocional',
+    calificacion: 'calificación',
+    piar: 'PIAR',
+};
+
+function pintarHistorial(historial, modo) {
+    const cont = document.getElementById('mensajes-container');
+    if (!cont) return;
+    // Limpiar sólo mensajes ya pintados (no toca el loader ni sidebars)
+    cont.querySelectorAll('.msg-wrap').forEach(el => el.remove());
+    // Empty state contextual si no hay historial en el modo activo
+    const emptyExistente = cont.querySelector('#empty-modo');
+    if (emptyExistente) emptyExistente.remove();
+    if (!historial || historial.length === 0) {
+        const div = document.createElement('div');
+        div.id = 'empty-modo';
+        div.className = 'text-center text-gray-400 text-sm py-8';
+        const label = MODO_LABEL[modo] || 'este modo';
+        div.innerHTML = `
+            <i class="fas fa-comments text-3xl text-gray-300 mb-2"></i>
+            <p>Aún no has hecho consultas de <strong>${label}</strong> en este grupo.</p>
+            <p class="text-xs mt-1">Escribí tu primera consulta abajo — el asistente entra en modo ${label}.</p>
+        `;
+        cont.appendChild(div);
+        return;
+    }
+    historial.forEach(m => addMsgDOM(m.remitente, m.contenido, m.timestamp));
+}
+
+async function recargarHistorialPorModo(modo) {
+    try {
+        const historial = await api.getChatHistorial(grupoId, 50, modo);
+        pintarHistorial(historial, modo);
+        scrollBottom();
+    } catch (err) {
+        console.error('[historial] recarga por modo falló:', err);
+    }
+}
+
+// ══════════════════════════════════════════════════════════════
 // INIT
 // ══════════════════════════════════════════════════════════════
 async function init() {
@@ -262,10 +308,13 @@ async function init() {
         [user, grupo] = await Promise.all([api.getMe(), api.getGrupo(grupoId)]);
         renderGrupoHeader();
 
-        // Historial
-        const historial = await api.getChatHistorial(grupoId);
+        // Historial — filtrado por el modo activo (Fase B). Si el docente
+        // recién abre el chat, se carga sólo lo del modo persistido en
+        // localStorage; los modos sin historial muestran el empty state.
+        const modoInicial = getModoActivo();
+        const historial = await api.getChatHistorial(grupoId, 50, modoInicial);
         document.getElementById('chat-loading').remove();
-        historial.forEach(m => addMsgDOM(m.remitente, m.contenido, m.timestamp));
+        pintarHistorial(historial, modoInicial);
         scrollBottom();
 
         // Sidebar
@@ -334,9 +383,11 @@ function addMsgDOM(remitente, contenido, timestamp) {
         : '';
 
     const wrap = document.createElement('div');
+    // Clase 'msg-wrap' se usa para limpiar el contenedor al recargar el
+    // historial filtrado por modo (Fase B · subtask 8).
     wrap.className = isIA
-        ? 'flex justify-start gap-2'
-        : 'flex justify-end';
+        ? 'msg-wrap flex justify-start gap-2'
+        : 'msg-wrap flex justify-end';
 
     if (isIA) {
         // Avatar IA
