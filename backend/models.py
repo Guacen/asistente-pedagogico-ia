@@ -59,6 +59,34 @@ class UsoMensual(Base):
     docente = relationship("Docente", back_populates="uso_mensual")
 
 
+class RateLimitCounter(Base):
+    """
+    Contador diario de uso del asistente IA por (docente, fecha, modo).
+    Se incrementa al INICIAR una generación (no al finalizar), así el
+    usuario no puede evadir el límite cancelando la respuesta a mitad.
+    """
+    __tablename__ = "rate_limit_counter"
+    __table_args__ = (
+        # Un solo contador por combinación diaria+modo — evita duplicados
+        # y permite ON CONFLICT / SELECT FOR UPDATE en el futuro.
+        __import__("sqlalchemy").UniqueConstraint(
+            "id_docente", "fecha", "modo",
+            name="uq_ratelimit_docente_fecha_modo",
+        ),
+    )
+
+    id_counter = Column(String(36), primary_key=True, default=new_uuid)
+    id_docente = Column(
+        String(36),
+        ForeignKey("docentes.id_docente"),
+        nullable=False,
+        index=True,
+    )
+    fecha = Column(String(10), nullable=False, index=True)  # 'YYYY-MM-DD'
+    modo = Column(String(32), nullable=False, index=True)
+    count = Column(Integer, default=0, nullable=False)
+
+
 class Grupo(Base):
     __tablename__ = "grupos"
 
