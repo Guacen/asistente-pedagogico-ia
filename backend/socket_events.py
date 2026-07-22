@@ -20,8 +20,23 @@ import socketio
 from auth import verify_token_for_socket
 from database import SessionLocal
 from ia import generar_respuesta
-from models import Docente, Estudiante, Grupo, Mensaje, Suscripcion, UsoMensual
-from prompts import MODO_DEFAULT, MODOS_ACTIVOS, normalizar_modo
+from models import (
+    Calificacion,
+    Docente,
+    Estudiante,
+    EvaluacionColumna,
+    Grupo,
+    Mensaje,
+    Suscripcion,
+    UsoMensual,
+)
+from prompts import (
+    MODO_CALIFICACION,
+    MODO_DEFAULT,
+    MODO_SOCIOEMOCIONAL,
+    MODOS_ACTIVOS,
+    normalizar_modo,
+)
 
 # ============================================================
 # INSTANCIA DE SOCKET.IO
@@ -224,6 +239,37 @@ async def send_message(sid, data):
             .all()
         )
 
+        # 6b. Contexto adicional según modo
+        columnas_periodo = None
+        notas_por_estudiante = None
+
+        if modo == MODO_CALIFICACION:
+            # Columnas del libro para el periodo actual del grupo
+            columnas_periodo = (
+                db.query(EvaluacionColumna)
+                .filter(
+                    EvaluacionColumna.id_grupo == grupo_id,
+                    EvaluacionColumna.periodo == (grupo.periodo_actual or 1),
+                )
+                .order_by(EvaluacionColumna.orden, EvaluacionColumna.nombre)
+                .all()
+            )
+
+        if modo in (MODO_SOCIOEMOCIONAL, MODO_CALIFICACION):
+            # Notas registradas por estudiante — sirve para detectar bajos
+            # rendimientos en socioemocional y para tener contexto real en
+            # calificacion.
+            cals = (
+                db.query(Calificacion)
+                .filter(Calificacion.id_grupo == grupo_id)
+                .all()
+            )
+            notas_por_estudiante = {}
+            for c in cals:
+                if c.valor is None:
+                    continue
+                notas_por_estudiante.setdefault(c.id_estudiante, []).append(c.valor)
+
         # 7. Generar respuesta con streaming (system prompt según modo)
         respuesta_completa = ""
 
@@ -239,6 +285,8 @@ async def send_message(sid, data):
             estudiantes=estudiantes,
             on_chunk=on_chunk,
             modo=modo,
+            columnas_periodo_actual=columnas_periodo,
+            notas_por_estudiante=notas_por_estudiante,
         )
 
         # 8. Guardar respuesta completa de la IA (mismo modo del mensaje)

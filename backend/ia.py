@@ -8,14 +8,17 @@ Los system prompts por modo viven en backend/prompts.py — este módulo
 solo arma el contexto dinámico (grupo, estudiantes) y lo concatena.
 """
 
+import re
 from typing import Callable, List, Optional
 
 import anthropic
 
 from config import settings
-from models import Estudiante, Grupo, Mensaje
+from models import Calificacion, Estudiante, EvaluacionColumna, Grupo, Mensaje
 from prompts import (
+    MODO_CALIFICACION,
     MODO_DEFAULT,
+    MODO_SOCIOEMOCIONAL,
     normalizar_modo,
     prompt_para_modo,
 )
@@ -82,23 +85,214 @@ ESTUDIANTES CON PIAR ({len(piar)} estudiante{'s' if len(piar) > 1 else ''})
     return ctx
 
 
+# ============================================================
+# CONTEXTO ESPECÍFICO POR MODO
+# ============================================================
+#
+# Cada modo puede enriquecer el prompt con datos adicionales relevantes
+# para su tarea. Los bloques se concatenan al final del contexto general
+# del grupo, así el asistente ve primero la info compartida y después la
+# info especializada.
+
+def _detectar_codigos_mencionados(
+    texto: str,
+    codigos: List[str],
+) -> List[str]:
+    """
+    Detecta qué códigos de estudiante del grupo aparecen en el texto libre
+    que escribió el docente. Match case-insensitive con word boundary para
+    evitar falsos positivos con substrings.
+
+    Asume que los códigos son suficientemente distintivos (típicamente
+    alfanuméricos como 'E001', '2024BAS08') — se documentó esta asunción
+    en el sprint spec como decisión pragmática para el MVP.
+    """
+    if not texto or not codigos:
+        return []
+    texto_norm = texto.lower()
+    encontrados: list[str] = []
+    for codigo in codigos:
+        if not codigo:
+            continue
+        # \b no funciona bien con caracteres no-word; construyo boundaries manuales
+        pat = r"(?<![A-Za-z0-9])" + re.escape(codigo.lower()) + r"(?![A-Za-z0-9])"
+        if re.search(pat, texto_norm):
+            encontrados.append(codigo)
+    # Preserva orden de aparición sin duplicados
+    vistos: set[str] = set()
+    unicos: list[str] = []
+    for c in encontrados:
+        if c not in vistos:
+            vistos.add(c)
+            unicos.append(c)
+    return unicos
+
+
+def _bloque_socioemocional(
+    mensaje_texto: str,
+    estudiantes: List[Estudiante],
+    notas_por_estudiante: Optional[dict[str, List[float]]] = None,
+) -> str:
+    """
+    Contexto adicional para modo socioemocional:
+    - Si el docente menciona códigos de estudiantes → detalle enriquecido
+      (diagnóstico, ajustes, tiene_piar, resumen de notas)
+    - Si no menciona a nadie → estadísticas agregadas del grupo
+    """
+    codigos = [e.codigo_estudiante for e in estudiantes if e.codigo_estudiante]
+    mencionados = _detectar_codigos_mencionados(mensaje_texto, codigos)
+    notas_por_estudiante = notas_por_estudiante or {}
+
+    if mencionados:
+        est_por_codigo = {e.codigo_estudiante: e for e in estudiantes}
+        bloque = "\n═══════════════════════════════════════════\n"
+        bloque += "ESTUDIANTES MENCIONADOS POR EL DOCENTE\n"
+        bloque += "═══════════════════════════════════════════\n"
+        for c in mencionados:
+            e = est_por_codigo.get(c)
+            if not e:
+                continue
+            bloque += f"\n• Código: {e.codigo_estudiante}"
+            bloque += f"\n  - PIAR: {'Sí' if e.tiene_piar else 'No'}"
+            if e.tiene_piar:
+                bloque += f"\n  - Diagnóstico: {e.diagnostico or 'No especificado'}"
+                bloque += f"\n  - Ajustes actuales: {e.ajustes or 'No especificados'}"
+            notas = notas_por_estudiante.get(e.id_estudiante, [])
+            if notas:
+                prom = round(sum(notas) / len(notas), 2)
+                minv = round(min(notas), 1)
+                maxv = round(max(notas), 1)
+                bloque += (
+                    f"\n  - Notas registradas ({len(notas)}): "
+                    f"promedio {prom} / min {minv} / max {maxv}"
+                )
+            else:
+                bloque += "\n  - Sin notas registradas aún"
+            bloque += "\n"
+        return bloque
+
+    # Sin menciones — estadísticas agregadas
+    n_total = len(estudiantes)
+    n_piar = sum(1 for e in estudiantes if e.tiene_piar)
+    bloque = "\n═══════════════════════════════════════════\n"
+    bloque += "CONTEXTO SOCIOEMOCIONAL DEL GRUPO\n"
+    bloque += "═══════════════════════════════════════════\n"
+    bloque += f"\n• Estudiantes registrados: {n_total}"
+    bloque += f"\n• Con PIAR: {n_piar} ({round(n_piar/n_total*100) if n_total else 0}%)"
+
+    # Distribución de rendimiento por estudiante (si hay notas)
+    if notas_por_estudiante:
+        proms = [
+            sum(v) / len(v)
+            for v in notas_por_estudiante.values()
+            if v
+        ]
+        if proms:
+            bajos = sum(1 for p in proms if p < 3.0)
+            riesgo = sum(1 for p in proms if 3.0 <= p < 3.5)
+            aprobados = sum(1 for p in proms if p >= 3.5)
+            bloque += (
+                f"\n• Rendimiento (por promedio de notas registradas):"
+                f"\n  - Aprobados (≥3.5): {aprobados}"
+                f"\n  - En riesgo (3.0–3.4): {riesgo}"
+                f"\n  - Reprobados (<3.0): {bajos}"
+            )
+    bloque += "\n"
+    return bloque
+
+
+def _bloque_calificacion(
+    columnas_periodo_actual: List[EvaluacionColumna],
+    estudiantes: List[Estudiante],
+    periodo_actual: int,
+) -> str:
+    """
+    Contexto adicional para modo calificación:
+    - Columnas de evaluación del periodo actual (nombre, tipo, peso ponderado)
+    - Estudiantes con PIAR (para que la rúbrica los considere)
+    - Recordatorio de escala colombiana
+    """
+    bloque = "\n═══════════════════════════════════════════\n"
+    bloque += "CONTEXTO DE EVALUACIÓN\n"
+    bloque += "═══════════════════════════════════════════\n"
+    bloque += f"\n• Periodo actual: {periodo_actual}"
+    bloque += "\n• Escala colombiana: 1.0–5.0 (Decreto 1290)"
+    bloque += "\n  Superior 4.6–5.0 · Alto 4.0–4.5 · Básico 3.0–3.9 · Bajo 1.0–2.9"
+    bloque += "\n  Aprobación mínima: 3.0"
+
+    if columnas_periodo_actual:
+        peso_total = sum(c.porcentaje or 0 for c in columnas_periodo_actual)
+        bloque += (
+            f"\n\n• Evaluaciones registradas para el periodo "
+            f"({len(columnas_periodo_actual)}, peso total {peso_total:.0f}%):"
+        )
+        for c in columnas_periodo_actual:
+            peso = f"{c.porcentaje:.0f}%" if c.porcentaje else "sin peso"
+            tipo = c.tipo or "sin tipo"
+            bloque += f"\n  - {c.nombre} · {tipo} · {peso}"
+    else:
+        bloque += "\n\n• Aún no hay evaluaciones registradas para este periodo."
+
+    piar = [e for e in estudiantes if e.tiene_piar]
+    if piar:
+        bloque += (
+            f"\n\n• Estudiantes con PIAR en este grupo ({len(piar)}) — "
+            f"la rúbrica debe incluir ajustes diferenciados:"
+        )
+        for e in piar:
+            bloque += f"\n  - {e.codigo_estudiante}"
+            if e.ajustes:
+                bloque += f" · ajustes actuales: {e.ajustes[:80]}"
+    bloque += "\n"
+    return bloque
+
+
 def construir_system_prompt(
     grupo: Grupo,
     estudiantes: List[Estudiante],
     modo: Optional[str] = None,
+    *,
+    mensaje_texto: Optional[str] = None,
+    columnas_periodo_actual: Optional[List[EvaluacionColumna]] = None,
+    notas_por_estudiante: Optional[dict[str, List[float]]] = None,
 ) -> str:
     """
     Construye el system prompt completo para una llamada a Claude:
-      [prompt base + prompt del modo activo] + [contexto del grupo]
+      [prompt base + prompt del modo activo] + [contexto general del grupo]
+      + [bloque específico del modo, si aplica]
 
-    `modo` es opcional para retro-compat con los llamadores previos al sprint
-    de modos — si no se pasa, cae a MODO_DEFAULT (planeacion), que preserva
-    el comportamiento histórico del asistente.
+    Args:
+        grupo, estudiantes: contexto compartido (todos los modos).
+        modo: activa el system prompt específico + el bloque contextual.
+        mensaje_texto: texto del docente — usado por socioemocional para
+            detectar menciones de estudiantes.
+        columnas_periodo_actual: columnas del libro de notas del periodo
+            actual — usado por calificacion.
+        notas_por_estudiante: dict {id_estudiante: [valores]} — usado por
+            socioemocional para dar contexto de rendimiento.
+
+    Si `modo` no se pasa, cae a MODO_DEFAULT (planeacion) — retro-compat total.
     """
     modo_final = normalizar_modo(modo)
     base_y_modo = prompt_para_modo(modo_final)
-    contexto = _bloque_contexto_grupo(grupo, estudiantes)
-    return f"{base_y_modo}\n{contexto}"
+    contexto_grupo = _bloque_contexto_grupo(grupo, estudiantes)
+
+    # Bloque específico por modo (opcional)
+    contexto_extra = ""
+    if modo_final == MODO_SOCIOEMOCIONAL:
+        contexto_extra = _bloque_socioemocional(
+            mensaje_texto or "",
+            estudiantes,
+            notas_por_estudiante,
+        )
+    elif modo_final == MODO_CALIFICACION:
+        contexto_extra = _bloque_calificacion(
+            columnas_periodo_actual or [],
+            estudiantes,
+            grupo.periodo_actual or 1,
+        )
+
+    return f"{base_y_modo}\n{contexto_grupo}{contexto_extra}"
 
 
 # ============================================================
@@ -112,6 +306,9 @@ async def generar_respuesta(
     estudiantes: List[Estudiante],
     on_chunk: Callable[[str], None],
     modo: Optional[str] = None,
+    *,
+    columnas_periodo_actual: Optional[List[EvaluacionColumna]] = None,
+    notas_por_estudiante: Optional[dict[str, List[float]]] = None,
 ) -> str:
     """
     Llama a Claude con streaming y dispara on_chunk() por cada token recibido.
@@ -120,8 +317,19 @@ async def generar_respuesta(
     El `modo` define qué system prompt se activa (planeacion / socioemocional /
     calificacion / piar). Si no se pasa, cae al MODO_DEFAULT — retro-compat
     con callers previos al sprint de modos.
+
+    Kwargs opcionales de contexto extendido:
+    - columnas_periodo_actual: usado por modo calificacion
+    - notas_por_estudiante: dict {id_estudiante: [valores]} — socioemocional/calificacion
     """
-    system_prompt = construir_system_prompt(grupo, estudiantes, modo=modo)
+    system_prompt = construir_system_prompt(
+        grupo,
+        estudiantes,
+        modo=modo,
+        mensaje_texto=mensaje_docente,
+        columnas_periodo_actual=columnas_periodo_actual,
+        notas_por_estudiante=notas_por_estudiante,
+    )
 
     # Construir historial de conversación (últimos 20 mensajes)
     messages = []
