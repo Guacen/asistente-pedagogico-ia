@@ -23,6 +23,13 @@ def get_historial(
             "calificacion|piar). Si se omite, devuelve todo el historial."
         ),
     ),
+    id_estudiante: Optional[str] = Query(
+        default=None,
+        description=(
+            "Filtra por estudiante. Sólo tiene sentido cuando modo='piar' "
+            "(cada PIAR es su propia conversación)."
+        ),
+    ),
     docente=Depends(get_current_docente),
     db: Session = Depends(get_db),
 ):
@@ -37,8 +44,6 @@ def get_historial(
     q = db.query(Mensaje).filter(Mensaje.id_grupo == grupo_id)
 
     if modo is not None:
-        # Aceptamos modos activos y también 'piar' aunque aún no sea funcional
-        # — si mañana hay historial legacy con ese modo, el filtro lo verá.
         modo_norm = modo.strip().lower()
         modos_validos = set(MODOS_ACTIVOS) | {"piar"}
         if modo_norm not in modos_validos:
@@ -47,6 +52,12 @@ def get_historial(
                 detail=f"Modo inválido: '{modo}'. Válidos: {sorted(modos_validos)}",
             )
         q = q.filter(Mensaje.modo == modo_norm)
+
+    if id_estudiante:
+        # Filtro por estudiante — útil sólo para historial de PIAR. En otros
+        # modos los mensajes tienen id_estudiante NULL, así que este filtro
+        # devolvería lista vacía (comportamiento esperado, no error).
+        q = q.filter(Mensaje.id_estudiante == id_estudiante)
 
     mensajes = q.order_by(Mensaje.timestamp.desc()).limit(limit).all()
     return list(reversed(mensajes))
