@@ -143,12 +143,38 @@
                             <span>📊</span><span>Calificación</span>
                         </button>
                         <button type="button" data-modo="piar"
-                            class="mode-btn flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors whitespace-nowrap opacity-40 cursor-not-allowed"
-                            title="Generación de PIAR — disponible en el próximo sprint"
-                            disabled>
+                            class="mode-btn flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors whitespace-nowrap"
+                            title="Generación de PIAR — Decreto 1421/2017 (borrador)">
                             <span>📋</span><span>PIAR</span>
                         </button>
                         <span id="mode-hint" class="ml-2 text-[11px] text-gray-500 whitespace-nowrap"></span>
+                    </div>
+
+                    <!-- Panel PIAR (Fase C) — sólo visible cuando modo=piar -->
+                    <div id="piar-panel" class="hidden mb-2 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <label class="text-xs font-semibold text-orange-900">Estudiante con PIAR:</label>
+                            <select id="piar-estudiante-select"
+                                class="text-xs px-2 py-1 border border-orange-300 rounded bg-white flex-1 min-w-[180px]"
+                                onchange="onPiarEstudianteChange(this.value)">
+                                <option value="">— Selecciona un estudiante —</option>
+                            </select>
+                            <button type="button" id="piar-generar-btn"
+                                onclick="generarPiarBorrador()"
+                                disabled
+                                class="text-xs px-3 py-1 bg-orange-600 text-white rounded font-semibold hover:bg-orange-700 disabled:bg-gray-300 disabled:cursor-not-allowed whitespace-nowrap"
+                                title="Sintetiza la conversación en un borrador de PIAR (DOCX)">
+                                <i class="fas fa-file-word mr-1"></i>Generar PIAR
+                            </button>
+                        </div>
+                        <div id="piar-banner" class="hidden mt-2 text-xs text-orange-900 font-medium flex items-center gap-2">
+                            <i class="fas fa-info-circle"></i>
+                            <span id="piar-banner-msg"></span>
+                        </div>
+                        <div id="piar-empty-hint" class="hidden mt-2 text-xs text-gray-600 italic">
+                            Este grupo no tiene estudiantes con PIAR activo. Actívalo en la ficha de un estudiante para usar este modo.
+                        </div>
+                        <div id="piar-versiones" class="hidden mt-2 text-[11px] text-orange-900 flex flex-wrap gap-1.5"></div>
                     </div>
 
                     <!-- Rate limit banner (Fase B) -->
@@ -290,9 +316,15 @@ function pintarHistorial(historial, modo) {
     historial.forEach(m => addMsgDOM(m.remitente, m.contenido, m.timestamp));
 }
 
-async function recargarHistorialPorModo(modo) {
+async function recargarHistorialPorModo(modo, idEstudiante = null) {
     try {
-        const historial = await api.getChatHistorial(grupoId, 50, modo);
+        // Modo PIAR sin estudiante seleccionado → mostrar empty-state
+        // sin fetchear (evita traer historial de OTRO PIAR del mismo grupo).
+        if (modo === 'piar' && !idEstudiante) {
+            pintarHistorial([], modo);
+            return;
+        }
+        const historial = await api.getChatHistorial(grupoId, 50, modo, idEstudiante);
         pintarHistorial(historial, modo);
         scrollBottom();
     } catch (err) {
@@ -308,22 +340,34 @@ async function init() {
         [user, grupo] = await Promise.all([api.getMe(), api.getGrupo(grupoId)]);
         renderGrupoHeader();
 
-        // Historial — filtrado por el modo activo (Fase B). Si el docente
-        // recién abre el chat, se carga sólo lo del modo persistido en
-        // localStorage; los modos sin historial muestran el empty state.
-        const modoInicial = getModoActivo();
-        const historial = await api.getChatHistorial(grupoId, 50, modoInicial);
-        document.getElementById('chat-loading').remove();
-        pintarHistorial(historial, modoInicial);
-        scrollBottom();
-
-        // Sidebar
+        // Sidebar + preload de estudiantes con PIAR (reusado por Fase C)
         const [estudiantes, notas] = await Promise.all([
             api.getEstudiantes(grupoId),
             api.getNotas(grupoId),
         ]);
         renderEstudiantes(estudiantes);
         renderNotas(notas);
+        // Fase C: cache de estudiantes con tiene_piar=true del grupo actual.
+        // No persiste entre grupos ni en localStorage — se recalcula acá.
+        piarEstudiantesConPiar = (estudiantes || []).filter(e => e.tiene_piar);
+        // Re-render del selector: puede que el chip PIAR necesite deshabilitarse
+        // si no hay ningún estudiante con PIAR en este grupo.
+        renderModoSelector();
+
+        // Historial — filtrado por el modo activo (Fase B/C). En modo PIAR
+        // sin estudiante seleccionado el empty-state se muestra directo.
+        const modoInicial = getModoActivo();
+        document.getElementById('chat-loading').remove();
+        if (modoInicial === 'piar') {
+            // Activa el panel PIAR y usa el empty-state hasta que el
+            // docente elija estudiante — no hay estudiante persistido.
+            togglePiarPanel(true);
+            pintarHistorial([], modoInicial);
+        } else {
+            const historial = await api.getChatHistorial(grupoId, 50, modoInicial);
+            pintarHistorial(historial, modoInicial);
+            scrollBottom();
+        }
 
         // WebSocket
         connectSocket();
@@ -608,11 +652,16 @@ function connectSocket() {
 
     socket.on('ia_error', (data) => {
         ocultarTyping();
-        // Rate limit diario por modo → banner rojo específico, no plan-error
+        // Rate limit diario por modo → banner rojo específico
         if (data && data.code === 'rate_limit_diario') {
             mostrarRateLimit(data.message || 'Alcanzaste el límite diario.');
-        } else if (_streamBody) {
-            // Marcar error en burbuja en curso
+        }
+        // Errores del flow PIAR (validación previa al rate limit) → alert
+        // simple con mensaje claro. El backend ya validó, sólo mostrar.
+        else if (data && data.code && data.code.startsWith('piar_')) {
+            alert(data.message || 'Error de PIAR');
+        }
+        else if (_streamBody) {
             _streamBody.innerHTML = `<p class="text-red-500 text-sm">⚠ ${data.message}</p>`;
             _streamRaw = '';
         } else {
@@ -663,12 +712,17 @@ document.getElementById('chat-form').addEventListener('submit', async (e) => {
     ocultarPlanError();
     ocultarRateLimit();
 
-    socket.emit('send_message', {
+    const modoEnvio = getModoActivo();
+    const payload = {
         grupo_id: grupoId,
         mensaje: texto,
-        modo: getModoActivo(),
+        modo: modoEnvio,
         archivos: [],
-    });
+    };
+    if (modoEnvio === 'piar' && piarEstudianteId) {
+        payload.id_estudiante = piarEstudianteId;
+    }
+    socket.emit('send_message', payload);
     input.value = '';
     _streamWrap = null;
     _streamBody = null;
@@ -720,7 +774,13 @@ function ocultarRateLimit() {
 // evitar cruce de contexto entre grupos.
 const MODOS = ['planeacion', 'socioemocional', 'calificacion', 'piar'];
 const MODO_DEFAULT = 'planeacion';
-const MODOS_HABILITADOS = ['planeacion', 'socioemocional', 'calificacion'];
+const MODOS_HABILITADOS = ['planeacion', 'socioemocional', 'calificacion', 'piar'];
+
+// Estado PIAR — NO persiste en localStorage (spec Fase C):
+// el estudiante seleccionado muere al recargar o cambiar de grupo,
+// para evitar cruce de contexto entre grupos.
+let piarEstudianteId = null;
+let piarEstudiantesConPiar = [];  // cache de estudiantes del grupo con tiene_piar=true
 
 function modoStorageKey() {
     return `modo_chat_${grupoId}`;
@@ -737,10 +797,20 @@ function setModoActivo(modo) {
     localStorage.setItem(modoStorageKey(), modo);
     renderModoSelector();
     ocultarRateLimit();
-    // El historial filtrado por modo se implementa en subtask 8 —
-    // aquí sólo hooking-point para futura recarga.
+
+    // Panel PIAR: mostrar/ocultar según modo activo
+    togglePiarPanel(modo === 'piar');
+
+    // Al salir de PIAR el estudiante se resetea (no persiste); al volver
+    // el docente debe re-seleccionarlo. Al cambiar de estudiante dentro
+    // de PIAR también se recarga historial.
+    if (modo !== 'piar') {
+        piarEstudianteId = null;
+    }
+
+    // Recarga historial filtrado por modo (y estudiante si aplica)
     if (typeof recargarHistorialPorModo === 'function') {
-        recargarHistorialPorModo(modo);
+        recargarHistorialPorModo(modo, modo === 'piar' ? piarEstudianteId : null);
     }
 }
 
@@ -748,28 +818,223 @@ function renderModoSelector() {
     const activo = getModoActivo();
     const activeClass = 'bg-blue-600 text-white border-blue-600 shadow-sm';
     const inactiveClass = 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50';
+    const disabledClass = 'opacity-40 cursor-not-allowed';
+
     document.querySelectorAll('#mode-selector .mode-btn').forEach(btn => {
         const modo = btn.dataset.modo;
-        // Botón PIAR queda deshabilitado — se activa en el siguiente sprint.
-        // El disabled ya está en el HTML; aquí sólo asignamos active-styles a los habilitados.
         if (!MODOS_HABILITADOS.includes(modo)) return;
+
+        // Gate específico para PIAR: requiere al menos un estudiante con tiene_piar=true
+        const piarSinCandidatos = (modo === 'piar' && piarEstudiantesConPiar.length === 0);
+        btn.disabled = piarSinCandidatos;
+        if (piarSinCandidatos) {
+            btn.title = 'No hay estudiantes con PIAR activo en este grupo. Marca al menos uno en la ficha del estudiante.';
+        } else if (modo === 'piar') {
+            btn.title = 'Generación de PIAR — Decreto 1421/2017 (borrador)';
+        }
+
         btn.className = btn.className
-            .replace(activeClass, '').replace(inactiveClass, '').trim();
-        btn.className += ' ' + (modo === activo ? activeClass : inactiveClass);
+            .replace(activeClass, '').replace(inactiveClass, '')
+            .replace(disabledClass, '').trim();
+        if (piarSinCandidatos) {
+            btn.className += ' ' + inactiveClass + ' ' + disabledClass;
+        } else {
+            btn.className += ' ' + (modo === activo ? activeClass : inactiveClass);
+        }
     });
+
     // Hint contextual por modo (placeholder del input + tooltip)
     const hints = {
         planeacion: 'Planifica clases con DUA',
         socioemocional: 'Describe la situación del estudiante o grupo',
         calificacion: 'Diseña rúbricas o valorá desempeño',
+        piar: 'Conversación guiada para PIAR (Decreto 1421)',
     };
     const hintEl = document.getElementById('mode-hint');
     if (hintEl) hintEl.textContent = hints[activo] || '';
-    // Placeholder del textarea también contextual
     const input = document.getElementById('msg-input');
     if (input) {
         input.placeholder = (hints[activo] || 'Escribe tu mensaje…') +
             ' (Enter para enviar, Shift+Enter nueva línea)';
+    }
+}
+
+// ══════════════════════════════════════════════════════════════
+// PANEL PIAR (Fase C)
+// ══════════════════════════════════════════════════════════════
+
+function togglePiarPanel(mostrar) {
+    const panel = document.getElementById('piar-panel');
+    if (!panel) return;
+    if (mostrar) {
+        panel.classList.remove('hidden');
+        renderPiarPanel();
+    } else {
+        panel.classList.add('hidden');
+        ocultarPiarBanner();
+    }
+}
+
+function renderPiarPanel() {
+    // Poblar el select con estudiantes que tienen tiene_piar=true
+    const select = document.getElementById('piar-estudiante-select');
+    const emptyHint = document.getElementById('piar-empty-hint');
+    if (!select) return;
+
+    if (piarEstudiantesConPiar.length === 0) {
+        select.innerHTML = '<option value="">— Sin estudiantes con PIAR —</option>';
+        select.disabled = true;
+        if (emptyHint) emptyHint.classList.remove('hidden');
+    } else {
+        select.disabled = false;
+        if (emptyHint) emptyHint.classList.add('hidden');
+        const opts = ['<option value="">— Selecciona un estudiante —</option>']
+            .concat(piarEstudiantesConPiar.map(e =>
+                `<option value="${escapeHtml(e.id_estudiante)}"${e.id_estudiante === piarEstudianteId ? ' selected' : ''}>` +
+                `${escapeHtml(e.codigo_estudiante)}${e.diagnostico ? ' — ' + escapeHtml(e.diagnostico.slice(0, 40)) : ''}` +
+                `</option>`
+            ));
+        select.innerHTML = opts.join('');
+        select.value = piarEstudianteId || '';
+    }
+
+    actualizarBotonGenerarPiar();
+    actualizarPiarBanner();
+    cargarVersionesPreviasSelected();
+}
+
+function onPiarEstudianteChange(nuevoId) {
+    piarEstudianteId = nuevoId || null;
+    actualizarBotonGenerarPiar();
+    actualizarPiarBanner();
+    cargarVersionesPreviasSelected();
+    // Al cambiar de estudiante en PIAR, recargar historial filtrado por (piar, estudiante)
+    recargarHistorialPorModo('piar', piarEstudianteId);
+}
+
+function actualizarBotonGenerarPiar() {
+    const btn = document.getElementById('piar-generar-btn');
+    if (!btn) return;
+    btn.disabled = !piarEstudianteId;
+}
+
+function actualizarPiarBanner() {
+    const banner = document.getElementById('piar-banner');
+    const msg = document.getElementById('piar-banner-msg');
+    if (!banner || !msg) return;
+    if (!piarEstudianteId) {
+        banner.classList.add('hidden');
+        return;
+    }
+    const est = piarEstudiantesConPiar.find(e => e.id_estudiante === piarEstudianteId);
+    if (!est) {
+        banner.classList.add('hidden');
+        return;
+    }
+    msg.textContent = `Generando PIAR para ${est.codigo_estudiante} — Borrador (Decreto 1421)`;
+    banner.classList.remove('hidden');
+}
+
+function ocultarPiarBanner() {
+    document.getElementById('piar-banner')?.classList.add('hidden');
+    document.getElementById('piar-versiones')?.classList.add('hidden');
+}
+
+async function cargarVersionesPreviasSelected() {
+    const cont = document.getElementById('piar-versiones');
+    if (!cont) return;
+    if (!piarEstudianteId) {
+        cont.classList.add('hidden');
+        cont.innerHTML = '';
+        return;
+    }
+    try {
+        const versiones = await api.listarPiarsEstudiante(piarEstudianteId);
+        if (!versiones || versiones.length === 0) {
+            cont.classList.add('hidden');
+            cont.innerHTML = '';
+            return;
+        }
+        cont.innerHTML = '<span class="font-semibold">Versiones previas:</span>' +
+            versiones.slice(0, 5).map(v => {
+                const estadoBg = v.estado === 'aprobado' ? 'bg-green-200 text-green-900' : 'bg-orange-200 text-orange-900';
+                return `<a href="#" onclick="descargarPiar('${v.id_piar}');return false;"
+                        title="Descargar DOCX de v${v.version} (${v.estado})"
+                        class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded ${estadoBg} hover:opacity-80">
+                        v${v.version} · P${v.periodo}/${v.anio} · ${v.estado}
+                    </a>`;
+            }).join(' ');
+        cont.classList.remove('hidden');
+    } catch (err) {
+        console.warn('[PIAR] no pude cargar versiones previas:', err);
+        cont.classList.add('hidden');
+    }
+}
+
+async function generarPiarBorrador() {
+    if (!piarEstudianteId) {
+        alert('Selecciona un estudiante con PIAR primero.');
+        return;
+    }
+    const btn = document.getElementById('piar-generar-btn');
+    const orig = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Sintetizando…';
+    try {
+        const periodo = grupo?.periodo_actual || 1;
+        const piarCreado = await api.crearPiar(piarEstudianteId, periodo);
+        // Auto-descargar el DOCX recién creado
+        await api.descargarPiarDocx(piarCreado.id_piar);
+        // Refrescar la lista de versiones previas
+        await cargarVersionesPreviasSelected();
+        alert(`Borrador PIAR v${piarCreado.version} generado. DOCX descargado.\n\nRecuerda: es borrador — podés generar más versiones antes de aprobar. Al aprobar queda inmutable.`);
+    } catch (err) {
+        // El body del error del backend viene en err.message como JSON string;
+        // matcheamos por keywords del detail sin depender del status HTTP.
+        const msg = String(err.message || err);
+        const lower = msg.toLowerCase();
+        if (lower.includes('conversac')) {
+            alert('Aún no hay conversación de PIAR para este estudiante. Escribí al menos un mensaje en el chat antes de generar.');
+        } else if (lower.includes('piar activo') || lower.includes('no tiene piar')) {
+            alert('El estudiante no tiene PIAR activo. Actívalo en su ficha primero.');
+        } else if (msg.includes('502') || lower.includes('claude')) {
+            alert('El asistente IA no pudo generar el borrador (error del modelo). Volvé a intentar en un momento.');
+        } else {
+            // Intentar extraer 'detail' del JSON si el backend lo devolvió estructurado
+            let msgLimpio = msg;
+            try {
+                const parsed = JSON.parse(msg);
+                if (parsed && parsed.detail) msgLimpio = parsed.detail;
+            } catch { /* no era JSON */ }
+            alert('Error generando PIAR: ' + msgLimpio);
+        }
+    } finally {
+        btn.innerHTML = orig;
+        actualizarBotonGenerarPiar();
+    }
+}
+
+async function descargarPiar(piarId) {
+    try {
+        await api.descargarPiarDocx(piarId);
+    } catch (err) {
+        alert('Error descargando DOCX: ' + (err.message || err));
+    }
+}
+
+async function cargarEstudiantesConPiar() {
+    try {
+        const todos = await api.getEstudiantes(grupoId);
+        piarEstudiantesConPiar = (todos || []).filter(e => e.tiene_piar);
+    } catch (err) {
+        console.warn('[PIAR] no pude cargar estudiantes del grupo:', err);
+        piarEstudiantesConPiar = [];
+    }
+    // Re-render selector — puede que el chip PIAR necesite deshabilitarse
+    renderModoSelector();
+    // Si estamos en modo piar, refrescar el panel
+    if (getModoActivo() === 'piar') {
+        renderPiarPanel();
     }
 }
 
