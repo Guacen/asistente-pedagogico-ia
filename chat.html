@@ -125,6 +125,38 @@
                            class="ml-auto text-blue-600 font-semibold hover:underline whitespace-nowrap">Ver planes →</a>
                     </div>
 
+                    <!-- Selector de modo del asistente (Fase B) -->
+                    <div id="mode-selector" class="flex items-center gap-1 mb-2 overflow-x-auto pb-1" role="tablist" aria-label="Modo del asistente">
+                        <button type="button" data-modo="planeacion"
+                            class="mode-btn flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors whitespace-nowrap"
+                            title="Planeación de clases con DUA">
+                            <span>📚</span><span>Planeación</span>
+                        </button>
+                        <button type="button" data-modo="socioemocional"
+                            class="mode-btn flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors whitespace-nowrap"
+                            title="Detección de señales socioemocionales — actúa como orientador escolar">
+                            <span>💬</span><span>Socioemocional</span>
+                        </button>
+                        <button type="button" data-modo="calificacion"
+                            class="mode-btn flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors whitespace-nowrap"
+                            title="Diseño de rúbricas alineadas al Decreto 1290">
+                            <span>📊</span><span>Calificación</span>
+                        </button>
+                        <button type="button" data-modo="piar"
+                            class="mode-btn flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors whitespace-nowrap opacity-40 cursor-not-allowed"
+                            title="Generación de PIAR — disponible en el próximo sprint"
+                            disabled>
+                            <span>📋</span><span>PIAR</span>
+                        </button>
+                        <span id="mode-hint" class="ml-2 text-[11px] text-gray-500 whitespace-nowrap"></span>
+                    </div>
+
+                    <!-- Rate limit banner (Fase B) -->
+                    <div id="rate-limit-banner" class="hidden mb-2 p-2.5 bg-red-50 border border-red-200 rounded-lg text-sm text-red-800 flex items-center gap-2">
+                        <i class="fas fa-clock"></i>
+                        <span id="rate-limit-msg"></span>
+                    </div>
+
                     <form id="chat-form" class="flex items-end gap-2">
                         <div class="flex-1">
                             <textarea
@@ -223,6 +255,52 @@ const _dlStore = {};
 let   _dlCnt   = 0;
 
 // ══════════════════════════════════════════════════════════════
+// HISTORIAL POR MODO (Fase B · subtask 8)
+// ══════════════════════════════════════════════════════════════
+
+// Etiquetas legibles para el empty state por modo
+const MODO_LABEL = {
+    planeacion: 'planeación',
+    socioemocional: 'socioemocional',
+    calificacion: 'calificación',
+    piar: 'PIAR',
+};
+
+function pintarHistorial(historial, modo) {
+    const cont = document.getElementById('mensajes-container');
+    if (!cont) return;
+    // Limpiar sólo mensajes ya pintados (no toca el loader ni sidebars)
+    cont.querySelectorAll('.msg-wrap').forEach(el => el.remove());
+    // Empty state contextual si no hay historial en el modo activo
+    const emptyExistente = cont.querySelector('#empty-modo');
+    if (emptyExistente) emptyExistente.remove();
+    if (!historial || historial.length === 0) {
+        const div = document.createElement('div');
+        div.id = 'empty-modo';
+        div.className = 'text-center text-gray-400 text-sm py-8';
+        const label = MODO_LABEL[modo] || 'este modo';
+        div.innerHTML = `
+            <i class="fas fa-comments text-3xl text-gray-300 mb-2"></i>
+            <p>Aún no has hecho consultas de <strong>${label}</strong> en este grupo.</p>
+            <p class="text-xs mt-1">Escribí tu primera consulta abajo — el asistente entra en modo ${label}.</p>
+        `;
+        cont.appendChild(div);
+        return;
+    }
+    historial.forEach(m => addMsgDOM(m.remitente, m.contenido, m.timestamp));
+}
+
+async function recargarHistorialPorModo(modo) {
+    try {
+        const historial = await api.getChatHistorial(grupoId, 50, modo);
+        pintarHistorial(historial, modo);
+        scrollBottom();
+    } catch (err) {
+        console.error('[historial] recarga por modo falló:', err);
+    }
+}
+
+// ══════════════════════════════════════════════════════════════
 // INIT
 // ══════════════════════════════════════════════════════════════
 async function init() {
@@ -230,10 +308,13 @@ async function init() {
         [user, grupo] = await Promise.all([api.getMe(), api.getGrupo(grupoId)]);
         renderGrupoHeader();
 
-        // Historial
-        const historial = await api.getChatHistorial(grupoId);
+        // Historial — filtrado por el modo activo (Fase B). Si el docente
+        // recién abre el chat, se carga sólo lo del modo persistido en
+        // localStorage; los modos sin historial muestran el empty state.
+        const modoInicial = getModoActivo();
+        const historial = await api.getChatHistorial(grupoId, 50, modoInicial);
         document.getElementById('chat-loading').remove();
-        historial.forEach(m => addMsgDOM(m.remitente, m.contenido, m.timestamp));
+        pintarHistorial(historial, modoInicial);
         scrollBottom();
 
         // Sidebar
@@ -302,9 +383,11 @@ function addMsgDOM(remitente, contenido, timestamp) {
         : '';
 
     const wrap = document.createElement('div');
+    // Clase 'msg-wrap' se usa para limpiar el contenedor al recargar el
+    // historial filtrado por modo (Fase B · subtask 8).
     wrap.className = isIA
-        ? 'flex justify-start gap-2'
-        : 'flex justify-end';
+        ? 'msg-wrap flex justify-start gap-2'
+        : 'msg-wrap flex justify-end';
 
     if (isIA) {
         // Avatar IA
@@ -525,7 +608,10 @@ function connectSocket() {
 
     socket.on('ia_error', (data) => {
         ocultarTyping();
-        if (_streamBody) {
+        // Rate limit diario por modo → banner rojo específico, no plan-error
+        if (data && data.code === 'rate_limit_diario') {
+            mostrarRateLimit(data.message || 'Alcanzaste el límite diario.');
+        } else if (_streamBody) {
             // Marcar error en burbuja en curso
             _streamBody.innerHTML = `<p class="text-red-500 text-sm">⚠ ${data.message}</p>`;
             _streamRaw = '';
@@ -575,8 +661,14 @@ document.getElementById('chat-form').addEventListener('submit', async (e) => {
 
     disableInput();
     ocultarPlanError();
+    ocultarRateLimit();
 
-    socket.emit('send_message', { grupo_id: grupoId, mensaje: texto, archivos: [] });
+    socket.emit('send_message', {
+        grupo_id: grupoId,
+        mensaje: texto,
+        modo: getModoActivo(),
+        archivos: [],
+    });
     input.value = '';
     _streamWrap = null;
     _streamBody = null;
@@ -610,6 +702,88 @@ function mostrarPlanError(msg) {
 function ocultarPlanError() {
     document.getElementById('plan-error').classList.add('hidden');
 }
+
+// ── Rate limit banner (Fase B) ────────────────────────────────
+function mostrarRateLimit(msg) {
+    document.getElementById('rate-limit-msg').textContent = msg;
+    document.getElementById('rate-limit-banner').classList.remove('hidden');
+}
+function ocultarRateLimit() {
+    document.getElementById('rate-limit-banner').classList.add('hidden');
+}
+
+// ── Selector de modo (Fase B) ─────────────────────────────────
+// Persistimos el modo activo por grupo en localStorage, así el docente
+// no lo tiene que re-elegir cada vez que abre el chat del mismo grupo.
+// EXCEPCIÓN documentada: cuando implementemos PIAR (siguiente sprint),
+// el estudiante seleccionado dentro de ese modo NO se persistirá para
+// evitar cruce de contexto entre grupos.
+const MODOS = ['planeacion', 'socioemocional', 'calificacion', 'piar'];
+const MODO_DEFAULT = 'planeacion';
+const MODOS_HABILITADOS = ['planeacion', 'socioemocional', 'calificacion'];
+
+function modoStorageKey() {
+    return `modo_chat_${grupoId}`;
+}
+
+function getModoActivo() {
+    const guardado = localStorage.getItem(modoStorageKey());
+    if (guardado && MODOS_HABILITADOS.includes(guardado)) return guardado;
+    return MODO_DEFAULT;
+}
+
+function setModoActivo(modo) {
+    if (!MODOS_HABILITADOS.includes(modo)) return;
+    localStorage.setItem(modoStorageKey(), modo);
+    renderModoSelector();
+    ocultarRateLimit();
+    // El historial filtrado por modo se implementa en subtask 8 —
+    // aquí sólo hooking-point para futura recarga.
+    if (typeof recargarHistorialPorModo === 'function') {
+        recargarHistorialPorModo(modo);
+    }
+}
+
+function renderModoSelector() {
+    const activo = getModoActivo();
+    const activeClass = 'bg-blue-600 text-white border-blue-600 shadow-sm';
+    const inactiveClass = 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50';
+    document.querySelectorAll('#mode-selector .mode-btn').forEach(btn => {
+        const modo = btn.dataset.modo;
+        // Botón PIAR queda deshabilitado — se activa en el siguiente sprint.
+        // El disabled ya está en el HTML; aquí sólo asignamos active-styles a los habilitados.
+        if (!MODOS_HABILITADOS.includes(modo)) return;
+        btn.className = btn.className
+            .replace(activeClass, '').replace(inactiveClass, '').trim();
+        btn.className += ' ' + (modo === activo ? activeClass : inactiveClass);
+    });
+    // Hint contextual por modo (placeholder del input + tooltip)
+    const hints = {
+        planeacion: 'Planifica clases con DUA',
+        socioemocional: 'Describe la situación del estudiante o grupo',
+        calificacion: 'Diseña rúbricas o valorá desempeño',
+    };
+    const hintEl = document.getElementById('mode-hint');
+    if (hintEl) hintEl.textContent = hints[activo] || '';
+    // Placeholder del textarea también contextual
+    const input = document.getElementById('msg-input');
+    if (input) {
+        input.placeholder = (hints[activo] || 'Escribe tu mensaje…') +
+            ' (Enter para enviar, Shift+Enter nueva línea)';
+    }
+}
+
+// Wire up de los botones del selector
+document.querySelectorAll('#mode-selector .mode-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        if (btn.disabled) return;
+        const modo = btn.dataset.modo;
+        setModoActivo(modo);
+    });
+});
+
+// Render inicial una vez que grupoId esté disponible
+renderModoSelector();
 
 // ── Notas ──────────────────────────────────────────────────────
 async function agregarNota() {

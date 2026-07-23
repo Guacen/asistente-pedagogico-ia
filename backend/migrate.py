@@ -9,7 +9,7 @@ Se llama desde main.py en el evento startup, justo después de create_tables().
 from sqlalchemy import inspect, text
 from sqlalchemy.orm import Session
 
-from database import engine, SessionLocal
+from database import Base, engine, SessionLocal
 from models import Suscripcion
 
 
@@ -44,6 +44,18 @@ def apply_migrations():
             ))
             conn.commit()
             print("✅ Migración: columna 'modo' agregada a 'mensajes' (default planeacion)")
+
+    # ── rate_limit_counter (tabla nueva) ────────────────────────────
+    # Se crea por metadata.create_all: SQLAlchemy detecta que la tabla no
+    # existe y la crea. Es idempotente y compatible con Postgres y SQLite.
+    # RateLimitCounter viene del import lazy para evitar ciclo circular.
+    from models import RateLimitCounter  # noqa: F401
+    Base.metadata.create_all(bind=engine, tables=[RateLimitCounter.__table__])
+
+    # Refrescar inspector para verificar que quedó creada (log claro)
+    inspector = inspect(engine)
+    if "rate_limit_counter" in inspector.get_table_names():
+        print("✅ Migración: tabla 'rate_limit_counter' verificada/creada")
 
     print("✅ Migraciones aplicadas")
 

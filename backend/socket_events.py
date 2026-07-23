@@ -20,8 +20,25 @@ import socketio
 from auth import verify_token_for_socket
 from database import SessionLocal
 from ia import generar_respuesta
-from models import Docente, Estudiante, Grupo, Mensaje, Suscripcion, UsoMensual
-from prompts import MODO_DEFAULT, MODOS_ACTIVOS, normalizar_modo
+from models import (
+    Calificacion,
+    Docente,
+    Estudiante,
+    EvaluacionColumna,
+    Grupo,
+    Mensaje,
+    RateLimitCounter,
+    Suscripcion,
+    UsoMensual,
+)
+from prompts import (
+    LIMITES_DIARIOS,
+    MODO_CALIFICACION,
+    MODO_DEFAULT,
+    MODO_SOCIOEMOCIONAL,
+    MODOS_ACTIVOS,
+    normalizar_modo,
+)
 
 # ============================================================
 # INSTANCIA DE SOCKET.IO
@@ -41,6 +58,94 @@ _sesiones: dict = {}
 # ============================================================
 # HELPERS
 # ============================================================
+
+def _hoy_iso() -> str:
+    """Fecha local ISO (YYYY-MM-DD) usada como clave del rate limit diario."""
+    return datetime.utcnow().strftime("%Y-%m-%d")
+
+
+def _label_modo(modo: str) -> str:
+    """Etiqueta legible del modo para mensajes al usuario."""
+    return {
+        "planeacion": "planeación",
+        "socioemocional": "socioemocional",
+        "calificacion": "calificación",
+        "piar": "PIAR",
+    }.get(modo, modo)
+
+
+def _consumir_rate_limit(db, docente_id: str, modo: str) -> tuple[bool, int, int]:
+    """
+    Intenta consumir 1 unidad de la cuota diaria para (docente, hoy, modo).
+
+    Retorna: (ok, count_actual, limite_diario)
+    - ok=True si tras incrementar sigue dentro del límite → autoriza generación
+    - ok=False si YA estaba en el límite antes de incrementar → bloquea
+
+    Se cuenta AL INICIAR la generación (no al finalizar): así el usuario
+    no puede evadir el límite cancelando el streaming a mitad de camino.
+
+    Implementación: buscar o crear el contador del día+modo, incrementar,
+    commit. El UniqueConstraint lo protege ante race conditions en la
+    creación (dos requests simultáneas del mismo docente); en ese caso
+    la segunda re-lee y suma sobre el contador que ya existía.
+    """
+    limite = LIMITES_DIARIOS.get(modo, 0)
+    if limite <= 0:
+        # Modo desconocido o sin límite definido — bloqueamos por default
+        return False, 0, 0
+
+    fecha = _hoy_iso()
+    contador = (
+        db.query(RateLimitCounter)
+        .filter(
+            RateLimitCounter.id_docente == docente_id,
+            RateLimitCounter.fecha == fecha,
+            RateLimitCounter.modo == modo,
+        )
+        .first()
+    )
+
+    if contador is None:
+        # Primera consulta del día para este modo → crear con count=1
+        contador = RateLimitCounter(
+            id_docente=docente_id,
+            fecha=fecha,
+            modo=modo,
+            count=1,
+        )
+        db.add(contador)
+        try:
+            db.commit()
+        except Exception:
+            # Race: alguien más lo creó al mismo tiempo. Rollback y re-leer.
+            db.rollback()
+            contador = (
+                db.query(RateLimitCounter)
+                .filter(
+                    RateLimitCounter.id_docente == docente_id,
+                    RateLimitCounter.fecha == fecha,
+                    RateLimitCounter.modo == modo,
+                )
+                .first()
+            )
+            if contador is None:
+                # No debería pasar — falla dura
+                return False, 0, limite
+            if contador.count >= limite:
+                return False, contador.count, limite
+            contador.count += 1
+            db.commit()
+        return contador.count <= limite, contador.count, limite
+
+    # Contador existente
+    if contador.count >= limite:
+        return False, contador.count, limite
+
+    contador.count += 1
+    db.commit()
+    return True, contador.count, limite
+
 
 def _verificar_limite_plan(docente: Docente, db) -> bool:
     """Retorna True si el docente puede enviar más mensajes IA este mes."""
@@ -171,12 +276,28 @@ async def send_message(sid, data):
             await sio.emit("ia_error", {"message": "Grupo no encontrado"}, to=sid)
             return
 
-        # 2. Verificar límite del plan
+        # 2. Verificar límite del plan (mensual)
         docente = db.query(Docente).filter(Docente.id_docente == docente_id).first()
         if not _verificar_limite_plan(docente, db):
             await sio.emit("ia_error", {
                 "message": "Alcanzaste el límite de 10 mensajes/mes del plan Free. "
                            "Actualiza a Pro para mensajes ilimitados."
+            }, to=sid)
+            return
+
+        # 2b. Verificar rate limit diario POR MODO — se consume al iniciar
+        # para que cancelar la respuesta no evada el límite.
+        ok, usado, limite = _consumir_rate_limit(db, docente_id, modo)
+        if not ok:
+            await sio.emit("ia_error", {
+                "message": (
+                    f"Alcanzaste el límite diario para {_label_modo(modo)} "
+                    f"({limite}/día). Vuelve mañana."
+                ),
+                "code": "rate_limit_diario",
+                "modo": modo,
+                "usado": usado,
+                "limite": limite,
             }, to=sid)
             return
 
@@ -224,6 +345,37 @@ async def send_message(sid, data):
             .all()
         )
 
+        # 6b. Contexto adicional según modo
+        columnas_periodo = None
+        notas_por_estudiante = None
+
+        if modo == MODO_CALIFICACION:
+            # Columnas del libro para el periodo actual del grupo
+            columnas_periodo = (
+                db.query(EvaluacionColumna)
+                .filter(
+                    EvaluacionColumna.id_grupo == grupo_id,
+                    EvaluacionColumna.periodo == (grupo.periodo_actual or 1),
+                )
+                .order_by(EvaluacionColumna.orden, EvaluacionColumna.nombre)
+                .all()
+            )
+
+        if modo in (MODO_SOCIOEMOCIONAL, MODO_CALIFICACION):
+            # Notas registradas por estudiante — sirve para detectar bajos
+            # rendimientos en socioemocional y para tener contexto real en
+            # calificacion.
+            cals = (
+                db.query(Calificacion)
+                .filter(Calificacion.id_grupo == grupo_id)
+                .all()
+            )
+            notas_por_estudiante = {}
+            for c in cals:
+                if c.valor is None:
+                    continue
+                notas_por_estudiante.setdefault(c.id_estudiante, []).append(c.valor)
+
         # 7. Generar respuesta con streaming (system prompt según modo)
         respuesta_completa = ""
 
@@ -239,6 +391,8 @@ async def send_message(sid, data):
             estudiantes=estudiantes,
             on_chunk=on_chunk,
             modo=modo,
+            columnas_periodo_actual=columnas_periodo,
+            notas_por_estudiante=notas_por_estudiante,
         )
 
         # 8. Guardar respuesta completa de la IA (mismo modo del mensaje)
