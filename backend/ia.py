@@ -18,6 +18,7 @@ from models import Calificacion, Estudiante, EvaluacionColumna, Grupo, Mensaje
 from prompts import (
     MODO_CALIFICACION,
     MODO_DEFAULT,
+    MODO_PIAR,
     MODO_SOCIOEMOCIONAL,
     normalizar_modo,
     prompt_para_modo,
@@ -247,6 +248,76 @@ def _bloque_calificacion(
     return bloque
 
 
+def _bloque_piar(
+    estudiante: Optional[Estudiante],
+    notas: Optional[List[float]] = None,
+    versiones_previas: Optional[List[dict]] = None,
+) -> str:
+    """
+    Contexto adicional para modo PIAR: se enfoca en UN solo estudiante.
+    Reutiliza diagnóstico/ajustes ya capturados en la ficha del estudiante
+    y muestra al asistente las versiones anteriores del PIAR (si existen)
+    para que pueda referenciarlas al conversar con el docente.
+    """
+    if estudiante is None:
+        return (
+            "\n═══════════════════════════════════════════\n"
+            "MODO PIAR — SIN ESTUDIANTE SELECCIONADO\n"
+            "═══════════════════════════════════════════\n"
+            "\nRecordá al docente que debe seleccionar un estudiante con PIAR "
+            "activo antes de continuar. No podés generar el PIAR sin sujeto.\n"
+        )
+
+    bloque = (
+        "\n═══════════════════════════════════════════\n"
+        "ESTUDIANTE OBJETO DEL PIAR\n"
+        "═══════════════════════════════════════════\n"
+    )
+    bloque += f"\n• Código: {estudiante.codigo_estudiante}"
+    if estudiante.genero:
+        bloque += f"\n• Género: {estudiante.genero}"
+    bloque += f"\n• PIAR activo en la ficha: {'Sí' if estudiante.tiene_piar else 'No'}"
+
+    # Datos ya capturados en la ficha — usarlos como punto de partida
+    if estudiante.diagnostico:
+        bloque += (
+            f"\n\n• Diagnóstico registrado (usar como insumo, no repreguntarlo):\n"
+            f"  {estudiante.diagnostico}"
+        )
+    if estudiante.ajustes:
+        bloque += (
+            f"\n\n• Ajustes actuales registrados (partir de estos y proponer mejoras):\n"
+            f"  {estudiante.ajustes}"
+        )
+
+    # Notas para contexto de rendimiento
+    if notas:
+        proms = [n for n in notas if n is not None]
+        if proms:
+            prom = round(sum(proms) / len(proms), 2)
+            bloque += (
+                f"\n\n• Rendimiento en el periodo actual: "
+                f"promedio {prom} sobre {len(proms)} nota(s) registrada(s)."
+            )
+
+    # Versiones previas del PIAR (para el mismo periodo o anteriores)
+    if versiones_previas:
+        bloque += (
+            f"\n\n• PIARs previos de este estudiante ({len(versiones_previas)}):"
+        )
+        for v in versiones_previas[:5]:  # tope de 5 para no inflar el prompt
+            bloque += (
+                f"\n  - v{v.get('version','?')} · periodo {v.get('periodo','?')}/{v.get('anio','?')}"
+                f" · estado: {v.get('estado','?')}"
+            )
+        bloque += (
+            "\n\nPodés preguntar al docente si quiere revisar/reutilizar contenido "
+            "de una versión previa, o construir la nueva desde cero."
+        )
+
+    return bloque + "\n"
+
+
 def construir_system_prompt(
     grupo: Grupo,
     estudiantes: List[Estudiante],
@@ -255,6 +326,8 @@ def construir_system_prompt(
     mensaje_texto: Optional[str] = None,
     columnas_periodo_actual: Optional[List[EvaluacionColumna]] = None,
     notas_por_estudiante: Optional[dict[str, List[float]]] = None,
+    estudiante_piar: Optional[Estudiante] = None,
+    piar_versiones_previas: Optional[List[dict]] = None,
 ) -> str:
     """
     Construye el system prompt completo para una llamada a Claude:
@@ -291,6 +364,15 @@ def construir_system_prompt(
             estudiantes,
             grupo.periodo_actual or 1,
         )
+    elif modo_final == MODO_PIAR:
+        notas_est = None
+        if estudiante_piar and notas_por_estudiante:
+            notas_est = notas_por_estudiante.get(estudiante_piar.id_estudiante)
+        contexto_extra = _bloque_piar(
+            estudiante_piar,
+            notas=notas_est,
+            versiones_previas=piar_versiones_previas,
+        )
 
     return f"{base_y_modo}\n{contexto_grupo}{contexto_extra}"
 
@@ -309,6 +391,8 @@ async def generar_respuesta(
     *,
     columnas_periodo_actual: Optional[List[EvaluacionColumna]] = None,
     notas_por_estudiante: Optional[dict[str, List[float]]] = None,
+    estudiante_piar: Optional[Estudiante] = None,
+    piar_versiones_previas: Optional[List[dict]] = None,
 ) -> str:
     """
     Llama a Claude con streaming y dispara on_chunk() por cada token recibido.
@@ -320,7 +404,10 @@ async def generar_respuesta(
 
     Kwargs opcionales de contexto extendido:
     - columnas_periodo_actual: usado por modo calificacion
-    - notas_por_estudiante: dict {id_estudiante: [valores]} — socioemocional/calificacion
+    - notas_por_estudiante: dict {id_estudiante: [valores]} — socioemocional/calificacion/piar
+    - estudiante_piar: estudiante objeto del PIAR — obligatorio en modo piar
+    - piar_versiones_previas: lista de dicts con {version, periodo, anio, estado}
+      de PIARs previos del mismo estudiante
     """
     system_prompt = construir_system_prompt(
         grupo,
@@ -329,6 +416,8 @@ async def generar_respuesta(
         mensaje_texto=mensaje_docente,
         columnas_periodo_actual=columnas_periodo_actual,
         notas_por_estudiante=notas_por_estudiante,
+        estudiante_piar=estudiante_piar,
+        piar_versiones_previas=piar_versiones_previas,
     )
 
     # Construir historial de conversación (últimos 20 mensajes)

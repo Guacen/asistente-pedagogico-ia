@@ -27,6 +27,7 @@ from models import (
     EvaluacionColumna,
     Grupo,
     Mensaje,
+    PIAR,
     RateLimitCounter,
     Suscripcion,
     UsoMensual,
@@ -35,6 +36,7 @@ from prompts import (
     LIMITES_DIARIOS,
     MODO_CALIFICACION,
     MODO_DEFAULT,
+    MODO_PIAR,
     MODO_SOCIOEMOCIONAL,
     MODOS_ACTIVOS,
     normalizar_modo,
@@ -259,6 +261,8 @@ async def send_message(sid, data):
     # así el pipeline queda a prueba de clientes desactualizados.
     modo_recibido = (data.get("modo") or "").strip().lower()
     modo = normalizar_modo(modo_recibido)
+    # id_estudiante — obligatorio si modo=piar, opcional en otros modos.
+    estudiante_id = (data.get("id_estudiante") or "").strip() or None
 
     if not grupo_id or not mensaje_texto:
         return
@@ -275,6 +279,41 @@ async def send_message(sid, data):
         if not grupo:
             await sio.emit("ia_error", {"message": "Grupo no encontrado"}, to=sid)
             return
+
+        # 1b. Validar id_estudiante para modo PIAR (obligatorio).
+        # Se verifica ANTES del rate limit para no gastar cuota por un
+        # request mal formado del frontend.
+        estudiante_piar_obj = None
+        if modo == MODO_PIAR:
+            if not estudiante_id:
+                await sio.emit("ia_error", {
+                    "message": "Selecciona un estudiante con PIAR antes de continuar.",
+                    "code": "piar_sin_estudiante",
+                }, to=sid)
+                return
+            estudiante_piar_obj = (
+                db.query(Estudiante)
+                .filter(
+                    Estudiante.id_estudiante == estudiante_id,
+                    Estudiante.id_grupo == grupo_id,
+                )
+                .first()
+            )
+            if estudiante_piar_obj is None:
+                await sio.emit("ia_error", {
+                    "message": "El estudiante no pertenece a este grupo.",
+                    "code": "piar_estudiante_ajeno",
+                }, to=sid)
+                return
+            if not estudiante_piar_obj.tiene_piar:
+                await sio.emit("ia_error", {
+                    "message": (
+                        "El estudiante seleccionado no tiene PIAR activo. "
+                        "Actívalo primero en la ficha del estudiante."
+                    ),
+                    "code": "piar_no_activo",
+                }, to=sid)
+                return
 
         # 2. Verificar límite del plan (mensual)
         docente = db.query(Docente).filter(Docente.id_docente == docente_id).first()
@@ -301,12 +340,16 @@ async def send_message(sid, data):
             }, to=sid)
             return
 
+        # id_estudiante para persistir en Mensaje — sólo en modo PIAR
+        est_id_a_guardar = estudiante_id if modo == MODO_PIAR else None
+
         # 3. Guardar mensaje del docente (con el modo activo)
         msg_docente = Mensaje(
             id_grupo=grupo_id,
             remitente="docente",
             contenido=mensaje_texto,
             modo=modo,
+            id_estudiante=est_id_a_guardar,
         )
         db.add(msg_docente)
         db.commit()
@@ -319,23 +362,25 @@ async def send_message(sid, data):
             "remitente": "docente",
             "contenido": mensaje_texto,
             "modo": modo,
+            "id_estudiante": est_id_a_guardar,
             "timestamp": msg_docente.timestamp.isoformat(),
         }, room=grupo_id)
 
         # 5. Señal de que la IA está generando (con el modo activo)
-        await sio.emit("ia_generando", {"modo": modo}, room=grupo_id)
+        await sio.emit("ia_generando", {"modo": modo, "id_estudiante": est_id_a_guardar}, room=grupo_id)
 
         # 6. Obtener historial y estudiantes para contexto.
         # Filtramos por modo activo para que la conversación no cruce
         # contextos (ej. socioemocional no ve historial de planeacion).
-        # El mensaje recién guardado ya tiene el modo correcto, así que
-        # entra en su propia conversación.
+        # En modo PIAR además filtramos por id_estudiante: cada PIAR es su
+        # propia conversación, distinta incluso entre dos estudiantes del
+        # mismo grupo.
+        hist_filter = [Mensaje.id_grupo == grupo_id, Mensaje.modo == modo]
+        if modo == MODO_PIAR:
+            hist_filter.append(Mensaje.id_estudiante == estudiante_id)
         historial = (
             db.query(Mensaje)
-            .filter(
-                Mensaje.id_grupo == grupo_id,
-                Mensaje.modo == modo,
-            )
+            .filter(*hist_filter)
             .order_by(Mensaje.timestamp.asc())
             .all()
         )
@@ -361,10 +406,10 @@ async def send_message(sid, data):
                 .all()
             )
 
-        if modo in (MODO_SOCIOEMOCIONAL, MODO_CALIFICACION):
+        if modo in (MODO_SOCIOEMOCIONAL, MODO_CALIFICACION, MODO_PIAR):
             # Notas registradas por estudiante — sirve para detectar bajos
-            # rendimientos en socioemocional y para tener contexto real en
-            # calificacion.
+            # rendimientos en socioemocional, para tener contexto real en
+            # calificacion, y para contextualizar rendimiento en PIAR.
             cals = (
                 db.query(Calificacion)
                 .filter(Calificacion.id_grupo == grupo_id)
@@ -375,6 +420,27 @@ async def send_message(sid, data):
                 if c.valor is None:
                     continue
                 notas_por_estudiante.setdefault(c.id_estudiante, []).append(c.valor)
+
+        # 6c. Versiones previas de PIAR del estudiante (para dar contexto
+        # al asistente sobre iteraciones anteriores del mismo plan).
+        piar_versiones_previas = None
+        if modo == MODO_PIAR and estudiante_id:
+            versiones = (
+                db.query(PIAR)
+                .filter(PIAR.id_estudiante == estudiante_id)
+                .order_by(PIAR.anio.desc(), PIAR.periodo.desc(), PIAR.version.desc())
+                .limit(5)
+                .all()
+            )
+            piar_versiones_previas = [
+                {
+                    "version": p.version,
+                    "periodo": p.periodo,
+                    "anio": p.anio,
+                    "estado": p.estado,
+                }
+                for p in versiones
+            ]
 
         # 7. Generar respuesta con streaming (system prompt según modo)
         respuesta_completa = ""
@@ -393,14 +459,17 @@ async def send_message(sid, data):
             modo=modo,
             columnas_periodo_actual=columnas_periodo,
             notas_por_estudiante=notas_por_estudiante,
+            estudiante_piar=estudiante_piar_obj,
+            piar_versiones_previas=piar_versiones_previas,
         )
 
-        # 8. Guardar respuesta completa de la IA (mismo modo del mensaje)
+        # 8. Guardar respuesta completa de la IA (mismo modo + id_estudiante del turno)
         msg_ia = Mensaje(
             id_grupo=grupo_id,
             remitente="sistema",
             contenido=respuesta_completa,
             modo=modo,
+            id_estudiante=est_id_a_guardar,
         )
         db.add(msg_ia)
         db.commit()
@@ -413,6 +482,7 @@ async def send_message(sid, data):
             "remitente": "sistema",
             "contenido": respuesta_completa,
             "modo": modo,
+            "id_estudiante": est_id_a_guardar,
             "timestamp": msg_ia.timestamp.isoformat(),
         }, room=grupo_id)
 

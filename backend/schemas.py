@@ -126,6 +126,7 @@ class MensajeOut(BaseModel):
     remitente: str
     contenido: str
     modo: str = "planeacion"   # default por retro-compat con mensajes legacy
+    id_estudiante: Optional[str] = None  # solo poblado en modo piar
     timestamp: datetime
 
     model_config = {"from_attributes": True}

@@ -151,11 +151,44 @@ class ApiClient {
     // CHAT
     // ==========================================
     
-    async getChatHistorial(grupoId, limit = 50, modo = null) {
+    async getChatHistorial(grupoId, limit = 50, modo = null, idEstudiante = null) {
         // Fase B: filtra por modo si se pasa (planeacion/socioemocional/calificacion/piar)
+        // Fase C: idEstudiante filtra el historial de PIAR — cada estudiante
+        // tiene su propia conversación aunque compartan grupo+modo.
         const params = new URLSearchParams({ limit: String(limit) });
         if (modo) params.set('modo', modo);
+        if (idEstudiante) params.set('id_estudiante', idEstudiante);
         return this.request(`/api/grupos/${grupoId}/chat/historial?${params.toString()}`);
+    }
+
+    // ==========================================
+    // PIAR (Fase C)
+    // ==========================================
+
+    async listarPiarsEstudiante(idEstudiante) {
+        return this.request(`/api/piar/estudiante/${encodeURIComponent(idEstudiante)}`);
+    }
+
+    async crearPiar(idEstudiante, periodo, anio = null) {
+        const body = { id_estudiante: idEstudiante, periodo };
+        if (anio) body.anio = anio;
+        return this.request('/api/piar/', {
+            method: 'POST',
+            body: JSON.stringify(body),
+        });
+    }
+
+    async aprobarPiar(piarId) {
+        return this.request(`/api/piar/${encodeURIComponent(piarId)}/aprobar`, {
+            method: 'PUT',
+        });
+    }
+
+    async descargarPiarDocx(piarId) {
+        return this._descargarBlob(
+            `/api/piar/${encodeURIComponent(piarId)}/docx`,
+            `PIAR_${piarId}.docx`,
+        );
     }
     
     // ==========================================
