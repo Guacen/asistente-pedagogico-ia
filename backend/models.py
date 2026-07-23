@@ -138,6 +138,15 @@ class Mensaje(Base):
     # prompts.MODOS_ACTIVOS ∪ {'piar'}. Default 'planeacion' preserva la
     # semántica de los mensajes previos al sprint de modos.
     modo = Column(String(32), nullable=False, default="planeacion", index=True)
+    # Estudiante al que se refiere el mensaje. NULL para modos != piar.
+    # En modo PIAR es obligatorio para poder filtrar el historial por
+    # (grupo, modo, estudiante) — cada PIAR es su propia conversación.
+    id_estudiante = Column(
+        String(36),
+        ForeignKey("estudiantes.id_estudiante"),
+        nullable=True,
+        index=True,
+    )
     timestamp = Column(DateTime, default=datetime.utcnow)
 
     grupo = relationship("Grupo", back_populates="mensajes")
@@ -202,3 +211,71 @@ class Archivo(Base):
     fecha_subida = Column(DateTime, default=datetime.utcnow)
 
     grupo = relationship("Grupo", back_populates="archivos")
+
+
+class PIAR(Base):
+    """
+    Plan Individual de Ajustes Razonables (Decreto 1421 de 2017).
+
+    Un registro por (estudiante, grupo, periodo, año, version). Versionado
+    paralelo: nuevas versiones NO borran las anteriores — el docente puede
+    generar v2, v3... para el mismo periodo comparando iteraciones.
+
+    Estados:
+    - 'borrador' → editable, se puede aprobar
+    - 'aprobado' → inmutable, no se puede editar ni desaprobar; una nueva
+      versión (v+1) sí se puede crear siempre.
+
+    Denormalización intencional (id_grupo, id_docente): derivables desde
+    id_estudiante vía JOIN, pero se guardan para queries frecuentes sin
+    JOINs. Confirmado con el owner del proyecto en el sprint spec.
+
+    Sin campo docx_bytes: el DOCX se regenera on-demand desde `contenido`.
+    Permite cambiar el template sin migrar datos.
+    """
+    __tablename__ = "piar"
+    __table_args__ = (
+        __import__("sqlalchemy").UniqueConstraint(
+            "id_estudiante", "id_grupo", "periodo", "anio", "version",
+            name="uq_piar_est_grupo_periodo_version",
+        ),
+    )
+
+    id_piar = Column(String(36), primary_key=True, default=new_uuid)
+    id_estudiante = Column(
+        String(36),
+        ForeignKey("estudiantes.id_estudiante"),
+        nullable=False,
+        index=True,
+    )
+    id_grupo = Column(
+        String(36),
+        ForeignKey("grupos.id_grupo"),
+        nullable=False,
+        index=True,
+    )
+    id_docente = Column(
+        String(36),
+        ForeignKey("docentes.id_docente"),
+        nullable=False,
+        index=True,
+    )
+    periodo = Column(Integer, nullable=False)
+    anio = Column(Integer, nullable=False)
+    version = Column(Integer, nullable=False, default=1)
+    # JSON estructurado con las 6 secciones del Decreto 1421.
+    # Schema (flat markdown por sección, decisión owner-approved):
+    # {
+    #   "caracterizacion": "markdown",
+    #   "barreras": "markdown",
+    #   "ajustes_razonables": "markdown",
+    #   "apoyos": "markdown",
+    #   "metas": "markdown",
+    #   "seguimiento": "markdown"
+    # }
+    # Secciones no cubiertas por la conversación quedan como
+    # "[PENDIENTE — sin información]" — Claude lo marca al sintetizar.
+    contenido = Column(JSON, nullable=False, default=dict)
+    estado = Column(String(20), nullable=False, default="borrador", index=True)
+    creado_en = Column(DateTime, default=datetime.utcnow, nullable=False)
+    aprobado_en = Column(DateTime, nullable=True)

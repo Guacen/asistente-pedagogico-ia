@@ -45,6 +45,19 @@ def apply_migrations():
             conn.commit()
             print("✅ Migración: columna 'modo' agregada a 'mensajes' (default planeacion)")
 
+        # ── mensajes.id_estudiante ────────────────────────────────────
+        # Fase C PIAR: el chat en modo PIAR es por estudiante, así que
+        # cada mensaje se asocia al estudiante para poder filtrar el
+        # historial por (grupo, modo, estudiante). NULL para mensajes
+        # legacy y para modos != piar — retro-compat total.
+        if "id_estudiante" not in cols_msg:
+            conn.execute(text(
+                "ALTER TABLE mensajes ADD COLUMN id_estudiante VARCHAR(36) "
+                "REFERENCES estudiantes(id_estudiante)"
+            ))
+            conn.commit()
+            print("✅ Migración: columna 'id_estudiante' agregada a 'mensajes' (nullable)")
+
     # ── rate_limit_counter (tabla nueva) ────────────────────────────
     # Se crea por metadata.create_all: SQLAlchemy detecta que la tabla no
     # existe y la crea. Es idempotente y compatible con Postgres y SQLite.
@@ -52,10 +65,17 @@ def apply_migrations():
     from models import RateLimitCounter  # noqa: F401
     Base.metadata.create_all(bind=engine, tables=[RateLimitCounter.__table__])
 
+    # ── piar (tabla nueva) ──────────────────────────────────────────
+    # Fase C — Generador de PIAR. Idempotente vía metadata.create_all.
+    from models import PIAR  # noqa: F401
+    Base.metadata.create_all(bind=engine, tables=[PIAR.__table__])
+
     # Refrescar inspector para verificar que quedó creada (log claro)
     inspector = inspect(engine)
     if "rate_limit_counter" in inspector.get_table_names():
         print("✅ Migración: tabla 'rate_limit_counter' verificada/creada")
+    if "piar" in inspector.get_table_names():
+        print("✅ Migración: tabla 'piar' verificada/creada")
 
     print("✅ Migraciones aplicadas")
 
