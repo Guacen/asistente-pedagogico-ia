@@ -13,6 +13,11 @@ from auth import get_current_docente
 from config import settings
 from database import get_db
 from models import Archivo, Calificacion, EvaluacionColumna, Estudiante, Grupo, Mensaje, Nota
+from permisos import (
+    es_admin_institucion,
+    ids_docentes_institucion,
+    puede_ver_grupo,
+)
 from schemas import (
     ArchivoOut, CalificacionCreate, CalificacionOut, CalificacionUpdate, CalificacionUpsert,
     EstudianteCreate, EstudianteOut, EstudianteUpdate,
@@ -41,13 +46,9 @@ def get_grupo(
     docente=Depends(get_current_docente),
     db: Session = Depends(get_db),
 ):
-    grupo = db.query(Grupo).filter(
-        Grupo.id_grupo == grupo_id,
-        Grupo.id_docente == docente.id_docente,
-    ).first()
-    if not grupo:
-        raise HTTPException(status_code=404, detail="Grupo no encontrado")
-    return grupo
+    # Read: docente dueño o admin de su institución. El helper resuelve
+    # el 404 con la semántica correcta si no puede ver.
+    return _get_grupo_or_404(grupo_id, docente, db)
 
 
 @router.post("/grupos", response_model=GrupoOut, status_code=status.HTTP_201_CREATED)
@@ -56,6 +57,15 @@ def create_grupo(
     docente=Depends(get_current_docente),
     db: Session = Depends(get_db),
 ):
+    # Regla multi-institución: coordinador/rector NO crean grupos —
+    # los grupos siempre pertenecen a un docente.
+    if es_admin_institucion(docente):
+        raise HTTPException(
+            status_code=403,
+            detail="Los coordinadores y rectores no crean grupos. "
+                   "Los grupos los crea el docente dueño.",
+        )
+
     # Verificar límite del plan free (1 grupo)
     if docente.suscripcion and docente.suscripcion.plan == "free":
         count = db.query(Grupo).filter(Grupo.id_docente == docente.id_docente).count()
@@ -116,14 +126,43 @@ def delete_grupo(
 # ESTUDIANTES
 # ============================================================
 
-def _get_grupo_or_404(grupo_id: str, docente_id: str, db: Session) -> Grupo:
-    grupo = db.query(Grupo).filter(
-        Grupo.id_grupo == grupo_id,
-        Grupo.id_docente == docente_id,
-    ).first()
+def _get_grupo_or_404(
+    grupo_id: str,
+    docente_id_o_docente,
+    db: Session,
+    *,
+    permitir_admin_institucion: bool = True,
+) -> Grupo:
+    """
+    Busca el grupo y valida acceso del docente actual.
+
+    Retro-compat: acepta `docente_id` (string) como antes O un objeto Docente
+    completo. Si se pasa string, se comporta como legacy (solo dueño).
+    Si se pasa objeto Docente Y `permitir_admin_institucion=True`, admin
+    (coordinador/rector) de la misma institución que el dueño también pasa.
+
+    Los write endpoints (create/update/delete) llaman con
+    `permitir_admin_institucion=False` para preservar la regla "solo
+    el docente dueño edita" — coordinador/rector ven pero no tocan.
+    """
+    grupo = db.query(Grupo).filter(Grupo.id_grupo == grupo_id).first()
     if not grupo:
         raise HTTPException(status_code=404, detail="Grupo no encontrado")
-    return grupo
+
+    # Modo legacy: recibimos un string id_docente
+    if isinstance(docente_id_o_docente, str):
+        if grupo.id_docente != docente_id_o_docente:
+            raise HTTPException(status_code=404, detail="Grupo no encontrado")
+        return grupo
+
+    # Modo nuevo: recibimos el objeto Docente
+    docente_actual = docente_id_o_docente
+    if grupo.id_docente == docente_actual.id_docente:
+        return grupo
+    if permitir_admin_institucion and puede_ver_grupo(grupo, docente_actual):
+        return grupo
+    # 404 (no 403) para no revelar existencia
+    raise HTTPException(status_code=404, detail="Grupo no encontrado")
 
 
 @router.get("/grupos/{grupo_id}/estudiantes", response_model=List[EstudianteOut])
@@ -132,7 +171,7 @@ def list_estudiantes(
     docente=Depends(get_current_docente),
     db: Session = Depends(get_db),
 ):
-    _get_grupo_or_404(grupo_id, docente.id_docente, db)
+    _get_grupo_or_404(grupo_id, docente, db)
     return db.query(Estudiante).filter(Estudiante.id_grupo == grupo_id).all()
 
 
@@ -143,7 +182,7 @@ def create_estudiante(
     docente=Depends(get_current_docente),
     db: Session = Depends(get_db),
 ):
-    _get_grupo_or_404(grupo_id, docente.id_docente, db)
+    _get_grupo_or_404(grupo_id, docente, db, permitir_admin_institucion=False)
     estudiante = Estudiante(id_grupo=grupo_id, **data.model_dump())
     db.add(estudiante)
     db.commit()
@@ -159,7 +198,7 @@ def update_estudiante(
     docente=Depends(get_current_docente),
     db: Session = Depends(get_db),
 ):
-    _get_grupo_or_404(grupo_id, docente.id_docente, db)
+    _get_grupo_or_404(grupo_id, docente, db, permitir_admin_institucion=False)
     est = db.query(Estudiante).filter(
         Estudiante.id_estudiante == estudiante_id,
         Estudiante.id_grupo == grupo_id,
@@ -181,7 +220,7 @@ def delete_estudiante(
     docente=Depends(get_current_docente),
     db: Session = Depends(get_db),
 ):
-    _get_grupo_or_404(grupo_id, docente.id_docente, db)
+    _get_grupo_or_404(grupo_id, docente, db, permitir_admin_institucion=False)
     est = db.query(Estudiante).filter(
         Estudiante.id_estudiante == estudiante_id,
         Estudiante.id_grupo == grupo_id,
@@ -246,7 +285,7 @@ async def importar_estudiantes_csv(
 
     Upsert por `(id_grupo, codigo_estudiante)`. Devuelve conteo y errores por fila.
     """
-    _get_grupo_or_404(grupo_id, docente.id_docente, db)
+    _get_grupo_or_404(grupo_id, docente, db, permitir_admin_institucion=False)
 
     if not file.filename or not file.filename.lower().endswith(".csv"):
         raise HTTPException(status_code=400, detail="Se esperaba un archivo .csv")
@@ -336,7 +375,7 @@ def list_notas(
     docente=Depends(get_current_docente),
     db: Session = Depends(get_db),
 ):
-    _get_grupo_or_404(grupo_id, docente.id_docente, db)
+    _get_grupo_or_404(grupo_id, docente, db)
     return db.query(Nota).filter(Nota.id_grupo == grupo_id).all()
 
 
@@ -347,7 +386,7 @@ def create_nota(
     docente=Depends(get_current_docente),
     db: Session = Depends(get_db),
 ):
-    _get_grupo_or_404(grupo_id, docente.id_docente, db)
+    _get_grupo_or_404(grupo_id, docente, db, permitir_admin_institucion=False)
     nota = Nota(id_grupo=grupo_id, contenido=data.contenido)
     db.add(nota)
     db.commit()
@@ -362,7 +401,7 @@ def delete_nota(
     docente=Depends(get_current_docente),
     db: Session = Depends(get_db),
 ):
-    _get_grupo_or_404(grupo_id, docente.id_docente, db)
+    _get_grupo_or_404(grupo_id, docente, db, permitir_admin_institucion=False)
     nota = db.query(Nota).filter(Nota.id_nota == nota_id, Nota.id_grupo == grupo_id).first()
     if not nota:
         raise HTTPException(status_code=404, detail="Nota no encontrada")
@@ -386,7 +425,7 @@ async def inicializar_ia(
     """
     from ia import generar_mensaje_bienvenida
 
-    grupo = _get_grupo_or_404(grupo_id, docente.id_docente, db)
+    grupo = _get_grupo_or_404(grupo_id, docente, db, permitir_admin_institucion=False)
     estudiantes = db.query(Estudiante).filter(Estudiante.id_grupo == grupo_id).all()
 
     # No duplicar si ya hay historial
@@ -413,7 +452,7 @@ def list_calificaciones(
     docente=Depends(get_current_docente),
     db: Session = Depends(get_db),
 ):
-    _get_grupo_or_404(grupo_id, docente.id_docente, db)
+    _get_grupo_or_404(grupo_id, docente, db)
     return db.query(Calificacion).filter(Calificacion.id_grupo == grupo_id).all()
 
 
@@ -424,7 +463,7 @@ def create_calificacion(
     docente=Depends(get_current_docente),
     db: Session = Depends(get_db),
 ):
-    _get_grupo_or_404(grupo_id, docente.id_docente, db)
+    _get_grupo_or_404(grupo_id, docente, db, permitir_admin_institucion=False)
     # Verificar que el estudiante pertenece al grupo
     est = db.query(Estudiante).filter(
         Estudiante.id_estudiante == data.id_estudiante,
@@ -448,7 +487,7 @@ def update_calificacion(
     docente=Depends(get_current_docente),
     db: Session = Depends(get_db),
 ):
-    _get_grupo_or_404(grupo_id, docente.id_docente, db)
+    _get_grupo_or_404(grupo_id, docente, db, permitir_admin_institucion=False)
     cal = db.query(Calificacion).filter(
         Calificacion.id_calificacion == cal_id,
         Calificacion.id_grupo == grupo_id,
@@ -470,7 +509,7 @@ def delete_calificacion(
     docente=Depends(get_current_docente),
     db: Session = Depends(get_db),
 ):
-    _get_grupo_or_404(grupo_id, docente.id_docente, db)
+    _get_grupo_or_404(grupo_id, docente, db, permitir_admin_institucion=False)
     cal = db.query(Calificacion).filter(
         Calificacion.id_calificacion == cal_id,
         Calificacion.id_grupo == grupo_id,
@@ -489,7 +528,7 @@ def upsert_calificacion(
     db: Session = Depends(get_db),
 ):
     """Crea o actualiza la nota de un estudiante en una columna de evaluación."""
-    _get_grupo_or_404(grupo_id, docente.id_docente, db)
+    _get_grupo_or_404(grupo_id, docente, db, permitir_admin_institucion=False)
 
     # Verificar que el estudiante pertenece al grupo
     est = db.query(Estudiante).filter(
@@ -545,7 +584,7 @@ def list_columnas(
     docente=Depends(get_current_docente),
     db: Session = Depends(get_db),
 ):
-    _get_grupo_or_404(grupo_id, docente.id_docente, db)
+    _get_grupo_or_404(grupo_id, docente, db)
     q = db.query(EvaluacionColumna).filter(EvaluacionColumna.id_grupo == grupo_id)
     if periodo is not None:
         q = q.filter(EvaluacionColumna.periodo == periodo)
@@ -559,7 +598,7 @@ def create_columna(
     docente=Depends(get_current_docente),
     db: Session = Depends(get_db),
 ):
-    _get_grupo_or_404(grupo_id, docente.id_docente, db)
+    _get_grupo_or_404(grupo_id, docente, db, permitir_admin_institucion=False)
     col = EvaluacionColumna(id_grupo=grupo_id, **data.model_dump())
     db.add(col)
     db.commit()
@@ -575,7 +614,7 @@ def update_columna(
     docente=Depends(get_current_docente),
     db: Session = Depends(get_db),
 ):
-    _get_grupo_or_404(grupo_id, docente.id_docente, db)
+    _get_grupo_or_404(grupo_id, docente, db, permitir_admin_institucion=False)
     col = db.query(EvaluacionColumna).filter(
         EvaluacionColumna.id_columna == col_id,
         EvaluacionColumna.id_grupo == grupo_id,
@@ -596,7 +635,7 @@ def delete_columna(
     docente=Depends(get_current_docente),
     db: Session = Depends(get_db),
 ):
-    _get_grupo_or_404(grupo_id, docente.id_docente, db)
+    _get_grupo_or_404(grupo_id, docente, db, permitir_admin_institucion=False)
     col = db.query(EvaluacionColumna).filter(
         EvaluacionColumna.id_columna == col_id,
         EvaluacionColumna.id_grupo == grupo_id,
@@ -617,7 +656,7 @@ def list_archivos(
     docente=Depends(get_current_docente),
     db: Session = Depends(get_db),
 ):
-    _get_grupo_or_404(grupo_id, docente.id_docente, db)
+    _get_grupo_or_404(grupo_id, docente, db)
     return db.query(Archivo).filter(Archivo.id_grupo == grupo_id).all()
 
 
@@ -628,7 +667,7 @@ async def upload_archivo(
     docente=Depends(get_current_docente),
     db: Session = Depends(get_db),
 ):
-    _get_grupo_or_404(grupo_id, docente.id_docente, db)
+    _get_grupo_or_404(grupo_id, docente, db)
 
     # Validar tamaño
     max_bytes = settings.MAX_FILE_SIZE_MB * 1024 * 1024
@@ -669,7 +708,7 @@ def delete_archivo(
     docente=Depends(get_current_docente),
     db: Session = Depends(get_db),
 ):
-    _get_grupo_or_404(grupo_id, docente.id_docente, db)
+    _get_grupo_or_404(grupo_id, docente, db, permitir_admin_institucion=False)
     archivo = db.query(Archivo).filter(
         Archivo.id_archivo == archivo_id,
         Archivo.id_grupo == grupo_id,
