@@ -344,3 +344,247 @@ def remover_docente(
     target.id_institucion = nueva_inst.id_institucion
     target.rol = ROL_DOCENTE
     db.commit()
+
+
+# ═══════════════════════════════════════════════════════════════
+# ENDPOINTS — AGREGADOS INSTITUCIONALES (coordinador+rector)
+# ═══════════════════════════════════════════════════════════════
+
+class DashboardInstitucionalOut(BaseModel):
+    id_institucion: str
+    nombre_institucion: str
+    plan: str
+    total_docentes: int
+    total_grupos: int
+    total_estudiantes: int
+    estudiantes_con_piar: int
+    total_piar: int
+    piar_por_estado: dict
+    top_grupos_con_piar: list[dict]
+
+
+class GrupoInstitucionalOut(BaseModel):
+    id_grupo: str
+    nombre_grupo: str
+    grado: str
+    asignatura: str
+    anio_lectivo: int
+    periodo_actual: int
+    cantidad_estudiantes: int
+    id_docente: str
+    docente_nombre: str
+
+
+class PIARInstitucionalOut(BaseModel):
+    id_piar: str
+    id_estudiante: str
+    codigo_estudiante: str
+    id_grupo: str
+    nombre_grupo: str
+    id_docente: str
+    docente_nombre: str
+    periodo: int
+    anio: int
+    version: int
+    estado: str
+    creado_en: object  # datetime — pydantic maneja el serialize
+
+
+@router.get("/dashboard", response_model=DashboardInstitucionalOut)
+def dashboard_institucional(
+    docente: Docente = Depends(require_admin_institucion),
+    db: Session = Depends(get_db),
+):
+    """
+    KPIs consolidados de la institución. Solo coordinador/rector.
+    Incluye: totales, distribución de PIARs, top 5 grupos con más PIARs.
+    """
+    from models import Grupo, Estudiante, PIAR
+
+    inst = get_institucion_o_404(docente, db)
+    ids_docentes = [
+        d.id_docente
+        for d in db.query(Docente).filter(
+            Docente.id_institucion == inst.id_institucion,
+        ).all()
+    ]
+
+    if not ids_docentes:
+        return DashboardInstitucionalOut(
+            id_institucion=inst.id_institucion,
+            nombre_institucion=inst.nombre,
+            plan=inst.plan,
+            total_docentes=0,
+            total_grupos=0,
+            total_estudiantes=0,
+            estudiantes_con_piar=0,
+            total_piar=0,
+            piar_por_estado={"borrador": 0, "aprobado": 0},
+            top_grupos_con_piar=[],
+        )
+
+    grupos = db.query(Grupo).filter(Grupo.id_docente.in_(ids_docentes)).all()
+    ids_grupos = [g.id_grupo for g in grupos]
+
+    total_est = 0
+    est_con_piar = 0
+    piar_por_grupo: dict[str, int] = {}
+    if ids_grupos:
+        estudiantes = db.query(Estudiante).filter(
+            Estudiante.id_grupo.in_(ids_grupos),
+        ).all()
+        total_est = len(estudiantes)
+        for e in estudiantes:
+            if e.tiene_piar:
+                est_con_piar += 1
+                piar_por_grupo[e.id_grupo] = piar_por_grupo.get(e.id_grupo, 0) + 1
+
+    piars = (
+        db.query(PIAR)
+        .filter(PIAR.id_docente.in_(ids_docentes))
+        .all()
+    )
+    piar_estado: dict[str, int] = {"borrador": 0, "aprobado": 0}
+    for p in piars:
+        piar_estado[p.estado] = piar_estado.get(p.estado, 0) + 1
+
+    grupos_por_id = {g.id_grupo: g for g in grupos}
+    top_grupos = sorted(
+        piar_por_grupo.items(), key=lambda x: x[1], reverse=True,
+    )[:5]
+    top_out = []
+    for gid, count in top_grupos:
+        g = grupos_por_id.get(gid)
+        if not g:
+            continue
+        top_out.append({
+            "id_grupo": gid,
+            "nombre_grupo": g.nombre_grupo,
+            "grado": g.grado,
+            "estudiantes_con_piar": count,
+        })
+
+    return DashboardInstitucionalOut(
+        id_institucion=inst.id_institucion,
+        nombre_institucion=inst.nombre,
+        plan=inst.plan,
+        total_docentes=len(ids_docentes),
+        total_grupos=len(grupos),
+        total_estudiantes=total_est,
+        estudiantes_con_piar=est_con_piar,
+        total_piar=len(piars),
+        piar_por_estado=piar_estado,
+        top_grupos_con_piar=top_out,
+    )
+
+
+@router.get("/grupos", response_model=List[GrupoInstitucionalOut])
+def listar_grupos_institucion(
+    docente: Docente = Depends(require_admin_institucion),
+    db: Session = Depends(get_db),
+):
+    """Todos los grupos de la institución con info del docente dueño."""
+    from models import Grupo
+
+    inst = get_institucion_o_404(docente, db)
+    docs_por_id = {
+        d.id_docente: d
+        for d in db.query(Docente).filter(
+            Docente.id_institucion == inst.id_institucion,
+        ).all()
+    }
+    if not docs_por_id:
+        return []
+    grupos = (
+        db.query(Grupo)
+        .filter(Grupo.id_docente.in_(list(docs_por_id.keys())))
+        .order_by(Grupo.grado, Grupo.asignatura, Grupo.nombre_grupo)
+        .all()
+    )
+    out: list[GrupoInstitucionalOut] = []
+    for g in grupos:
+        dueño = docs_por_id.get(g.id_docente)
+        out.append(GrupoInstitucionalOut(
+            id_grupo=g.id_grupo,
+            nombre_grupo=g.nombre_grupo,
+            grado=g.grado,
+            asignatura=g.asignatura,
+            anio_lectivo=g.anio_lectivo,
+            periodo_actual=g.periodo_actual or 1,
+            cantidad_estudiantes=g.cantidad_estudiantes,
+            id_docente=g.id_docente,
+            docente_nombre=dueño.nombre_completo if dueño else "—",
+        ))
+    return out
+
+
+@router.get("/piar", response_model=List[PIARInstitucionalOut])
+def listar_piars_institucion(
+    estado: Optional[str] = None,
+    id_estudiante: Optional[str] = None,
+    limit: int = 50,
+    docente: Docente = Depends(require_admin_institucion),
+    db: Session = Depends(get_db),
+):
+    """
+    Todos los PIARs de la institución. Coord/rector — para seguimiento
+    de cumplimiento legal Decreto 1421. Últimos 50 desc por creado_en.
+    Filtros opcionales: ?estado=borrador|aprobado, ?id_estudiante=X
+    """
+    from models import Estudiante, Grupo, PIAR
+
+    inst = get_institucion_o_404(docente, db)
+    docs_por_id = {
+        d.id_docente: d
+        for d in db.query(Docente).filter(
+            Docente.id_institucion == inst.id_institucion,
+        ).all()
+    }
+    if not docs_por_id:
+        return []
+
+    q = db.query(PIAR).filter(PIAR.id_docente.in_(list(docs_por_id.keys())))
+    if estado:
+        if estado not in ("borrador", "aprobado"):
+            raise HTTPException(
+                status_code=400,
+                detail="Estado inválido. Válidos: 'borrador', 'aprobado'.",
+            )
+        q = q.filter(PIAR.estado == estado)
+    if id_estudiante:
+        q = q.filter(PIAR.id_estudiante == id_estudiante)
+
+    piars = q.order_by(PIAR.creado_en.desc()).limit(max(1, min(limit, 200))).all()
+
+    # Pre-cargar estudiantes y grupos necesarios en batch para evitar N+1
+    est_ids = {p.id_estudiante for p in piars}
+    grp_ids = {p.id_grupo for p in piars}
+    est_por_id = {
+        e.id_estudiante: e
+        for e in db.query(Estudiante).filter(Estudiante.id_estudiante.in_(est_ids)).all()
+    } if est_ids else {}
+    grp_por_id = {
+        g.id_grupo: g
+        for g in db.query(Grupo).filter(Grupo.id_grupo.in_(grp_ids)).all()
+    } if grp_ids else {}
+
+    out: list[PIARInstitucionalOut] = []
+    for p in piars:
+        est = est_por_id.get(p.id_estudiante)
+        g = grp_por_id.get(p.id_grupo)
+        dueño = docs_por_id.get(p.id_docente)
+        out.append(PIARInstitucionalOut(
+            id_piar=p.id_piar,
+            id_estudiante=p.id_estudiante,
+            codigo_estudiante=est.codigo_estudiante if est else "—",
+            id_grupo=p.id_grupo,
+            nombre_grupo=g.nombre_grupo if g else "—",
+            id_docente=p.id_docente,
+            docente_nombre=dueño.nombre_completo if dueño else "—",
+            periodo=p.periodo,
+            anio=p.anio,
+            version=p.version,
+            estado=p.estado,
+            creado_en=p.creado_en,
+        ))
+    return out
