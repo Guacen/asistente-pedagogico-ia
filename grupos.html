@@ -536,6 +536,23 @@
                         </div>
                     </div>
 
+                    <!-- Sección PIARs generados (Issue #48) — sólo en modo edición -->
+                    <div id="piars-section" class="hidden pt-4 border-t border-gray-200">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="text-sm font-semibold text-gray-800">
+                                <i class="fas fa-file-alt text-yellow-600 mr-1"></i>
+                                PIARs generados
+                            </h3>
+                            <button type="button" id="btn-nuevo-piar" onclick="irAlChatParaNuevoPiar()"
+                                class="hidden px-3 py-1.5 text-xs bg-yellow-600 text-white rounded hover:bg-yellow-700">
+                                <i class="fas fa-plus mr-1"></i>Nuevo PIAR
+                            </button>
+                        </div>
+                        <div id="piars-list" class="space-y-2 text-sm">
+                            <p class="text-xs text-gray-400 italic">Cargando…</p>
+                        </div>
+                    </div>
+
                     <div class="flex justify-end space-x-3 pt-4">
                         <button type="button" onclick="cerrarModalEstudiante()"
                             class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">

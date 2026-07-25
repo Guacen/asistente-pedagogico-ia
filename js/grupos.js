@@ -531,14 +531,15 @@ function abrirModalNuevoEstudiante() {
         mostrarAlerta('Primero selecciona un grupo', 'error');
         return;
     }
-    
+
     document.getElementById('modal-estudiante-title').textContent = 'Nuevo Estudiante';
     document.getElementById('form-estudiante').reset();
     document.getElementById('estudiante-id').value = '';
     document.getElementById('estudiante-grupo-id').value = grupoSeleccionado;
     document.getElementById('piar-fields').classList.add('hidden');
+    document.getElementById('piars-section').classList.add('hidden');
     document.getElementById('btn-guardar-est-text').textContent = 'Agregar Estudiante';
-    
+
     document.getElementById('modal-estudiante').classList.remove('hidden');
 }
 
@@ -548,27 +549,141 @@ function abrirModalNuevoEstudiante() {
 async function editarEstudiante(estudianteId) {
     try {
         const estudiante = await api.getEstudiante(grupoSeleccionado, estudianteId);
-        
+
         document.getElementById('modal-estudiante-title').textContent = 'Editar Estudiante';
         document.getElementById('estudiante-id').value = estudiante.id_estudiante;
         document.getElementById('estudiante-grupo-id').value = grupoSeleccionado;
         document.getElementById('estudiante-codigo').value = estudiante.codigo_estudiante;
         document.getElementById('estudiante-genero').value = estudiante.genero || '';
         document.getElementById('estudiante-piar').checked = estudiante.tiene_piar || false;
-        
+
         if (estudiante.tiene_piar) {
             document.getElementById('piar-fields').classList.remove('hidden');
             document.getElementById('estudiante-diagnostico').value = estudiante.diagnostico || '';
             document.getElementById('estudiante-ajustes').value = estudiante.ajustes || '';
         }
-        
+
         document.getElementById('btn-guardar-est-text').textContent = 'Guardar Cambios';
         document.getElementById('modal-estudiante').classList.remove('hidden');
-        
+
+        // Cargar sección de PIARs generados (Issue #48) — solo en edición
+        cargarPiarsEnFicha(estudiante);
+
     } catch (error) {
         console.error('Error cargando estudiante:', error);
         mostrarAlerta('Error al cargar datos del estudiante', 'error');
     }
+}
+
+/**
+ * Issue #48 — Sección "PIARs generados" en la ficha del estudiante.
+ * Sólo se muestra cuando el estudiante tiene_piar=true. Consume
+ * GET /api/piar/estudiante/{id} (PIARResumenOut, sin campo contenido).
+ */
+async function cargarPiarsEnFicha(estudiante) {
+    const section = document.getElementById('piars-section');
+    const list = document.getElementById('piars-list');
+    const btnNuevo = document.getElementById('btn-nuevo-piar');
+
+    if (!estudiante.tiene_piar) {
+        section.classList.add('hidden');
+        return;
+    }
+    section.classList.remove('hidden');
+    btnNuevo.classList.remove('hidden');
+    btnNuevo.dataset.estudianteId = estudiante.id_estudiante;
+    list.innerHTML = '<p class="text-xs text-gray-400 italic">Cargando…</p>';
+
+    try {
+        const piars = await api.listarPiarsEstudiante(estudiante.id_estudiante);
+        if (!piars || piars.length === 0) {
+            list.innerHTML = `
+                <p class="text-xs text-gray-500 italic">
+                    Aún no hay PIARs generados. Iniciá una conversación en modo PIAR
+                    o hacé clic en <strong>Nuevo PIAR</strong> para arrancar desde el chat.
+                </p>`;
+            return;
+        }
+        list.innerHTML = piars.map(p => _piarRowHtml(p, estudiante.id_estudiante)).join('');
+    } catch (err) {
+        console.error('Error cargando PIARs:', err);
+        list.innerHTML = '<p class="text-xs text-red-600">No se pudieron cargar los PIARs.</p>';
+    }
+}
+
+function _piarRowHtml(p, idEstudiante) {
+    const fecha = p.creado_en ? new Date(p.creado_en).toLocaleDateString('es-CO', {
+        year: 'numeric', month: 'short', day: 'numeric',
+    }) : '—';
+    const badgeClass = p.estado === 'aprobado'
+        ? 'bg-green-100 text-green-800'
+        : 'bg-yellow-100 text-yellow-800';
+    const btnContinuar = p.estado === 'borrador'
+        ? `<button type="button" onclick="continuarPiarEnChat('${escapeAttr(idEstudiante)}')"
+             class="text-xs text-blue-600 hover:underline">
+             <i class="fas fa-comment mr-1"></i>Continuar en chat
+           </button>`
+        : '';
+    return `
+      <div class="flex items-center justify-between px-3 py-2 bg-gray-50 rounded border border-gray-200">
+        <div class="flex items-center gap-3">
+          <span class="text-xs px-2 py-0.5 rounded-full ${badgeClass} font-semibold">
+            ${escapeHtml(p.estado.toUpperCase())}
+          </span>
+          <span class="text-sm text-gray-800">
+            Periodo ${p.periodo} · ${p.anio} · v${p.version}
+          </span>
+          <span class="text-xs text-gray-500">${fecha}</span>
+        </div>
+        <div class="flex items-center gap-3">
+          ${btnContinuar}
+          <button type="button" onclick="descargarPiarDesdeFicha('${escapeAttr(p.id_piar)}')"
+            class="text-xs text-gray-700 hover:text-blue-700">
+            <i class="fas fa-file-download mr-1"></i>DOCX
+          </button>
+        </div>
+      </div>`;
+}
+
+function escapeHtml(s) {
+    return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+function escapeAttr(s) {
+    return String(s == null ? '' : s).replace(/'/g, '&#39;').replace(/"/g, '&quot;');
+}
+
+async function descargarPiarDesdeFicha(idPiar) {
+    try {
+        await api.descargarPiarDocx(idPiar);
+    } catch (err) {
+        console.error('Error descargando PIAR DOCX:', err);
+        mostrarAlerta('No se pudo descargar el DOCX del PIAR', 'error');
+    }
+}
+
+function irAlChatParaNuevoPiar() {
+    const btn = document.getElementById('btn-nuevo-piar');
+    const idEst = btn && btn.dataset.estudianteId;
+    if (!idEst || !grupoSeleccionado) return;
+    _redirigirAChatPiar(grupoSeleccionado, idEst);
+}
+
+function continuarPiarEnChat(idEstudiante) {
+    if (!idEstudiante || !grupoSeleccionado) return;
+    _redirigirAChatPiar(grupoSeleccionado, idEstudiante);
+}
+
+function _redirigirAChatPiar(idGrupo, idEstudiante) {
+    // Query params leídos por chat.html — modo y estudiante viven en la URL,
+    // no en localStorage (regla del sprint: no persistir el estudiante).
+    const qs = new URLSearchParams({
+        id: idGrupo,
+        modo: 'piar',
+        estudiante: idEstudiante,
+    });
+    window.location.href = `chat.html?${qs.toString()}`;
 }
 
 /**
@@ -825,6 +940,11 @@ window.togglePiarFields = togglePiarFields;
 window.confirmarEliminarEstudiante = confirmarEliminarEstudiante;
 window.cargarEstudiantesGrupo = cargarEstudiantesGrupo;
 window.filtrarGrupos = filtrarGrupos;
+
+// Issue #48 — sección PIARs en la ficha
+window.irAlChatParaNuevoPiar = irAlChatParaNuevoPiar;
+window.continuarPiarEnChat = continuarPiarEnChat;
+window.descargarPiarDesdeFicha = descargarPiarDesdeFicha;
 
 // ==========================================
 // LOG DE DESARROLLO
