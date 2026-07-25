@@ -70,14 +70,73 @@ def apply_migrations():
     from models import PIAR  # noqa: F401
     Base.metadata.create_all(bind=engine, tables=[PIAR.__table__])
 
+    # ── instituciones (tabla nueva) + Docente.id_institucion + Docente.rol
+    # Multi-institución (Issue #5).
+    from models import Docente, Institucion  # noqa: F401
+    Base.metadata.create_all(bind=engine, tables=[Institucion.__table__])
+
+    # ALTER TABLE docentes ADD COLUMN id_institucion / rol (idempotente).
+    cols_doc = [c["name"] for c in inspect(engine).get_columns("docentes")]
+    with engine.connect() as conn:
+        if "id_institucion" not in cols_doc:
+            conn.execute(text(
+                "ALTER TABLE docentes ADD COLUMN id_institucion VARCHAR(36) "
+                "REFERENCES instituciones(id_institucion)"
+            ))
+            conn.commit()
+            print("✅ Migración: columna 'id_institucion' agregada a 'docentes'")
+        if "rol" not in cols_doc:
+            conn.execute(text(
+                "ALTER TABLE docentes ADD COLUMN rol VARCHAR(20) NOT NULL DEFAULT 'docente'"
+            ))
+            conn.commit()
+            print("✅ Migración: columna 'rol' agregada a 'docentes' (default 'docente')")
+
+    # Backfill uni-personal: cada docente sin id_institucion recibe una
+    # Institucion nueva a su nombre. Idempotente — si ya tiene, no toca.
+    _backfill_instituciones_unipersonales()
+
     # Refrescar inspector para verificar que quedó creada (log claro)
     inspector = inspect(engine)
     if "rate_limit_counter" in inspector.get_table_names():
         print("✅ Migración: tabla 'rate_limit_counter' verificada/creada")
     if "piar" in inspector.get_table_names():
         print("✅ Migración: tabla 'piar' verificada/creada")
+    if "instituciones" in inspector.get_table_names():
+        print("✅ Migración: tabla 'instituciones' verificada/creada")
 
     print("✅ Migraciones aplicadas")
+
+
+def _backfill_instituciones_unipersonales():
+    """
+    Cada docente sin id_institucion recibe una Institucion propia con
+    nombre = 'Institución de <nombre docente>'. Rol se preserva; los
+    docentes existentes quedan con rol='docente' (default de la columna).
+
+    Idempotente: docentes que ya tienen id_institucion se saltean.
+    Race-safe hasta el nivel de "muchos workers arrancando al mismo
+    tiempo": el chequeo per-docente es individual y el commit por lote.
+    """
+    from models import Docente, Institucion
+    db = SessionLocal()
+    try:
+        pendientes = db.query(Docente).filter(Docente.id_institucion.is_(None)).all()
+        if not pendientes:
+            print("ℹ️  Backfill instituciones: ningún docente pendiente")
+            return
+        for d in pendientes:
+            inst = Institucion(
+                nombre=f"Institución de {d.nombre_completo}",
+                plan="free",
+            )
+            db.add(inst)
+            db.flush()  # necesito el id antes del assign
+            d.id_institucion = inst.id_institucion
+        db.commit()
+        print(f"✅ Backfill: {len(pendientes)} institución(es) uni-personal(es) creada(s)")
+    finally:
+        db.close()
 
 
 # ============================================================

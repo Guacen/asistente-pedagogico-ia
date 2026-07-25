@@ -14,6 +14,32 @@ def new_uuid() -> str:
     return str(uuid.uuid4())
 
 
+class Institucion(Base):
+    """
+    Institución educativa que agrupa docentes con roles.
+    Cada docente pertenece a exactamente una institución (post-migración
+    todos los docentes tienen una uni-personal como default retro-compat).
+
+    `plan` controla qué features institucionales están activas:
+    - 'free' / 'pro' → institución uni-personal o pequeña, sin roles admin.
+    - 'institucional' → habilita rol coordinador y rector.
+
+    Activación manual del plan: el owner cambia institucion.plan en DB
+    directamente. No hay flujo de pago en este sprint.
+    """
+    __tablename__ = "instituciones"
+
+    id_institucion = Column(String(36), primary_key=True, default=new_uuid)
+    nombre = Column(String(200), nullable=False)
+    nit = Column(String(50))
+    ciudad = Column(String(100))
+    departamento = Column(String(100))
+    plan = Column(String(20), nullable=False, default="free")
+    creado_en = Column(DateTime, default=datetime.utcnow)
+
+    docentes = relationship("Docente", back_populates="institucion_obj")
+
+
 class Docente(Base):
     __tablename__ = "docentes"
 
@@ -21,15 +47,39 @@ class Docente(Base):
     nombre_completo = Column(String(200), nullable=False)
     email = Column(String(200), unique=True, nullable=False, index=True)
     password_hash = Column(String(255), nullable=False)
+    # Campo legacy — nombre de institución como texto libre. Se mantiene
+    # por retro-compat con datos existentes; el nuevo modelo usa id_institucion.
     institucion = Column(String(200))
     ciudad = Column(String(100))
     departamento = Column(String(100))
     fecha_registro = Column(DateTime, default=datetime.utcnow)
 
+    # ── Multi-institución (Issue #5) ──
+    # FK a la nueva tabla instituciones. Nullable en el esquema para
+    # retro-compat de esquema; el backfill de migración garantiza que
+    # todo docente en producción tenga una institución uni-personal.
+    id_institucion = Column(
+        String(36),
+        ForeignKey("instituciones.id_institucion"),
+        nullable=True,
+        index=True,
+    )
+    # Rol dentro de la institución:
+    # - 'docente'      → default; comportamiento idéntico al pre-sprint.
+    # - 'coordinador'  → puede leer todo lo de su institución (grupos,
+    #                    estudiantes, PIARs), no crea grupos ni edita notas.
+    # - 'rector'       → todo lo del coordinador + puede cambiar roles
+    #                    de otros docentes de su institución.
+    rol = Column(String(20), nullable=False, default="docente")
+
     # Relaciones
     grupos = relationship("Grupo", back_populates="docente", cascade="all, delete")
     suscripcion = relationship("Suscripcion", back_populates="docente", uselist=False, cascade="all, delete")
     uso_mensual = relationship("UsoMensual", back_populates="docente", cascade="all, delete")
+    # Relationship al objeto Institucion. Se llama `institucion_obj` para
+    # NO colisionar con la columna legacy `institucion` (string libre) que
+    # documento.py y piar.py leen como texto para el encabezado DOCX.
+    institucion_obj = relationship("Institucion", back_populates="docentes")
 
 
 class Suscripcion(Base):
