@@ -75,12 +75,32 @@ def create_grupo(
                 detail="Plan Free: máximo 1 grupo. Actualiza a Pro para grupos ilimitados.",
             )
 
-    grupo = Grupo(
-        id_docente=docente.id_docente,
-        **data.model_dump(),
-    )
+    # Separar los estudiantes iniciales del payload del grupo (los inserta
+    # el bloque atómico de abajo). Sin la exclusión el kwarg `estudiantes`
+    # rompería el __init__ de Grupo (no es una columna del modelo).
+    grupo_kwargs = data.model_dump(exclude={"estudiantes"})
+    estudiantes_iniciales = data.estudiantes or []
+
+    grupo = Grupo(id_docente=docente.id_docente, **grupo_kwargs)
     db.add(grupo)
-    db.commit()
+    db.flush()  # Materializa grupo.id_grupo sin cerrar la transacción.
+
+    try:
+        for est_data in estudiantes_iniciales:
+            db.add(Estudiante(
+                id_grupo=grupo.id_grupo,
+                **est_data.model_dump(),
+            ))
+        db.commit()
+    except Exception as exc:
+        # Rollback total: si algún estudiante rompe (validación DB, tipo,
+        # etc.), el grupo tampoco se persiste — atomicidad requerida por
+        # el contrato del endpoint.
+        db.rollback()
+        raise HTTPException(
+            status_code=400,
+            detail=f"Error creando estudiantes iniciales; grupo no guardado: {exc}",
+        )
     db.refresh(grupo)
     return grupo
 

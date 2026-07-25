@@ -56,6 +56,10 @@ class GrupoCreate(BaseModel):
     periodo_actual: int = 1
     cantidad_estudiantes: int
     recursos_disponibles: Optional[List[str]] = []
+    # Estudiantes iniciales — creados en la misma transacción atómica que
+    # el grupo. Opcional para retro-compat: si no viene o viene [], solo
+    # se crea el grupo (comportamiento pre-fix).
+    estudiantes: List["EstudianteCreate"] = []
 
 
 class GrupoUpdate(BaseModel):
@@ -259,3 +263,8 @@ class CheckoutCreate(BaseModel):
     plan: str
     success_url: str
     cancel_url: str
+
+
+# Forward reference resolution — GrupoCreate.estudiantes: List["EstudianteCreate"]
+# necesita rebuild ahora que EstudianteCreate ya fue definido arriba.
+GrupoCreate.model_rebuild()

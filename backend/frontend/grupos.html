@@ -927,6 +927,11 @@
         function cerrarModalGrupo() {
             document.getElementById('modal-grupo').classList.add('hidden');
             nuevaGrupoId = null;
+            // Descartar buffer del wizard: si el usuario cierra en step 2
+            // sin finalizar, el grupo NO existe en backend (ahora es
+            // atómico) — no hay nada que rescatar, limpiamos el buffer.
+            window._datosGrupoPendiente = null;
+            window._estudiantesPendientes = [];
         }
 
         // Editar grupo: solo paso 1, sin indicador de pasos
@@ -1003,12 +1008,17 @@
                     cerrarModalGrupo();
                     await cargarGrupos();
                 } else {
-                    // CREAR → avanzar a paso 2
-                    const grupoNuevo = await api.createGrupo(data);
-                    nuevaGrupoId = grupoNuevo.id_grupo;
+                    // CREAR → NO tocamos API todavía. Buffereamos el
+                    // payload del grupo y avanzamos al paso 2 donde el
+                    // docente carga estudiantes. Al finalizar se manda
+                    // UN solo POST /api/grupos con grupo + estudiantes
+                    // en la misma transacción atómica (backend rollback
+                    // total si algún estudiante falla).
+                    window._datosGrupoPendiente = data;
+                    window._estudiantesPendientes = [];
+                    nuevaGrupoId = null;
                     estudiantesAgregados = 0;
 
-                    // Actualizar indicador
                     document.getElementById('prog-step1-circle').className = 'w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center text-sm font-bold';
                     document.getElementById('prog-step2-circle').className = 'w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold';
                     document.getElementById('prog-step2-label').className  = 'ml-2 text-sm font-medium text-blue-600';
@@ -1020,8 +1030,6 @@
                     document.getElementById('form-est-rapido').reset();
                     document.getElementById('piar-rapido-fields').classList.add('hidden');
                     document.getElementById('ia-init-status').classList.add('hidden');
-
-                    await cargarGrupos();
                 }
             } catch (error) {
                 alert('Error: ' + error.message);
@@ -1032,12 +1040,16 @@
         });
 
         // =========================================================
-        // PASO 2 — Agregar estudiante rápido
+        // PASO 2 — Agregar estudiante (acumula en memoria)
+        //   El grupo aún no existe en el backend. Los estudiantes se
+        //   bufferean en window._estudiantesPendientes y viajan como
+        //   parte del payload atómico al finalizar.
         // =========================================================
-        document.getElementById('form-est-rapido').addEventListener('submit', async (e) => {
+        document.getElementById('form-est-rapido').addEventListener('submit', (e) => {
             e.preventDefault();
             const codigo = document.getElementById('est-rapido-codigo').value.trim();
-            if (!codigo || !nuevaGrupoId) return;
+            if (!codigo) return;
+            window._estudiantesPendientes = window._estudiantesPendientes || [];
 
             const data = {
                 codigo_estudiante: codigo,
@@ -1049,29 +1061,23 @@
                 data.ajustes     = document.getElementById('est-rapido-ajustes').value;
             }
 
-            try {
-                await api.createEstudiante(nuevaGrupoId, data);
-                estudiantesAgregados++;
+            window._estudiantesPendientes.push(data);
+            estudiantesAgregados++;
 
-                // Agregar chip a la lista visual
-                const lista = document.getElementById('est-creados-lista');
-                const piarBadge = data.tiene_piar
-                    ? '<span class="ml-1 bg-yellow-100 text-yellow-700 text-xs px-1 rounded">PIAR</span>' : '';
-                lista.insertAdjacentHTML('beforeend', `
-                    <div class="flex items-center bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-sm">
-                        <i class="fas fa-user text-gray-400 mr-2"></i>
-                        <span>${codigo}</span>${piarBadge}
-                    </div>`);
+            const lista = document.getElementById('est-creados-lista');
+            const piarBadge = data.tiene_piar
+                ? '<span class="ml-1 bg-yellow-100 text-yellow-700 text-xs px-1 rounded">PIAR</span>' : '';
+            lista.insertAdjacentHTML('beforeend', `
+                <div class="flex items-center bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-sm">
+                    <i class="fas fa-user text-gray-400 mr-2"></i>
+                    <span>${codigo}</span>${piarBadge}
+                </div>`);
 
-                document.getElementById('est-counter').textContent =
-                    `${estudiantesAgregados} estudiante${estudiantesAgregados !== 1 ? 's' : ''} agregado${estudiantesAgregados !== 1 ? 's' : ''}`;
+            document.getElementById('est-counter').textContent =
+                `${estudiantesAgregados} estudiante${estudiantesAgregados !== 1 ? 's' : ''} agregado${estudiantesAgregados !== 1 ? 's' : ''}`;
 
-                document.getElementById('form-est-rapido').reset();
-                document.getElementById('piar-rapido-fields').classList.add('hidden');
-
-            } catch (err) {
-                alert('Error al agregar estudiante: ' + err.message);
-            }
+            document.getElementById('form-est-rapido').reset();
+            document.getElementById('piar-rapido-fields').classList.add('hidden');
         });
 
         function togglePiarRapido() {
@@ -1080,10 +1086,32 @@
         }
 
         async function finalizarCreacionGrupo() {
+            // Envío atómico: grupo + estudiantes en una sola request.
+            // Si el backend rechaza (validación, código duplicado, etc.)
+            // NADA se persiste — el usuario vuelve al modal con los datos
+            // intactos y puede corregir.
+            const datosGrupo = window._datosGrupoPendiente;
+            const estudiantes = window._estudiantesPendientes || [];
+            if (!datosGrupo) {
+                cerrarModalGrupo();
+                return;
+            }
+            try {
+                const grupoNuevo = await api.createGrupo({
+                    ...datosGrupo,
+                    estudiantes,
+                });
+                nuevaGrupoId = grupoNuevo.id_grupo;
+            } catch (err) {
+                alert('Error creando el grupo: ' + err.message);
+                return;  // dejamos el wizard abierto para corregir
+            }
+
             cerrarModalGrupo();
+            window._datosGrupoPendiente = null;
+            window._estudiantesPendientes = [];
 
             if (nuevaGrupoId) {
-                // Inicializar IA en segundo plano
                 try {
                     await api.inicializarContextoIA(nuevaGrupoId);
                 } catch (err) {
