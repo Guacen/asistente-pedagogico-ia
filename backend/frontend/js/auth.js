@@ -51,9 +51,10 @@ const Auth = {
             // Guardar URL actual para volver después del login
             const currentUrl = window.location.pathname + window.location.search;
             localStorage.setItem('redirect_after_login', currentUrl);
-            
-            // Redirigir a login
-            window.location.href = redirectTo;
+
+            // Redirigir a login con replace() — no queremos que la página
+            // protegida quede en el historial cuando la sesión no existe.
+            window.location.replace(redirectTo);
         }
     },
     
@@ -64,7 +65,7 @@ const Auth = {
      */
     requireGuest(redirectTo = 'dashboard.html') {
         if (this.isAuthenticated()) {
-            window.location.href = redirectTo;
+            window.location.replace(redirectTo);
         }
     },
     
@@ -252,9 +253,9 @@ const Auth = {
         // Disparar evento personalizado
         this.dispatchAuthEvent('logout', { user });
         
-        // Redirigir
+        // Redirigir — replace() para no dejar la sesión anterior en historial
         if (redirectTo) {
-            window.location.href = redirectTo;
+            window.location.replace(redirectTo);
         }
     },
     
@@ -305,9 +306,9 @@ const Auth = {
         
         if (redirectUrl && redirectUrl !== '/login.html') {
             localStorage.removeItem('redirect_after_login');
-            window.location.href = redirectUrl;
+            window.location.replace(redirectUrl);
         } else {
-            window.location.href = defaultUrl;
+            window.location.replace(defaultUrl);
         }
     },
     
@@ -584,7 +585,7 @@ window.addEventListener('unhandledrejection', (event) => {
         const path = window.location.pathname;
         const enPaginaGuest = path.endsWith('/login.html') || path.endsWith('/registro.html');
         if (!enPaginaGuest) {
-            window.location.href = 'login.html';
+            window.location.replace('login.html');
         }
     }
 });
