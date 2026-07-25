@@ -12,7 +12,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-FRONTEND = Path(__file__).resolve().parent.parent.parent
+FRONTEND = Path(__file__).resolve().parent.parent / "frontend"
 PANEL = (FRONTEND / "panel-docente.html").read_text(encoding="utf-8")
 
 
