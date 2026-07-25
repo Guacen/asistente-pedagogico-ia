@@ -238,11 +238,17 @@ def invitar_docente(
             ),
         )
 
-    # Mover al invitado a la nueva institución con rol 'docente' por default
+    # Mover al invitado a la nueva institución con rol 'docente' por default.
     invitado.id_institucion = inst_actual.id_institucion
     invitado.rol = ROL_DOCENTE
+    # Flush ANTES del delete para que SQLAlchemy vea el nuevo FK del invitado
+    # y no lo nule al eliminar la institución previa (cascade implícito por
+    # la colección Institucion.docentes cuando el hijo aún se considera del
+    # parent original).
+    db.flush()
+    db.refresh(invitado)
 
-    # Borrar la institución uni-personal huérfana (nadie más quedaba)
+    # Borrar la institución uni-personal huérfana (nadie más quedaba).
     if inst_previa_id and inst_previa_id != inst_actual.id_institucion:
         inst_previa = db.query(Institucion).filter(
             Institucion.id_institucion == inst_previa_id,
