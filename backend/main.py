@@ -38,8 +38,9 @@ import suscripciones
 # Importar Socket.io (el objeto sio vive en socket_events)
 from socket_events import sio
 
-# Carpeta raíz del frontend (un nivel arriba de /backend)
-FRONTEND_DIR = Path(__file__).parent.parent
+# Carpeta del frontend, dentro de /backend para que Railway la incluya
+# en el contenedor cuando el service tiene Root Directory=backend/.
+FRONTEND_DIR = Path(__file__).parent / "frontend"
 
 # ============================================================
 # FASTAPI APP
