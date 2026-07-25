@@ -74,6 +74,25 @@ class PIAROut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class PIARResumenOut(BaseModel):
+    """
+    Vista liviana para listados en fichas de estudiante. Sin el JSON
+    de `contenido` — el docente lo materializa al pedir el DOCX.
+    """
+    id_piar: str
+    id_estudiante: str
+    id_grupo: str
+    id_docente: str
+    periodo: int
+    anio: int
+    version: int
+    estado: str
+    creado_en: datetime
+    aprobado_en: Optional[datetime]
+
+    model_config = {"from_attributes": True}
+
+
 # ═══════════════════════════════════════════════════════════════
 # HELPERS
 # ═══════════════════════════════════════════════════════════════
@@ -472,7 +491,7 @@ async def crear_piar(
     return piar
 
 
-@router.get("/estudiante/{id_estudiante}", response_model=List[PIAROut])
+@router.get("/estudiante/{id_estudiante}", response_model=List[PIARResumenOut])
 def listar_por_estudiante(
     id_estudiante: str,
     docente: Docente = Depends(get_current_docente),
@@ -480,27 +499,40 @@ def listar_por_estudiante(
 ):
     """
     Lista todos los PIARs (todas las versiones) del estudiante, ordenados
-    del más reciente al más antiguo. Sólo del docente autenticado.
+    del más reciente al más antiguo.
+
+    Permisos (Issue #5 · multi-institución):
+    - Docente dueño del grupo del estudiante → siempre ve.
+    - Coordinador o rector con plan institucional activo → ve los PIARs
+      de estudiantes cuyos docentes-dueños pertenezcan a su institución.
+    - Cualquier otro → 404 (contrato: no revelar existencia).
+
+    Retorna [] si no hay PIARs para ese estudiante (200, no 404). Ese
+    caso ocurre en la ficha de un estudiante recién marcado con PIAR.
     """
-    # Verificar que el estudiante es de un grupo del docente
-    est = (
-        db.query(Estudiante)
-        .join(Grupo, Grupo.id_grupo == Estudiante.id_grupo)
-        .filter(
-            Estudiante.id_estudiante == id_estudiante,
-            Grupo.id_docente == docente.id_docente,
-        )
-        .first()
-    )
+    from permisos import es_admin_institucion, ids_docentes_institucion
+
+    est = db.query(Estudiante).filter(
+        Estudiante.id_estudiante == id_estudiante,
+    ).first()
     if not est:
+        raise HTTPException(status_code=404, detail="Estudiante no encontrado")
+
+    grupo = db.query(Grupo).filter(Grupo.id_grupo == est.id_grupo).first()
+    if not grupo:
+        raise HTTPException(status_code=404, detail="Estudiante no encontrado")
+
+    puede_ver = grupo.id_docente == docente.id_docente
+    if not puede_ver and es_admin_institucion(docente) and docente.id_institucion:
+        docentes_inst = set(ids_docentes_institucion(docente.id_institucion, db))
+        puede_ver = grupo.id_docente in docentes_inst
+
+    if not puede_ver:
         raise HTTPException(status_code=404, detail="Estudiante no encontrado")
 
     piars = (
         db.query(PIAR)
-        .filter(
-            PIAR.id_estudiante == id_estudiante,
-            PIAR.id_docente == docente.id_docente,
-        )
+        .filter(PIAR.id_estudiante == id_estudiante)
         .order_by(PIAR.anio.desc(), PIAR.periodo.desc(), PIAR.version.desc())
         .all()
     )

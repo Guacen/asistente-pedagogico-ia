@@ -354,15 +354,42 @@ async function init() {
         // si no hay ningún estudiante con PIAR en este grupo.
         renderModoSelector();
 
+        // Issue #48 — deep-link desde la ficha del estudiante:
+        //   chat.html?id={grupo}&modo=piar&estudiante={id}
+        // Al llegar por acá forzamos modo=piar y pre-seleccionamos el
+        // estudiante. El modo SÍ persiste en localStorage (bueno UX:
+        // volver directo al chat de PIAR en la próxima visita); el
+        // ESTUDIANTE no persiste — vive en memoria, muere al recargar.
+        const modoQP = urlParams.get('modo');
+        const estudianteQP = urlParams.get('estudiante');
+        if (modoQP === 'piar' && estudianteQP) {
+            const estValido = piarEstudiantesConPiar.some(e => e.id_estudiante === estudianteQP);
+            if (estValido) {
+                localStorage.setItem(modoStorageKey(), 'piar');
+                piarEstudianteId = estudianteQP;
+                renderModoSelector();
+            } else {
+                console.warn('[PIAR deep-link] estudiante no es del grupo o no tiene PIAR activo');
+            }
+        }
+
         // Historial — filtrado por el modo activo (Fase B/C). En modo PIAR
         // sin estudiante seleccionado el empty-state se muestra directo.
         const modoInicial = getModoActivo();
         document.getElementById('chat-loading').remove();
         if (modoInicial === 'piar') {
-            // Activa el panel PIAR y usa el empty-state hasta que el
-            // docente elija estudiante — no hay estudiante persistido.
             togglePiarPanel(true);
-            pintarHistorial([], modoInicial);
+            if (piarEstudianteId) {
+                // Deep-link con estudiante válido — cargar el historial filtrado.
+                const historial = await api.getChatHistorial(grupoId, 50, 'piar', piarEstudianteId);
+                pintarHistorial(historial, 'piar');
+                renderPiarPanel();
+                scrollBottom();
+            } else {
+                // Modo PIAR sin estudiante → empty state hasta que el
+                // docente elija uno en el dropdown.
+                pintarHistorial([], modoInicial);
+            }
         } else {
             const historial = await api.getChatHistorial(grupoId, 50, modoInicial);
             pintarHistorial(historial, modoInicial);
