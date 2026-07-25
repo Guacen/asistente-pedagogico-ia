@@ -379,7 +379,12 @@
         } catch (err) {
             console.error(err);
             if (err.message?.includes('401') || err.message?.includes('Token')) {
-                window.location.href = 'login.html';
+                // CRÍTICO: limpiar el token ANTES de redirigir. Si dejamos
+                // el token expirado/inválido en localStorage, el guard de
+                // login.html lo valida como bueno y nos rebota a dashboard
+                // → loop de parpadeo. logoutSilent no navega, solo limpia.
+                Auth.logoutSilent();
+                window.location.replace('login.html');
             } else {
                 toast('Error al cargar datos. Intenta recargar.', 'error');
                 // Mostrar skeleton fallido
@@ -637,7 +642,7 @@
     function cerrarSesion() {
         api.removeToken();
         localStorage.clear();
-        window.location.href = 'login.html';
+        window.location.replace('login.html');
     }
 
     // ── Arranque ──────────────────────────────────────────────────────
