@@ -18,22 +18,26 @@ const Auth = {
      */
     isAuthenticated() {
         const token = this.getToken();
-        
+
         if (!token) {
             return false;
         }
-        
+
         // Verificar si el token ha expirado (opcional)
         const tokenData = this.parseToken(token);
         if (tokenData && tokenData.exp) {
             const now = Math.floor(Date.now() / 1000);
             if (now > tokenData.exp) {
-                // Token expirado
-                this.logout();
+                // Token expirado: limpiamos estado SIN navegar. Si esta
+                // función se llama desde login.html, un redirect acá
+                // provoca ping-pong con la propia login.html. El caller
+                // (requireAuth, requireGuest, o el guard de la página)
+                // decide qué hacer con el resultado.
+                this.logoutSilent();
                 return false;
             }
         }
-        
+
         return true;
     },
     
@@ -568,12 +572,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// Interceptar errores 401 de la API para logout automático
+// Interceptar errores 401 de la API para logout automático.
+// No re-navegar si ya estamos en una página de guest (login/registro) —
+// un POST /login fallido con 401 dispararía redirect a login.html →
+// recarga → potencial loop si el usuario reintenta con credenciales
+// inválidas.
 window.addEventListener('unhandledrejection', (event) => {
     if (event.reason?.status === 401 || event.reason?.message?.includes('401')) {
         console.warn('Token inválido detectado, cerrando sesión...');
         Auth.logoutSilent();
-        window.location.href = 'login.html';
+        const path = window.location.pathname;
+        const enPaginaGuest = path.endsWith('/login.html') || path.endsWith('/registro.html');
+        if (!enPaginaGuest) {
+            window.location.href = 'login.html';
+        }
     }
 });
 

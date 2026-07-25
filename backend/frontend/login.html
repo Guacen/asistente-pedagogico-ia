@@ -177,8 +177,11 @@
             }
         });
 
-        // Verificar si ya está autenticado
-        if (api.getToken()) {
+        // Verificar si ya está autenticado — usar Auth.isAuthenticated()
+        // (valida expiración) y no api.getToken() (que solo verifica
+        // presencia; con token expirado dispararía redirect a dashboard,
+        // dashboard limpiaría el token y volvería a login → parpadeo).
+        if (window.Auth && Auth.isAuthenticated()) {
             window.location.href = 'dashboard.html';
         }
     </script>
