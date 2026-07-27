@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     # configurada pero GOOGLE_API_KEY sí, el módulo llm.py usa Gemini como
     # fallback para chat y síntesis PIAR.
     GOOGLE_API_KEY: str = ""
-    GEMINI_MODEL: str = "gemini-1.5-flash"
+    GEMINI_MODEL: str = "gemini-2.0-flash"
 
     # Stripe
     STRIPE_SECRET_KEY: str = ""

@@ -80,6 +80,7 @@ def _asegurar_proveedor() -> str:
 # ═══════════════════════════════════════════════════════════════
 
 _claude_client = None
+_gemini_client = None
 _gemini_configured_key: Optional[str] = None
 
 
@@ -91,17 +92,18 @@ def _get_claude_client():
     return _claude_client
 
 
-def _get_gemini_module():
+def _get_gemini_client():
     """
-    Import y configure lazily — la dep google-generativeai es pesada y
-    solo se paga si el owner efectivamente eligió Gemini.
+    Import y construcción lazy — la dep google-genai es pesada y solo se
+    paga si el owner efectivamente eligió Gemini. Se recrea si la env var
+    cambió (tests que hacen monkeypatch de GOOGLE_API_KEY).
     """
-    global _gemini_configured_key
-    import google.generativeai as genai
-    if _gemini_configured_key != settings.GOOGLE_API_KEY:
-        genai.configure(api_key=settings.GOOGLE_API_KEY)
+    global _gemini_client, _gemini_configured_key
+    from google import genai
+    if _gemini_client is None or _gemini_configured_key != settings.GOOGLE_API_KEY:
+        _gemini_client = genai.Client(api_key=settings.GOOGLE_API_KEY)
         _gemini_configured_key = settings.GOOGLE_API_KEY
-    return genai
+    return _gemini_client
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -149,16 +151,28 @@ async def _completa_claude(
 # ADAPTERS — GEMINI
 # ═══════════════════════════════════════════════════════════════
 
-def _mensajes_a_gemini(messages: List[dict]) -> List[dict]:
+def _mensajes_a_gemini(messages: List[dict]):
     """
     Traduce el formato canónico Claude {role: user|assistant, content: str}
-    al formato Gemini {role: user|model, parts: [str]}.
+    al formato del SDK google-genai (types.Content con parts=[Part(text=...)]).
+    Import lazy de types para no pagar la dep si el proveedor activo es Claude.
     """
-    out = []
-    for m in messages:
-        role = "model" if m["role"] == "assistant" else "user"
-        out.append({"role": role, "parts": [m["content"]]})
-    return out
+    from google.genai import types
+    return [
+        types.Content(
+            role="model" if m["role"] == "assistant" else "user",
+            parts=[types.Part(text=m["content"])],
+        )
+        for m in messages
+    ]
+
+
+def _gemini_config(system_prompt: str, max_tokens: int):
+    from google.genai import types
+    return types.GenerateContentConfig(
+        system_instruction=system_prompt,
+        max_output_tokens=max_tokens,
+    )
 
 
 async def _stream_gemini(
@@ -168,21 +182,22 @@ async def _stream_gemini(
     max_tokens: int,
     model: Optional[str],
 ) -> str:
-    genai = _get_gemini_module()
-    gmodel = genai.GenerativeModel(
-        model_name=model or settings.GEMINI_MODEL,
-        system_instruction=system_prompt,
-        generation_config={"max_output_tokens": max_tokens},
-    )
+    client = _get_gemini_client()
     contenido = _mensajes_a_gemini(messages)
     respuesta = ""
-    # generate_content_async con stream=True devuelve un async iterator
-    # de chunks; cada chunk.text es el delta del token generado.
-    async for chunk in await gmodel.generate_content_async(contenido, stream=True):
+    # SDK nuevo: client.aio.models.generate_content_stream(...) es una
+    # corutina que resuelve a un async iterator de chunks; cada chunk.text
+    # es el delta del token generado. Algunos chunks vienen sin .text
+    # (metadata de safety, function-call, etc.) — se saltan.
+    stream = await client.aio.models.generate_content_stream(
+        model=model or settings.GEMINI_MODEL,
+        contents=contenido,
+        config=_gemini_config(system_prompt, max_tokens),
+    )
+    async for chunk in stream:
         try:
             texto = chunk.text
         except Exception:
-            # Algunos chunks son metadata (safety, etc.) sin .text — se saltan.
             continue
         if texto:
             respuesta += texto
@@ -196,14 +211,13 @@ async def _completa_gemini(
     max_tokens: int,
     model: Optional[str],
 ) -> str:
-    genai = _get_gemini_module()
-    gmodel = genai.GenerativeModel(
-        model_name=model or settings.GEMINI_MODEL,
-        system_instruction=system_prompt,
-        generation_config={"max_output_tokens": max_tokens},
-    )
+    client = _get_gemini_client()
     contenido = _mensajes_a_gemini(messages)
-    response = await gmodel.generate_content_async(contenido)
+    response = await client.aio.models.generate_content(
+        model=model or settings.GEMINI_MODEL,
+        contents=contenido,
+        config=_gemini_config(system_prompt, max_tokens),
+    )
     return response.text
 
 

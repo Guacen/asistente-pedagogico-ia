@@ -144,6 +144,11 @@ def test_stream_cae_a_gemini_cuando_claude_no_configurado(monkeypatch):
 # ═══════════════════════════════════════════════════════════════
 
 def test_mensajes_a_gemini_traduce_assistant_a_model():
+    """
+    El SDK nuevo (google-genai) exige types.Content — no dicts. Este test
+    depende de tener google-genai instalado; se salta si no está.
+    """
+    pytest.importorskip("google.genai")
     from llm import _mensajes_a_gemini
     canonico = [
         {"role": "user", "content": "hola"},
@@ -151,8 +156,6 @@ def test_mensajes_a_gemini_traduce_assistant_a_model():
         {"role": "user", "content": "planificá una clase"},
     ]
     gemini = _mensajes_a_gemini(canonico)
-    assert gemini == [
-        {"role": "user", "parts": ["hola"]},
-        {"role": "model", "parts": ["qué tal"]},
-        {"role": "user", "parts": ["planificá una clase"]},
-    ]
+    assert len(gemini) == 3
+    assert [c.role for c in gemini] == ["user", "model", "user"]
+    assert [c.parts[0].text for c in gemini] == ["hola", "qué tal", "planificá una clase"]
