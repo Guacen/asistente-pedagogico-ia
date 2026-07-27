@@ -72,6 +72,13 @@ class Docente(Base):
     #                    de otros docentes de su institución.
     rol = Column(String(20), nullable=False, default="docente")
 
+    # ── Admin flag (sesiones sprint) ──
+    # Cuando es_admin=True, el rate limit diario por modo no bloquea al
+    # docente. El contador sigue incrementando (métricas) pero
+    # _consumir_rate_limit siempre autoriza. Se activa manualmente por SQL:
+    #   UPDATE docentes SET es_admin = TRUE WHERE email = '<email>';
+    es_admin = Column(Boolean, nullable=False, default=False)
+
     # Relaciones
     grupos = relationship("Grupo", back_populates="docente", cascade="all, delete")
     suscripcion = relationship("Suscripcion", back_populates="docente", uselist=False, cascade="all, delete")
@@ -177,6 +184,39 @@ class Estudiante(Base):
     calificaciones = relationship("Calificacion", back_populates="estudiante", cascade="all, delete")
 
 
+class ChatSesion(Base):
+    """
+    Sesión temática dentro de un modo de chat. Reemplaza al "hilo infinito
+    por modo" con conversaciones separadas que tienen título propio y no
+    contaminan el contexto entre sí.
+
+    Ámbito de una sesión = (id_grupo, modo) + (id_estudiante opcional para
+    modo PIAR). El contexto que se envía al LLM en cada mensaje son sólo
+    los mensajes de ESTA sesión, no todo el historial del modo.
+    """
+    __tablename__ = "chat_sesiones"
+
+    id_sesion = Column(String(36), primary_key=True, default=new_uuid)
+    id_grupo = Column(
+        String(36), ForeignKey("grupos.id_grupo"), nullable=False, index=True,
+    )
+    id_docente = Column(
+        String(36), ForeignKey("docentes.id_docente"), nullable=False, index=True,
+    )
+    # Mismos valores que Mensaje.modo (planeacion/socioemocional/calificacion/piar).
+    modo = Column(String(32), nullable=False, index=True)
+    # Estudiante — obligatorio si modo=piar, NULL en otros modos.
+    id_estudiante = Column(
+        String(36), ForeignKey("estudiantes.id_estudiante"), nullable=True, index=True,
+    )
+    # Título provisional "Sesión DD/MM/YYYY HH:MM" al crear; se renombra
+    # automáticamente después del primer intercambio con el LLM (≤6 palabras).
+    titulo = Column(String(80), nullable=False, default="Sesión")
+    creado_en = Column(DateTime, default=datetime.utcnow, nullable=False)
+    ultimo_mensaje_en = Column(DateTime, default=datetime.utcnow, nullable=False)
+    archivada = Column(Boolean, nullable=False, default=False, index=True)
+
+
 class Mensaje(Base):
     __tablename__ = "mensajes"
 
@@ -194,6 +234,15 @@ class Mensaje(Base):
     id_estudiante = Column(
         String(36),
         ForeignKey("estudiantes.id_estudiante"),
+        nullable=True,
+        index=True,
+    )
+    # Sesión temática (sprint sesiones). Nullable para retro-compat con
+    # mensajes anteriores a la introducción de ChatSesion — el frontend
+    # los muestra en un panel separado "Historial anterior".
+    id_sesion = Column(
+        String(36),
+        ForeignKey("chat_sesiones.id_sesion"),
         nullable=True,
         index=True,
     )

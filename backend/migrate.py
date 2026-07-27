@@ -92,6 +92,36 @@ def apply_migrations():
             conn.commit()
             print("✅ Migración: columna 'rol' agregada a 'docentes' (default 'docente')")
 
+    # ── Sprint sesiones temáticas ──
+    # IMPORTANTE: este bloque va ANTES de _backfill_instituciones_unipersonales
+    # porque el modelo Docente ya declara `es_admin`. Si el backfill (que
+    # hace SELECT docentes.*) corre antes del ALTER TABLE, SQLAlchemy pide
+    # una columna que la DB todavía no tiene y todo el startup crashea.
+    cols_doc_v2 = [c["name"] for c in inspect(engine).get_columns("docentes")]
+    with engine.connect() as conn:
+        if "es_admin" not in cols_doc_v2:
+            conn.execute(text(
+                "ALTER TABLE docentes ADD COLUMN es_admin BOOLEAN NOT NULL DEFAULT FALSE"
+            ))
+            conn.commit()
+            print("✅ Migración: columna 'es_admin' agregada a 'docentes' (default FALSE)")
+
+    # Tabla chat_sesiones — create_all idempotente
+    from models import ChatSesion  # noqa: F401
+    Base.metadata.create_all(bind=engine, tables=[ChatSesion.__table__])
+
+    # Mensaje.id_sesion (FK nullable) — retro-compat: los mensajes viejos
+    # quedan con NULL y el frontend los agrupa en "Historial anterior".
+    cols_msg = [c["name"] for c in inspect(engine).get_columns("mensajes")]
+    with engine.connect() as conn:
+        if "id_sesion" not in cols_msg:
+            conn.execute(text(
+                "ALTER TABLE mensajes ADD COLUMN id_sesion VARCHAR(36) "
+                "REFERENCES chat_sesiones(id_sesion)"
+            ))
+            conn.commit()
+            print("✅ Migración: columna 'id_sesion' agregada a 'mensajes' (nullable)")
+
     # Backfill uni-personal: cada docente sin id_institucion recibe una
     # Institucion nueva a su nombre. Idempotente — si ya tiene, no toca.
     _backfill_instituciones_unipersonales()
@@ -104,6 +134,8 @@ def apply_migrations():
         print("✅ Migración: tabla 'piar' verificada/creada")
     if "instituciones" in inspector.get_table_names():
         print("✅ Migración: tabla 'instituciones' verificada/creada")
+    if "chat_sesiones" in inspector.get_table_names():
+        print("✅ Migración: tabla 'chat_sesiones' verificada/creada")
 
     print("✅ Migraciones aplicadas")
 

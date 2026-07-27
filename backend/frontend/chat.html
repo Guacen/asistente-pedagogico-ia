@@ -104,6 +104,51 @@
         <!-- Chat area -->
         <div class="flex-1 flex min-h-0">
 
+            <!-- Panel lateral de sesiones (colapsable, sprint sesiones) -->
+            <aside id="sesiones-panel" class="w-64 bg-gray-50 border-r flex flex-col flex-shrink-0 overflow-hidden">
+                <div class="flex items-center justify-between px-3 py-2 border-b bg-white">
+                    <span class="text-xs font-semibold text-gray-700">
+                        <i class="fas fa-comments mr-1 text-gray-500"></i>Sesiones
+                    </span>
+                    <button type="button" onclick="toggleSesionesPanel()"
+                        class="text-gray-400 hover:text-gray-700 text-xs"
+                        title="Ocultar panel de sesiones">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                </div>
+                <button type="button" onclick="crearSesionNueva()"
+                    class="mx-3 mt-3 mb-2 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded hover:bg-blue-700 flex items-center justify-center gap-1">
+                    <i class="fas fa-plus"></i>Nueva sesión
+                </button>
+                <div id="sesiones-lista" class="flex-1 overflow-y-auto px-2 pb-2 space-y-1">
+                    <p class="text-xs text-gray-400 italic text-center py-4">Cargando…</p>
+                </div>
+                <details id="sesiones-archivadas-detalle" class="border-t bg-white text-xs">
+                    <summary class="px-3 py-2 cursor-pointer text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-archive mr-1"></i>Sesiones archivadas
+                    </summary>
+                    <div id="sesiones-archivadas-lista" class="px-2 py-1 space-y-1 max-h-40 overflow-y-auto"></div>
+                </details>
+                <details id="historial-anterior-detalle" class="border-t bg-white text-xs hidden">
+                    <summary class="px-3 py-2 cursor-pointer text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-history mr-1"></i>Historial anterior
+                        <span class="text-[10px] text-gray-400">(pre-sesiones)</span>
+                    </summary>
+                    <div class="px-3 py-2 text-gray-500">
+                        Mensajes anteriores a la introducción de sesiones temáticas.
+                        <button type="button" onclick="verHistorialAnterior()"
+                            class="text-blue-600 hover:underline block mt-1">
+                            Ver conversación completa
+                        </button>
+                    </div>
+                </details>
+            </aside>
+            <button type="button" id="sesiones-toggle-btn" onclick="toggleSesionesPanel()"
+                class="hidden w-6 border-r bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 flex-shrink-0"
+                title="Mostrar panel de sesiones">
+                <i class="fas fa-chevron-right text-xs"></i>
+            </button>
+
             <!-- Mensajes -->
             <main class="flex-1 flex flex-col min-w-0">
 
@@ -275,6 +320,11 @@ let user    = null;
 let _streamWrap  = null;   // el .flex externo del mensaje IA
 let _streamBody  = null;   // el .msg-ia-body donde va el HTML renderizado
 let _streamRaw   = '';     // markdown acumulado (fuente de verdad)
+
+// Sprint sesiones temáticas — estado del panel lateral
+let sesionActivaId = null;      // id_sesion actualmente cargada (null = ninguna)
+let sesionesCache  = [];        // cache de sesiones del ámbito (modo + estudiante) actual
+let sesionesArchivadas = [];    // cache de archivadas (mismo ámbito)
 
 // Store de descargas: dlId → { md, titulo }
 const _dlStore = {};
@@ -673,6 +723,15 @@ function connectSocket() {
     socket.on('ia_complete', (data) => {
         ocultarTyping();
         finalizarStreaming(data);
+        // Sprint sesiones: si el backend creó una sesión nueva o cambió
+        // el título (via auto-titulado por IA), reflejarlo en el panel.
+        if (data && data.id_sesion) {
+            if (data.sesion_recien_creada || sesionActivaId !== data.id_sesion) {
+                sesionActivaId = data.id_sesion;
+            }
+            // Refrescamos la lista para actualizar título + ultimo_mensaje_en
+            recargarSesiones();
+        }
         // Re-habilitar input
         enableInput();
     });
@@ -748,6 +807,12 @@ document.getElementById('chat-form').addEventListener('submit', async (e) => {
     };
     if (modoEnvio === 'piar' && piarEstudianteId) {
         payload.id_estudiante = piarEstudianteId;
+    }
+    // Sprint sesiones: si hay una sesión activa, enviarla para que el
+    // backend concatene el mensaje a esa conversación. Sin id_sesion el
+    // backend usa la más reciente o crea una nueva (retro-compat).
+    if (sesionActivaId) {
+        payload.id_sesion = sesionActivaId;
     }
     socket.emit('send_message', payload);
     input.value = '';
@@ -1076,6 +1141,197 @@ document.querySelectorAll('#mode-selector .mode-btn').forEach(btn => {
 
 // Render inicial una vez que grupoId esté disponible
 renderModoSelector();
+
+// ══════════════════════════════════════════════════════════════
+// SPRINT SESIONES — panel lateral
+// ══════════════════════════════════════════════════════════════
+//   Cada modo (+ estudiante en PIAR) tiene su propia lista de sesiones.
+//   Cambiar de modo, de estudiante PIAR o de sesión: recarga el historial
+//   filtrado y actualiza el resaltado de la sesión activa.
+
+function _sesionAmbito() {
+    // Returns {modo, id_estudiante} — id_estudiante sólo en PIAR.
+    const modo = getModoActivo();
+    return {
+        modo,
+        idEstudiante: modo === 'piar' ? (piarEstudianteId || null) : null,
+    };
+}
+
+function _fmtFechaSesion(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    const hoy = new Date();
+    const esHoy = d.toDateString() === hoy.toDateString();
+    if (esHoy) return d.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+    return d.toLocaleDateString('es-CO', { day: '2-digit', month: 'short' });
+}
+
+async function recargarSesiones() {
+    const { modo, idEstudiante } = _sesionAmbito();
+    // Modo PIAR sin estudiante seleccionado: el ámbito no está completo,
+    // no listamos nada hasta que se elija estudiante.
+    if (modo === 'piar' && !idEstudiante) {
+        sesionesCache = [];
+        sesionesArchivadas = [];
+        _renderPanelSesiones();
+        return;
+    }
+    try {
+        const [activas, todas] = await Promise.all([
+            api.listarSesiones(grupoId, { modo, idEstudiante }),
+            api.listarSesiones(grupoId, { modo, idEstudiante, incluirArchivadas: true }),
+        ]);
+        sesionesCache = activas || [];
+        sesionesArchivadas = (todas || []).filter(s => s.archivada);
+    } catch (err) {
+        console.warn('[sesiones] no pude cargar sesiones:', err);
+        sesionesCache = [];
+        sesionesArchivadas = [];
+    }
+    _renderPanelSesiones();
+}
+
+function _renderPanelSesiones() {
+    const lista = document.getElementById('sesiones-lista');
+    const listaArch = document.getElementById('sesiones-archivadas-lista');
+    if (!lista) return;
+
+    if (sesionesCache.length === 0) {
+        lista.innerHTML = '<p class="text-xs text-gray-400 italic text-center py-4">Sin sesiones. Empezá una con "Nueva sesión".</p>';
+    } else {
+        lista.innerHTML = sesionesCache.map(s => _sesionRowHtml(s, false)).join('');
+    }
+
+    if (listaArch) {
+        listaArch.innerHTML = sesionesArchivadas.length
+            ? sesionesArchivadas.map(s => _sesionRowHtml(s, true)).join('')
+            : '<p class="text-[11px] text-gray-400 italic py-1 px-2">Ninguna archivada.</p>';
+    }
+}
+
+function _sesionRowHtml(s, esArchivada) {
+    const activa = s.id_sesion === sesionActivaId;
+    const activaClass = activa
+        ? 'bg-blue-100 border-blue-300 text-blue-900'
+        : 'bg-white border-gray-200 hover:bg-gray-100 text-gray-800';
+    const opacityClass = esArchivada ? 'opacity-70' : '';
+    return `
+        <div class="border rounded-lg px-2 py-1.5 text-xs cursor-pointer ${activaClass} ${opacityClass}"
+             onclick="cambiarSesion('${escapeHtmlAttr(s.id_sesion)}')">
+            <div class="flex items-start justify-between gap-1">
+                <span class="font-medium truncate" title="${escapeHtmlAttr(s.titulo)}">${escapeHtml(s.titulo)}</span>
+                ${esArchivada
+                    ? ''
+                    : `<button type="button" onclick="event.stopPropagation(); archivarSesionActual('${escapeHtmlAttr(s.id_sesion)}')"
+                             class="text-gray-400 hover:text-red-600 text-[10px]" title="Archivar">
+                             <i class="fas fa-archive"></i>
+                       </button>`}
+            </div>
+            <span class="text-[10px] text-gray-500">${_fmtFechaSesion(s.ultimo_mensaje_en)}</span>
+        </div>`;
+}
+
+function escapeHtmlAttr(s) {
+    return String(s == null ? '' : s).replace(/'/g, '&#39;').replace(/"/g, '&quot;');
+}
+
+async function cambiarSesion(idSesion) {
+    if (idSesion === sesionActivaId) return;
+    sesionActivaId = idSesion;
+    _renderPanelSesiones();
+    try {
+        const historial = await api.getChatHistorial(grupoId, 100, null, null, idSesion);
+        pintarHistorial(historial, getModoActivo());
+        scrollBottom();
+    } catch (err) {
+        console.error('[sesiones] error cargando historial de sesión:', err);
+    }
+}
+
+async function crearSesionNueva() {
+    const { modo, idEstudiante } = _sesionAmbito();
+    if (modo === 'piar' && !idEstudiante) {
+        alert('Elegí primero un estudiante con PIAR.');
+        return;
+    }
+    try {
+        const nueva = await api.crearSesion(grupoId, modo, { idEstudiante });
+        sesionActivaId = nueva.id_sesion;
+        await recargarSesiones();
+        // Historial vacío para la nueva sesión
+        pintarHistorial([], modo);
+    } catch (err) {
+        alert('No se pudo crear la sesión: ' + err.message);
+    }
+}
+
+async function archivarSesionActual(idSesion) {
+    if (!confirm('¿Archivar esta sesión? Podés reabrirla desde "Sesiones archivadas".')) return;
+    try {
+        await api.archivarSesion(idSesion);
+        if (sesionActivaId === idSesion) {
+            sesionActivaId = null;
+            pintarHistorial([], getModoActivo());
+        }
+        await recargarSesiones();
+    } catch (err) {
+        alert('No se pudo archivar: ' + err.message);
+    }
+}
+
+function toggleSesionesPanel() {
+    const panel = document.getElementById('sesiones-panel');
+    const btn = document.getElementById('sesiones-toggle-btn');
+    if (!panel || !btn) return;
+    if (panel.classList.contains('hidden')) {
+        panel.classList.remove('hidden');
+        btn.classList.add('hidden');
+    } else {
+        panel.classList.add('hidden');
+        btn.classList.remove('hidden');
+    }
+}
+
+async function verHistorialAnterior() {
+    try {
+        const legacy = await api.request(
+            `/api/grupos/${grupoId}/chat/historial?limit=200&legacy=true`,
+        );
+        sesionActivaId = null;
+        _renderPanelSesiones();
+        pintarHistorial(legacy || [], getModoActivo());
+        scrollBottom();
+    } catch (err) {
+        alert('No se pudo cargar el historial anterior: ' + err.message);
+    }
+}
+
+// Reemplaza el comportamiento de setModoActivo() para recargar sesiones
+// al cambiar de modo. NO tocamos setModoActivo directamente (vive lejos);
+// enganchamos un listener sobre los botones del selector.
+document.querySelectorAll('#mode-selector .mode-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        if (btn.disabled) return;
+        // El listener original ya cambió el modo. Con setTimeout(0)
+        // corremos DESPUÉS de él para leer el modo nuevo.
+        setTimeout(() => {
+            sesionActivaId = null;
+            recargarSesiones();
+        }, 0);
+    });
+});
+
+// Hook para cuando cambia el estudiante PIAR (definido en el bloque PIAR):
+const _prevOnPiarChange = typeof onPiarEstudianteChange === 'function' ? onPiarEstudianteChange : null;
+window.onPiarEstudianteChange = function(nuevoId) {
+    if (_prevOnPiarChange) _prevOnPiarChange(nuevoId);
+    sesionActivaId = null;
+    recargarSesiones();
+};
+
+// Carga inicial del panel — cuando el chat termina de inicializar.
+setTimeout(recargarSesiones, 100);
 
 // ── Notas ──────────────────────────────────────────────────────
 async function agregarNota() {

@@ -30,6 +30,22 @@ def get_historial(
             "(cada PIAR es su propia conversación)."
         ),
     ),
+    id_sesion: Optional[str] = Query(
+        default=None,
+        description=(
+            "Sprint sesiones: filtra el historial a una sesión temática. "
+            "Cuando se pasa, se ignoran modo/id_estudiante (la sesión ya "
+            "encapsula ese ámbito)."
+        ),
+    ),
+    legacy: bool = Query(
+        default=False,
+        description=(
+            "Devuelve sólo los mensajes SIN id_sesion (los anteriores a la "
+            "introducción de sesiones temáticas). El frontend los muestra "
+            "en el panel 'Historial anterior'."
+        ),
+    ),
     docente=Depends(get_current_docente),
     db: Session = Depends(get_db),
 ):
@@ -43,21 +59,27 @@ def get_historial(
 
     q = db.query(Mensaje).filter(Mensaje.id_grupo == grupo_id)
 
-    if modo is not None:
-        modo_norm = modo.strip().lower()
-        modos_validos = set(MODOS_ACTIVOS) | {"piar"}
-        if modo_norm not in modos_validos:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Modo inválido: '{modo}'. Válidos: {sorted(modos_validos)}",
-            )
-        q = q.filter(Mensaje.modo == modo_norm)
-
-    if id_estudiante:
-        # Filtro por estudiante — útil sólo para historial de PIAR. En otros
-        # modos los mensajes tienen id_estudiante NULL, así que este filtro
-        # devolvería lista vacía (comportamiento esperado, no error).
-        q = q.filter(Mensaje.id_estudiante == id_estudiante)
+    if id_sesion:
+        # Sesión específica: encapsula modo+estudiante — cualquier otro
+        # filtro se ignora para evitar combinaciones inconsistentes.
+        q = q.filter(Mensaje.id_sesion == id_sesion)
+    elif legacy:
+        q = q.filter(Mensaje.id_sesion.is_(None))
+    else:
+        if modo is not None:
+            modo_norm = modo.strip().lower()
+            modos_validos = set(MODOS_ACTIVOS) | {"piar"}
+            if modo_norm not in modos_validos:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Modo inválido: '{modo}'. Válidos: {sorted(modos_validos)}",
+                )
+            q = q.filter(Mensaje.modo == modo_norm)
+        if id_estudiante:
+            # Filtro por estudiante — útil sólo para historial de PIAR. En otros
+            # modos los mensajes tienen id_estudiante NULL, así que este filtro
+            # devolvería lista vacía (comportamiento esperado, no error).
+            q = q.filter(Mensaje.id_estudiante == id_estudiante)
 
     mensajes = q.order_by(Mensaje.timestamp.desc()).limit(limit).all()
     return list(reversed(mensajes))

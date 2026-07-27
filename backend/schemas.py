@@ -131,6 +131,7 @@ class MensajeOut(BaseModel):
     contenido: str
     modo: str = "planeacion"   # default por retro-compat con mensajes legacy
     id_estudiante: Optional[str] = None  # solo poblado en modo piar
+    id_sesion: Optional[str] = None      # sprint sesiones — NULL en mensajes legacy
     timestamp: datetime
 
     model_config = {"from_attributes": True}

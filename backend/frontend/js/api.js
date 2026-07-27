@@ -151,14 +151,54 @@ class ApiClient {
     // CHAT
     // ==========================================
     
-    async getChatHistorial(grupoId, limit = 50, modo = null, idEstudiante = null) {
-        // Fase B: filtra por modo si se pasa (planeacion/socioemocional/calificacion/piar)
-        // Fase C: idEstudiante filtra el historial de PIAR — cada estudiante
-        // tiene su propia conversación aunque compartan grupo+modo.
+    async getChatHistorial(grupoId, limit = 50, modo = null, idEstudiante = null, idSesion = null) {
+        // Fase B: filtra por modo (planeacion/socioemocional/calificacion/piar).
+        // Fase C: idEstudiante filtra PIAR — cada estudiante tiene su propia conversación.
+        // Sprint sesiones: idSesion tiene precedencia — cuando se pasa, el backend
+        // ignora modo/idEstudiante y devuelve sólo los mensajes de esa sesión.
         const params = new URLSearchParams({ limit: String(limit) });
+        if (idSesion) params.set('id_sesion', idSesion);
+        else {
+            if (modo) params.set('modo', modo);
+            if (idEstudiante) params.set('id_estudiante', idEstudiante);
+        }
+        return this.request(`/api/grupos/${grupoId}/chat/historial?${params.toString()}`);
+    }
+
+    // ==========================================
+    // SESIONES TEMÁTICAS (sprint sesiones)
+    // ==========================================
+
+    async listarSesiones(grupoId, { modo = null, idEstudiante = null, incluirArchivadas = false } = {}) {
+        const params = new URLSearchParams();
         if (modo) params.set('modo', modo);
         if (idEstudiante) params.set('id_estudiante', idEstudiante);
-        return this.request(`/api/grupos/${grupoId}/chat/historial?${params.toString()}`);
+        if (incluirArchivadas) params.set('incluir_archivadas', 'true');
+        const qs = params.toString();
+        return this.request(`/api/grupos/${grupoId}/sesiones${qs ? '?' + qs : ''}`);
+    }
+
+    async crearSesion(grupoId, modo, { titulo = null, idEstudiante = null } = {}) {
+        const body = { modo };
+        if (titulo) body.titulo = titulo;
+        if (idEstudiante) body.id_estudiante = idEstudiante;
+        return this.request(`/api/grupos/${grupoId}/sesiones`, {
+            method: 'POST',
+            body: JSON.stringify(body),
+        });
+    }
+
+    async archivarSesion(idSesion) {
+        return this.request(`/api/sesiones/${encodeURIComponent(idSesion)}/archivar`, {
+            method: 'PUT',
+        });
+    }
+
+    async actualizarTituloSesion(idSesion, titulo) {
+        return this.request(`/api/sesiones/${encodeURIComponent(idSesion)}/titulo`, {
+            method: 'PUT',
+            body: JSON.stringify({ titulo }),
+        });
     }
 
     // ==========================================
