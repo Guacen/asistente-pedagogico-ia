@@ -112,7 +112,7 @@ def on_startup():
     seed_pro_user()
     print(f"🌐 Frontend servido desde: {FRONTEND_DIR}")
     print(f"🤖 Claude model: {settings.CLAUDE_MODEL}")
-    print(f"🔑 Claude API Key: {'configurada ✅' if settings.CLAUDE_API_KEY and 'XXXX' not in settings.CLAUDE_API_KEY else 'NO configurada ❌ — edita el .env'}")
+    print(f"🔑 Claude API Key: {'configurada ✅' if settings.CLAUDE_API_KEY and 'XXXX' not in settings.CLAUDE_API_KEY else 'NO configurada ❌ — set ANTHROPIC_API_KEY (o CLAUDE_API_KEY) en el entorno'}")
     print("📖 Docs: http://localhost:8000/docs")
     print("🚀 App:  http://localhost:8000")
 

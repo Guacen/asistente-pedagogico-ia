@@ -1,3 +1,4 @@
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -12,8 +13,14 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 10080  # 7 días
 
-    # Claude AI  ← TU CLAVE VA EN EL ARCHIVO .env
-    CLAUDE_API_KEY: str = "sk-ant-XXXXXXXXXX"
+    # Claude AI — acepta CLAUDE_API_KEY (nombre histórico del proyecto) y
+    # ANTHROPIC_API_KEY (nombre estándar del SDK oficial). Cualquiera de
+    # los dos configurada en el entorno es válida; si están ambas, gana
+    # la primera de la lista.
+    CLAUDE_API_KEY: str = Field(
+        default="sk-ant-XXXXXXXXXX",
+        validation_alias=AliasChoices("CLAUDE_API_KEY", "ANTHROPIC_API_KEY"),
+    )
     CLAUDE_MODEL: str = "claude-opus-4-5"
 
     # Stripe
