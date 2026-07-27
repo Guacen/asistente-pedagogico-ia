@@ -1090,6 +1090,17 @@
             // Si el backend rechaza (validación, código duplicado, etc.)
             // NADA se persiste — el usuario vuelve al modal con los datos
             // intactos y puede corregir.
+
+            // Flush del input a medio llenar: si el docente tipeó el nombre
+            // de un estudiante en el sub-form pero NO apretó el botón "+" ni
+            // Enter, ese texto sigue en el input sin haber entrado al buffer.
+            // Sin este flush el estudiante se perdía en silencio y el grupo
+            // se creaba vacío — bug reportado por producción.
+            const inputPendiente = document.getElementById('est-rapido-codigo');
+            if (inputPendiente && inputPendiente.value.trim()) {
+                document.getElementById('form-est-rapido').requestSubmit();
+            }
+
             const datosGrupo = window._datosGrupoPendiente;
             const estudiantes = window._estudiantesPendientes || [];
             if (!datosGrupo) {
