@@ -33,6 +33,7 @@ import documento
 import grupos
 import institucion
 import piar
+import sesiones
 import suscripciones
 
 # Importar Socket.io (el objeto sio vive en socket_events)
@@ -83,6 +84,7 @@ app.include_router(chat.router)
 app.include_router(documento.router)
 app.include_router(piar.router)
 app.include_router(institucion.router)
+app.include_router(sesiones.router)
 app.include_router(suscripciones.router)
 
 # ============================================================

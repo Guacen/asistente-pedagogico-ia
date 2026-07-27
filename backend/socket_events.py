@@ -12,6 +12,8 @@ Flujo cuando el docente envía un mensaje:
   8. Si hay error → emite 'ia_error'
 """
 
+from __future__ import annotations
+
 import asyncio
 from datetime import datetime
 
@@ -22,6 +24,7 @@ from database import SessionLocal
 from ia import generar_respuesta
 from models import (
     Calificacion,
+    ChatSesion,
     Docente,
     Estudiante,
     EvaluacionColumna,
@@ -76,7 +79,7 @@ def _label_modo(modo: str) -> str:
     }.get(modo, modo)
 
 
-def _consumir_rate_limit(db, docente_id: str, modo: str) -> tuple[bool, int, int]:
+def _consumir_rate_limit(db, docente_id: str, modo: str, *, es_admin: bool = False) -> tuple[bool, int, int]:
     """
     Intenta consumir 1 unidad de la cuota diaria para (docente, hoy, modo).
 
@@ -87,6 +90,10 @@ def _consumir_rate_limit(db, docente_id: str, modo: str) -> tuple[bool, int, int
     Se cuenta AL INICIAR la generación (no al finalizar): así el usuario
     no puede evadir el límite cancelando el streaming a mitad de camino.
 
+    `es_admin=True` bypasea el bloqueo: el contador sigue incrementando
+    para tener métricas del uso, pero siempre autoriza. Se activa por SQL:
+      UPDATE docentes SET es_admin = TRUE WHERE email = '<email>';
+
     Implementación: buscar o crear el contador del día+modo, incrementar,
     commit. El UniqueConstraint lo protege ante race conditions en la
     creación (dos requests simultáneas del mismo docente); en ese caso
@@ -95,7 +102,9 @@ def _consumir_rate_limit(db, docente_id: str, modo: str) -> tuple[bool, int, int
     limite = LIMITES_DIARIOS.get(modo, 0)
     if limite <= 0:
         # Modo desconocido o sin límite definido — bloqueamos por default
-        return False, 0, 0
+        # (salvo admin: para admin siempre autorizamos, incluso sin límite
+        # configurado, para no romper el flow por config faltante).
+        return (es_admin, 0, 0)
 
     fecha = _hoy_iso()
     contador = (
@@ -132,16 +141,17 @@ def _consumir_rate_limit(db, docente_id: str, modo: str) -> tuple[bool, int, int
                 .first()
             )
             if contador is None:
-                # No debería pasar — falla dura
-                return False, 0, limite
-            if contador.count >= limite:
+                # No debería pasar — falla dura salvo admin
+                return es_admin, 0, limite
+            if contador.count >= limite and not es_admin:
                 return False, contador.count, limite
             contador.count += 1
             db.commit()
-        return contador.count <= limite, contador.count, limite
+        # Admin siempre autoriza aunque supere el límite
+        return (contador.count <= limite or es_admin), contador.count, limite
 
     # Contador existente
-    if contador.count >= limite:
+    if contador.count >= limite and not es_admin:
         return False, contador.count, limite
 
     contador.count += 1
@@ -248,6 +258,103 @@ async def leave_group(sid, data):
         await sio.leave_room(sid, grupo_id)
 
 
+def _titulo_provisional_sesion() -> str:
+    return "Sesión " + datetime.utcnow().strftime("%d/%m/%Y %H:%M")
+
+
+def _resolver_sesion(
+    db, grupo_id: str, docente_id: str, modo: str, id_estudiante: str | None,
+    id_sesion_pedido: str | None,
+) -> tuple["ChatSesion", bool]:
+    """
+    Devuelve (sesion, creada_ahora). Estrategia:
+    - Si el cliente pasó id_sesion, se valida que pertenezca al docente
+      y al ámbito (grupo, modo, estudiante) — si sí, se usa; si no,
+      404 mediante RuntimeError que el handler convierte a ia_error.
+    - Sin id_sesion: se toma la sesión más reciente NO archivada del
+      mismo ámbito. Si no hay, se crea una nueva con título provisional.
+    """
+    if id_sesion_pedido:
+        ses = db.query(ChatSesion).filter(
+            ChatSesion.id_sesion == id_sesion_pedido,
+            ChatSesion.id_docente == docente_id,
+            ChatSesion.id_grupo == grupo_id,
+            ChatSesion.modo == modo,
+        ).first()
+        if not ses:
+            raise RuntimeError("Sesión no encontrada o no pertenece a este ámbito.")
+        # PIAR: la sesión debe apuntar al mismo estudiante que el turno
+        if modo == MODO_PIAR and ses.id_estudiante != id_estudiante:
+            raise RuntimeError("La sesión pertenece a otro estudiante PIAR.")
+        return ses, False
+
+    # Sin id_sesion → buscar la más reciente no archivada del ámbito
+    q = db.query(ChatSesion).filter(
+        ChatSesion.id_grupo == grupo_id,
+        ChatSesion.id_docente == docente_id,
+        ChatSesion.modo == modo,
+        ChatSesion.archivada.is_(False),
+    )
+    if modo == MODO_PIAR:
+        q = q.filter(ChatSesion.id_estudiante == id_estudiante)
+    else:
+        q = q.filter(ChatSesion.id_estudiante.is_(None))
+    ses = q.order_by(ChatSesion.ultimo_mensaje_en.desc()).first()
+    if ses:
+        return ses, False
+
+    # No existe ninguna → crear
+    ahora = datetime.utcnow()
+    ses = ChatSesion(
+        id_grupo=grupo_id,
+        id_docente=docente_id,
+        modo=modo,
+        titulo=_titulo_provisional_sesion(),
+        id_estudiante=id_estudiante if modo == MODO_PIAR else None,
+        creado_en=ahora,
+        ultimo_mensaje_en=ahora,
+        archivada=False,
+    )
+    db.add(ses)
+    db.commit()
+    db.refresh(ses)
+    return ses, True
+
+
+async def _titular_sesion_con_ia(
+    db, sesion: "ChatSesion", primer_mensaje_docente: str,
+) -> str | None:
+    """
+    Llama al LLM con un prompt corto pidiendo un título de ≤6 palabras.
+    Actualiza sesion.titulo si la respuesta es plausible. Devuelve el
+    título nuevo si se cambió, None si algo salió mal. Nunca lanza —
+    si el LLM falla, la sesión se queda con el título provisional.
+    """
+    try:
+        import llm  # import local para poder mockear en tests
+        prompt = (
+            "Devolvé SOLO un título breve (máx 6 palabras, sin comillas, "
+            "sin punto final, sin emojis, en español, tono profesional) "
+            f"para esta conversación pedagógica que empieza con: «{primer_mensaje_docente}»"
+        )
+        titulo = await llm.respuesta_completa(
+            system_prompt=(
+                "Sos un asistente que genera títulos concisos para conversaciones."
+            ),
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=40,
+        )
+        titulo_limpio = (titulo or "").strip().strip('"').strip("'")[:80]
+        if not titulo_limpio:
+            return None
+        sesion.titulo = titulo_limpio
+        db.commit()
+        return titulo_limpio
+    except Exception as exc:
+        print(f"⚠️  Auto-título falló, se mantiene provisional: {exc}")
+        return None
+
+
 @sio.event
 async def send_message(sid, data):
     """
@@ -263,6 +370,9 @@ async def send_message(sid, data):
     modo = normalizar_modo(modo_recibido)
     # id_estudiante — obligatorio si modo=piar, opcional en otros modos.
     estudiante_id = (data.get("id_estudiante") or "").strip() or None
+    # id_sesion — opcional; retro-compat: sin él usamos la más reciente o
+    # creamos una nueva. Frontend nuevo lo envía siempre.
+    id_sesion_pedido = (data.get("id_sesion") or "").strip() or None
 
     if not grupo_id or not mensaje_texto:
         return
@@ -325,8 +435,11 @@ async def send_message(sid, data):
             return
 
         # 2b. Verificar rate limit diario POR MODO — se consume al iniciar
-        # para que cancelar la respuesta no evada el límite.
-        ok, usado, limite = _consumir_rate_limit(db, docente_id, modo)
+        # para que cancelar la respuesta no evada el límite. Docentes con
+        # es_admin=True bypasean el bloqueo (el contador sigue subiendo).
+        ok, usado, limite = _consumir_rate_limit(
+            db, docente_id, modo, es_admin=bool(getattr(docente, "es_admin", False)),
+        )
         if not ok:
             await sio.emit("ia_error", {
                 "message": (
@@ -343,17 +456,33 @@ async def send_message(sid, data):
         # id_estudiante para persistir en Mensaje — sólo en modo PIAR
         est_id_a_guardar = estudiante_id if modo == MODO_PIAR else None
 
-        # 3. Guardar mensaje del docente (con el modo activo)
+        # 2c. Resolver / crear la sesión temática de este turno.
+        try:
+            sesion, sesion_recien_creada = _resolver_sesion(
+                db, grupo_id, docente_id, modo, est_id_a_guardar, id_sesion_pedido,
+            )
+        except RuntimeError as exc:
+            await sio.emit("ia_error", {
+                "message": str(exc),
+                "code": "sesion_invalida",
+            }, to=sid)
+            return
+
+        # 3. Guardar mensaje del docente (con el modo activo + id_sesion)
         msg_docente = Mensaje(
             id_grupo=grupo_id,
             remitente="docente",
             contenido=mensaje_texto,
             modo=modo,
             id_estudiante=est_id_a_guardar,
+            id_sesion=sesion.id_sesion,
         )
         db.add(msg_docente)
+        # Actualizar timestamp de la sesión (para ordenar la lista lateral)
+        sesion.ultimo_mensaje_en = msg_docente.timestamp or datetime.utcnow()
         db.commit()
         db.refresh(msg_docente)
+        db.refresh(sesion)
 
         # 4. Emitir mensaje del docente a la sala
         await sio.emit("new_message", {
@@ -363,24 +492,28 @@ async def send_message(sid, data):
             "contenido": mensaje_texto,
             "modo": modo,
             "id_estudiante": est_id_a_guardar,
+            "id_sesion": sesion.id_sesion,
             "timestamp": msg_docente.timestamp.isoformat(),
         }, room=grupo_id)
 
         # 5. Señal de que la IA está generando (con el modo activo)
-        await sio.emit("ia_generando", {"modo": modo, "id_estudiante": est_id_a_guardar}, room=grupo_id)
+        await sio.emit("ia_generando", {
+            "modo": modo,
+            "id_estudiante": est_id_a_guardar,
+            "id_sesion": sesion.id_sesion,
+        }, room=grupo_id)
 
         # 6. Obtener historial y estudiantes para contexto.
-        # Filtramos por modo activo para que la conversación no cruce
-        # contextos (ej. socioemocional no ve historial de planeacion).
-        # En modo PIAR además filtramos por id_estudiante: cada PIAR es su
-        # propia conversación, distinta incluso entre dos estudiantes del
-        # mismo grupo.
-        hist_filter = [Mensaje.id_grupo == grupo_id, Mensaje.modo == modo]
-        if modo == MODO_PIAR:
-            hist_filter.append(Mensaje.id_estudiante == estudiante_id)
+        # SPRINT SESIONES: el historial se filtra por id_sesion — cada
+        # sesión es su propia conversación. Los mensajes de OTRAS sesiones
+        # del mismo modo/estudiante NO contaminan el contexto. Los mensajes
+        # legacy sin id_sesion tampoco entran (quedaron NULL en migración).
         historial = (
             db.query(Mensaje)
-            .filter(*hist_filter)
+            .filter(
+                Mensaje.id_grupo == grupo_id,
+                Mensaje.id_sesion == sesion.id_sesion,
+            )
             .order_by(Mensaje.timestamp.asc())
             .all()
         )
@@ -463,19 +596,30 @@ async def send_message(sid, data):
             piar_versiones_previas=piar_versiones_previas,
         )
 
-        # 8. Guardar respuesta completa de la IA (mismo modo + id_estudiante del turno)
+        # 8. Guardar respuesta completa de la IA (mismo modo + id_estudiante + id_sesion)
         msg_ia = Mensaje(
             id_grupo=grupo_id,
             remitente="sistema",
             contenido=respuesta_completa,
             modo=modo,
             id_estudiante=est_id_a_guardar,
+            id_sesion=sesion.id_sesion,
         )
         db.add(msg_ia)
+        sesion.ultimo_mensaje_en = msg_ia.timestamp or datetime.utcnow()
         db.commit()
         db.refresh(msg_ia)
+        db.refresh(sesion)
 
-        # 9. Emitir evento de completado (incluye el modo)
+        # 8b. SPRINT SESIONES: si esta era la primera vuelta de una sesión
+        # recién creada con título provisional ("Sesión DD/MM/YYYY HH:MM"),
+        # pedile al LLM un título ≤6 palabras basado en el primer mensaje.
+        # Si falla, la sesión queda con el título provisional. Nunca crashea.
+        titulo_nuevo = None
+        if sesion_recien_creada and sesion.titulo.startswith("Sesión "):
+            titulo_nuevo = await _titular_sesion_con_ia(db, sesion, mensaje_texto)
+
+        # 9. Emitir evento de completado (incluye modo + id_sesion + titulo)
         await sio.emit("ia_complete", {
             "id_mensaje": msg_ia.id_mensaje,
             "id_grupo": grupo_id,
@@ -483,6 +627,9 @@ async def send_message(sid, data):
             "contenido": respuesta_completa,
             "modo": modo,
             "id_estudiante": est_id_a_guardar,
+            "id_sesion": sesion.id_sesion,
+            "titulo_sesion": titulo_nuevo or sesion.titulo,
+            "sesion_recien_creada": sesion_recien_creada,
             "timestamp": msg_ia.timestamp.isoformat(),
         }, room=grupo_id)
 
