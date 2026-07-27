@@ -23,6 +23,12 @@ class Settings(BaseSettings):
     )
     CLAUDE_MODEL: str = "claude-opus-4-5"
 
+    # Gemini (Google) — proveedor alternativo. Si CLAUDE_API_KEY no está
+    # configurada pero GOOGLE_API_KEY sí, el módulo llm.py usa Gemini como
+    # fallback para chat y síntesis PIAR.
+    GOOGLE_API_KEY: str = ""
+    GEMINI_MODEL: str = "gemini-1.5-flash"
+
     # Stripe
     STRIPE_SECRET_KEY: str = ""
     STRIPE_WEBHOOK_SECRET: str = ""

@@ -111,8 +111,14 @@ def on_startup():
     apply_migrations()
     seed_pro_user()
     print(f"🌐 Frontend servido desde: {FRONTEND_DIR}")
-    print(f"🤖 Claude model: {settings.CLAUDE_MODEL}")
-    print(f"🔑 Claude API Key: {'configurada ✅' if settings.CLAUDE_API_KEY and 'XXXX' not in settings.CLAUDE_API_KEY else 'NO configurada ❌ — set ANTHROPIC_API_KEY (o CLAUDE_API_KEY) en el entorno'}")
+    import llm
+    proveedor = llm.proveedor_activo()
+    if proveedor == "claude":
+        print(f"🤖 Proveedor IA: Claude (Anthropic) — {settings.CLAUDE_MODEL}")
+    elif proveedor == "gemini":
+        print(f"🤖 Proveedor IA: Gemini (Google) — {settings.GEMINI_MODEL} (modo gratuito)")
+    else:
+        print("❌ Sin proveedor IA configurado — set ANTHROPIC_API_KEY (o CLAUDE_API_KEY) o GOOGLE_API_KEY")
     print("📖 Docs: http://localhost:8000/docs")
     print("🚀 App:  http://localhost:8000")
 

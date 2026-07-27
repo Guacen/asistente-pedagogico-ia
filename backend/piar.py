@@ -209,18 +209,16 @@ async def _sintetizar_conversacion_a_json(
     else:
         messages.append({"role": "user", "content": instruccion_final})
 
-    # Llamada sin streaming — respuesta de una sola vez para parseo
+    # Llamada sin streaming — respuesta de una sola vez para parseo.
+    # Delega en el proveedor activo (Claude / Gemini). El endpoint captura
+    # el RuntimeError o el ProveedorNoConfiguradoError y decide el status.
+    import llm
     try:
-        response = await anthropic_client.messages.create(
-            model=settings.CLAUDE_MODEL,
-            max_tokens=4096,
-            system=system_prompt,
-            messages=messages,
-        )
-        raw = response.content[0].text.strip()
+        raw = (await llm.respuesta_completa(
+            system_prompt, messages, max_tokens=4096,
+        )).strip()
     except Exception as exc:
-        # El endpoint captura y decide qué status devolver
-        raise RuntimeError(f"Error llamando a Claude para síntesis: {exc}") from exc
+        raise RuntimeError(f"Error llamando al proveedor de IA para síntesis: {exc}") from exc
 
     # Robustez: si Claude devuelve el JSON envuelto en ```json ... ```
     if raw.startswith("```"):

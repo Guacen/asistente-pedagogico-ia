@@ -436,20 +436,11 @@ async def generar_respuesta(
     else:
         messages.append({"role": "user", "content": mensaje_docente})
 
-    # Llamar a Claude con streaming
-    respuesta_completa = ""
-
-    async with client.messages.stream(
-        model=settings.CLAUDE_MODEL,
-        max_tokens=2048,
-        system=system_prompt,
-        messages=messages,
-    ) as stream:
-        async for chunk in stream.text_stream:
-            respuesta_completa += chunk
-            await on_chunk(chunk)
-
-    return respuesta_completa
+    # Delega en el proveedor activo (Claude si hay ANTHROPIC_API_KEY; sino
+    # Gemini si hay GOOGLE_API_KEY). Si no hay ninguno, llm.stream_respuesta
+    # levanta ProveedorNoConfiguradoError que el socket handler debe capturar.
+    import llm
+    return await llm.stream_respuesta(system_prompt, messages, on_chunk, max_tokens=2048)
 
 
 # ============================================================
@@ -475,11 +466,10 @@ async def generar_mensaje_bienvenida(grupo: Grupo, estudiantes: List[Estudiante]
         "comenzar a planear mis primeras clases con este grupo de forma inclusiva."
     )
 
-    response = await client.messages.create(
-        model=settings.CLAUDE_MODEL,
+    import llm
+    respuesta_ia = await llm.respuesta_completa(
+        system_prompt,
+        [{"role": "user", "content": msg_docente}],
         max_tokens=800,
-        system=system_prompt,
-        messages=[{"role": "user", "content": msg_docente}],
     )
-
-    return msg_docente, response.content[0].text
+    return msg_docente, respuesta_ia
