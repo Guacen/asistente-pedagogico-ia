@@ -1,0 +1,97 @@
+/* ==========================================================
+   Maestr.ia — identidad visual
+   Extraída del logo (libro + árbol + sol) + wordmark.
+   Todo lo específico de marca vive acá; el resto sigue en main.css.
+   ========================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@700;800&family=Inter:wght@400;500;600&display=swap');
+
+:root {
+    --brand-primary: #1D9E75;   /* verde principal — .ia + árbol + botones */
+    --brand-primary-hover: #0F6E56;
+    --brand-dark:    #0B3D2E;   /* verde oscuro — texto Maestr, sidebar */
+    --brand-amber:   #F5B731;   /* ámbar — destellos, estado activo */
+    --brand-book:    #2ECC71;   /* verde libro — badges secundarios */
+    --brand-light:   #FFFFFF;   /* fondo */
+    --brand-muted:   rgba(255, 255, 255, 0.7);
+    --brand-hover-transparent: rgba(29, 158, 117, 0.30);
+
+    --font-display: 'Nunito', 'Segoe UI', system-ui, sans-serif;
+    --font-body:    'Inter', 'Segoe UI', system-ui, sans-serif;
+
+    --radius-sm: 6px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+}
+
+/* Tipografías base — respetan Tailwind pero fijan la familia global */
+body {
+    font-family: var(--font-body);
+}
+h1, h2, h3, h4, .brand-display {
+    font-family: var(--font-display);
+    letter-spacing: -0.01em;
+}
+
+/* Botón primario de marca */
+.btn-primary {
+    background: var(--brand-primary);
+    color: #FFFFFF;
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    padding: 0.5rem 1rem;
+    transition: background 120ms ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+.btn-primary:hover:not(:disabled) {
+    background: var(--brand-primary-hover);
+}
+.btn-primary:disabled {
+    background: #9CA3AF;
+    cursor: not-allowed;
+}
+
+/* Badge PIAR — usa verde libro para diferenciar de estados de sistema */
+.badge-piar {
+    background: rgba(46, 204, 113, 0.15);
+    color: #0B3D2E;
+    border: 1px solid rgba(46, 204, 113, 0.35);
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+/* Logo horizontal en headers — tamaño standard 36px alto */
+.brand-logo {
+    height: 36px;
+    width: auto;
+    display: block;
+}
+.brand-logo--sm {
+    height: 28px;
+}
+
+/* Sidebar (chat.html: aside vertical + panel de sesiones) */
+.brand-sidebar {
+    background: var(--brand-dark);
+    color: var(--brand-muted);
+}
+.brand-sidebar a,
+.brand-sidebar button {
+    color: var(--brand-muted);
+    transition: background 120ms ease, color 120ms ease;
+}
+.brand-sidebar a:hover,
+.brand-sidebar button:hover {
+    background: var(--brand-hover-transparent);
+    color: #FFFFFF;
+}
+.brand-sidebar .is-active,
+.brand-sidebar a.is-active,
+.brand-sidebar button.is-active {
+    color: var(--brand-amber);
+    background: rgba(245, 183, 49, 0.12);
+}

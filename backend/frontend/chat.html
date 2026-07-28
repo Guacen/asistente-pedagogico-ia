@@ -3,12 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat - Asistente Pedagógico</title>
+    <title>Chat · Maestr.ia — Tu colega que conoce la ley</title>
+    <link rel="icon" type="image/svg+xml" href="assets/icon.svg">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/brand.css">
     <link rel="stylesheet" href="css/chat.css">
     <style>
         /* Markdown rendering en burbujas IA */
@@ -57,9 +59,9 @@
 <div class="flex h-screen overflow-hidden">
 
     <!-- ── SIDEBAR ──────────────────────────────────────── -->
-    <aside class="w-16 bg-white border-r flex flex-col items-center py-4 flex-shrink-0">
+    <aside class="w-16 brand-sidebar flex flex-col items-center py-4 flex-shrink-0">
         <a href="dashboard.html" class="mb-6" title="Dashboard">
-            <i class="fas fa-graduation-cap text-2xl text-blue-600"></i>
+            <img src="assets/icon.svg" alt="Maestr.ia" style="height:28px;width:28px">
         </a>
         <nav class="flex flex-col items-center gap-4 flex-1">
             <a href="dashboard.html" title="Dashboard"

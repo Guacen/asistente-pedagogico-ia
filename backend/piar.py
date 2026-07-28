@@ -268,12 +268,14 @@ def _construir_piar_docx(
     from docx.shared import Cm, Pt, RGBColor
     from documento import _set_cell_bg, _HEX_AZUL_OSC, _HEX_GRIS_CLR
 
-    AZUL_OSCURO = RGBColor(0x1E, 0x40, 0xAF)
-    AZUL_MEDIO = RGBColor(0x1D, 0x4E, 0xD8)
-    AZUL_CLARO = RGBColor(0x93, 0xC5, 0xFD)
-    BLANCO = RGBColor(0xFF, 0xFF, 0xFF)
-    GRIS = RGBColor(0x6B, 0x72, 0x80)
-    ROJO_BORRADOR = RGBColor(0xC0, 0x39, 0x2B)
+    # Paleta Maestr.ia (nombres AZUL_* preservados por retro-compat).
+    # Fuente de verdad: backend/branding.py.
+    AZUL_OSCURO   = RGBColor(0x0B, 0x3D, 0x2E)   # verde oscuro — headers
+    AZUL_MEDIO    = RGBColor(0x1D, 0x9E, 0x75)   # verde primario — labels, líneas
+    AZUL_CLARO    = RGBColor(0xB6, 0xE5, 0xD1)   # verde light — bandas suaves
+    BLANCO        = RGBColor(0xFF, 0xFF, 0xFF)
+    GRIS          = RGBColor(0x6B, 0x72, 0x80)
+    ROJO_BORRADOR = RGBColor(0xC0, 0x39, 0x2B)   # rojo del sello BORRADOR
 
     doc = Document()
     for section in doc.sections:
@@ -291,7 +293,7 @@ def _construir_piar_docx(
     pl.paragraph_format.space_before = Pt(8)
     pl.paragraph_format.space_after = Pt(8)
     rl = pl.add_run(
-        "  Asistente Pedagógico IA — PIAR"
+        "  Maestr.ia — PIAR (Plan Individual de Ajustes Razonables)"
     )
     rl.font.size = Pt(13); rl.font.bold = True; rl.font.color.rgb = BLANCO
 
@@ -388,8 +390,9 @@ def _construir_piar_docx(
     pp.paragraph_format.space_before = Pt(6)
     pp.paragraph_format.space_after = Pt(6)
     rp = pp.add_run(
-        "  Documento generado con Asistente Pedagógico IA sobre base del Decreto 1421/2017. "
-        "El template se ajustará al formato oficial del Instituto Manizales cuando esté disponible."
+        "  Maestr.ia · Tu colega que conoce la ley · Generado con IA "
+        "sobre base del Decreto 1421/2017 (MEN Colombia). "
+        "El template se ajustará al formato oficial de cada institución cuando esté disponible."
     )
     rp.font.size = Pt(8); rp.font.italic = True; rp.font.color.rgb = AZUL_MEDIO
 

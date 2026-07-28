@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 128" role="img" aria-label="Maestr.ia">
+  <!-- Logo horizontal: símbolo (libro+árbol+sol) + wordmark "Maestr.ia" -->
+
+  <!-- Símbolo (mismo diseño que icon.svg) -->
+  <g transform="translate(0,0)">
+    <g fill="none" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" stroke="#0B3D2E">
+      <path d="M22 62 Q22 58 26 58 L60 58 L60 102 L26 102 Q22 102 22 98 Z" fill="#FFFFFF"/>
+      <line x1="30" y1="70" x2="54" y2="70" stroke-width="3"/>
+      <line x1="30" y1="78" x2="50" y2="78" stroke-width="3"/>
+      <line x1="30" y1="86" x2="54" y2="86" stroke-width="3"/>
+      <path d="M64 58 L98 58 Q102 58 102 62 L102 98 Q102 102 98 102 L64 102 Z" fill="#2ECC71"/>
+      <line x1="62" y1="58" x2="62" y2="102" stroke-width="4"/>
+    </g>
+    <g fill="none" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" stroke="#1D9E75">
+      <line x1="62" y1="55" x2="62" y2="30"/>
+      <line x1="62" y1="42" x2="46" y2="30"/>
+      <line x1="62" y1="42" x2="78" y2="30"/>
+      <circle cx="46" cy="30" r="4" fill="#1D9E75" stroke="none"/>
+      <circle cx="78" cy="30" r="4" fill="#1D9E75" stroke="none"/>
+    </g>
+    <circle cx="62" cy="20" r="6" fill="#F5B731"/>
+    <g stroke="#F5B731" stroke-width="3" stroke-linecap="round" fill="none">
+      <line x1="62" y1="6"  x2="62" y2="10"/>
+      <line x1="50" y1="12" x2="53" y2="16"/>
+      <line x1="74" y1="12" x2="71" y2="16"/>
+    </g>
+  </g>
+
+  <!-- Wordmark: "Maestr" en verde oscuro + ".ia" en verde claro -->
+  <g font-family="'Nunito', 'Segoe UI', system-ui, sans-serif" font-weight="800" font-size="72">
+    <text x="140" y="90" fill="#0B3D2E">Maestr</text>
+    <text x="376" y="90" fill="#1D9E75">.ia</text>
+  </g>
+</svg>

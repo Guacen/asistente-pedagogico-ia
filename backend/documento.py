@@ -56,16 +56,19 @@ def _docx_bytes(md: str, titulo: str, docente: Docente, grupo: Grupo) -> bytes:
     from docx.oxml.ns import qn
     from docx.shared import Cm, Pt, RGBColor
 
-    # ── Paleta ──────────────────────────────────────────────────
-    AZUL_OSCURO = RGBColor(0x1E, 0x40, 0xAF)   # azul-800 Tailwind
-    AZUL_MEDIO  = RGBColor(0x1D, 0x4E, 0xD8)   # azul-700
-    AZUL_CLARO  = RGBColor(0x93, 0xC5, 0xFD)   # azul-300
+    # ── Paleta Maestr.ia ────────────────────────────────────────
+    # Los nombres AZUL_* son legacy (pre-rebranding); sus valores ahora
+    # son los de la paleta de marca. La fuente de verdad vive en
+    # backend/branding.py — cualquier cambio de marca se hace ahí.
+    AZUL_OSCURO = RGBColor(0x0B, 0x3D, 0x2E)   # verde oscuro — Maestr
+    AZUL_MEDIO  = RGBColor(0x1D, 0x9E, 0x75)   # verde primario — .ia
+    AZUL_CLARO  = RGBColor(0xB6, 0xE5, 0xD1)   # verde light tint
     BLANCO      = RGBColor(0xFF, 0xFF, 0xFF)
     GRIS        = RGBColor(0x6B, 0x72, 0x80)
 
-    HEX_AZUL_OSC = '1E40AF'
-    HEX_AZUL_CLR = 'DBEAFE'
-    HEX_GRIS_CLR = 'F3F4F6'
+    HEX_AZUL_OSC = '0B3D2E'    # verde oscuro para fondos de header
+    HEX_AZUL_CLR = 'DBF3E8'    # verde muy pálido para bandas suaves
+    HEX_GRIS_CLR = 'F3F4F6'    # gris neutro (sin cambio)
 
     # ── Helpers ─────────────────────────────────────────────────
     def set_cell_bg(cell, hex_color: str):
@@ -119,7 +122,7 @@ def _docx_bytes(md: str, titulo: str, docente: Docente, grupo: Grupo) -> bytes:
     pl.paragraph_format.left_indent  = Cm(0.4)
     pl.paragraph_format.space_before = Pt(8)
     pl.paragraph_format.space_after  = Pt(8)
-    rl = pl.add_run('Asistente Pedagógico IA')
+    rl = pl.add_run('Maestr.ia · Tu colega que conoce la ley')
     rl.font.size  = Pt(14)
     rl.font.bold  = True
     rl.font.color.rgb = BLANCO
@@ -149,7 +152,7 @@ def _docx_bytes(md: str, titulo: str, docente: Docente, grupo: Grupo) -> bytes:
     meta = [
         [
             ('Docente:', docente.nombre_completo),
-            ('Generado por:', 'Asistente Pedagógico IA'),
+            ('Generado por:', 'Maestr.ia'),
         ],
         [
             ('Institución:', inst_display),
@@ -215,7 +218,7 @@ def _docx_bytes(md: str, titulo: str, docente: Docente, grupo: Grupo) -> bytes:
     pp.paragraph_format.space_before = Pt(6)
     pp.paragraph_format.space_after  = Pt(6)
     rp = pp.add_run(
-        f'Generado con Asistente Pedagógico IA  •  '
+        f'Maestr.ia · Tu colega que conoce la ley · Generado con IA  •  '
         f'{datetime.now().strftime("%d/%m/%Y")}  •  '
         'Documento de uso educativo — No editar el encabezado'
     )
@@ -427,13 +430,14 @@ async def generar_documento(
 _UMBRAL_APROBADO = 3.5
 _UMBRAL_APROBACION_MIN = 3.0
 
-# Paleta (mismos hex que _docx_bytes)
-_HEX_AZUL_OSC = '1E40AF'
-_HEX_AZUL_CLR = 'DBEAFE'
-_HEX_GRIS_CLR = 'F3F4F6'
-_HEX_VERDE    = 'DCFCE7'
-_HEX_AMBAR    = 'FEF9C3'
-_HEX_ROJO     = 'FEE2E2'
+# Paleta Maestr.ia (fuente de verdad: backend/branding.py). Los nombres
+# _HEX_AZUL_* son legacy — los valores ya son de la marca (verde).
+_HEX_AZUL_OSC = '0B3D2E'   # verde oscuro (Maestr) — headers y encabezados
+_HEX_AZUL_CLR = 'DBF3E8'   # verde muy pálido — filas de énfasis suave
+_HEX_GRIS_CLR = 'F3F4F6'   # gris neutro — metadata
+_HEX_VERDE    = 'DCFCE7'   # estado aprobado (fila boletín)
+_HEX_AMBAR    = 'FEF9C3'   # estado en observación
+_HEX_ROJO     = 'FEE2E2'   # estado reprobado
 
 
 def _promedio_ponderado(notas_por_columna: list[tuple[Optional[float], Optional[float]]]) -> Optional[float]:
