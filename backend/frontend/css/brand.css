@@ -95,3 +95,133 @@ h1, h2, h3, h4, .brand-display {
     color: var(--brand-amber);
     background: rgba(245, 183, 49, 0.12);
 }
+
+/* ─── Sidebar oscuro: overrides para tarjetas / textos / bordes ─────
+   Cuando el <aside> del dashboard usa .brand-sidebar, sus hijos con
+   clases Tailwind claras (bg-white, bg-blue-50, text-gray-*, etc.)
+   necesitan re-tonalizarse a la paleta oscura sin re-escribir cada
+   HTML. Se hace acá con `!important` porque Tailwind CDN inserta reglas
+   con especificidad alta. */
+.brand-sidebar .bg-white,
+.brand-sidebar .bg-gray-50,
+.brand-sidebar .bg-gray-100,
+.brand-sidebar .bg-blue-50,
+.brand-sidebar .bg-blue-100 {
+    background-color: rgba(255, 255, 255, 0.08) !important;
+    border-color: rgba(255, 255, 255, 0.15) !important;
+}
+.brand-sidebar .border,
+.brand-sidebar .border-b,
+.brand-sidebar .border-t,
+.brand-sidebar .border-r {
+    border-color: rgba(255, 255, 255, 0.15) !important;
+}
+.brand-sidebar,
+.brand-sidebar .text-gray-500,
+.brand-sidebar .text-gray-600,
+.brand-sidebar .text-gray-700,
+.brand-sidebar .text-gray-800,
+.brand-sidebar .text-gray-900,
+.brand-sidebar .text-blue-700,
+.brand-sidebar .text-blue-800,
+.brand-sidebar .text-blue-900 {
+    color: rgba(255, 255, 255, 0.85) !important;
+}
+.brand-sidebar h1, .brand-sidebar h2, .brand-sidebar h3,
+.brand-sidebar .font-semibold, .brand-sidebar .font-bold {
+    color: #FFFFFF !important;
+}
+.brand-sidebar .text-blue-600,
+.brand-sidebar .text-blue-500 {
+    color: var(--brand-amber) !important;
+}
+.brand-sidebar .bg-blue-200,
+.brand-sidebar .bg-blue-600 {
+    background-color: rgba(29, 158, 117, 0.4) !important;
+}
+.brand-sidebar .hover\:bg-gray-100:hover,
+.brand-sidebar .hover\:bg-gray-200:hover,
+.brand-sidebar .hover\:bg-blue-50:hover {
+    background-color: rgba(255, 255, 255, 0.10) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   OVERRIDES GLOBALES — mapea tokens azules Tailwind → verde de marca
+   Reemplazan el look "azul default" en todo el frontend sin tocar 10
+   HTMLs. Se aplican FUERA de .brand-sidebar (que ya tiene sus
+   overrides propios arriba).
+   =============================================================== */
+body :not(.brand-sidebar):not(.brand-sidebar *).bg-blue-500,
+body :not(.brand-sidebar):not(.brand-sidebar *).bg-blue-600 {
+    background-color: var(--brand-primary) !important;
+}
+.hover\:bg-blue-600:hover,
+.hover\:bg-blue-700:hover {
+    background-color: var(--brand-primary-hover) !important;
+}
+body :not(.brand-sidebar):not(.brand-sidebar *).bg-blue-50,
+body :not(.brand-sidebar):not(.brand-sidebar *).bg-blue-100 {
+    background-color: #E1F5EE !important;
+}
+.hover\:bg-blue-50:hover {
+    background-color: #E1F5EE !important;
+}
+body :not(.brand-sidebar):not(.brand-sidebar *).bg-blue-200 {
+    background-color: #B6E5D1 !important;
+}
+body :not(.brand-sidebar):not(.brand-sidebar *).text-blue-500,
+body :not(.brand-sidebar):not(.brand-sidebar *).text-blue-600,
+body :not(.brand-sidebar):not(.brand-sidebar *).text-blue-700 {
+    color: var(--brand-primary) !important;
+}
+body :not(.brand-sidebar):not(.brand-sidebar *).text-blue-800,
+body :not(.brand-sidebar):not(.brand-sidebar *).text-blue-900 {
+    color: #085041 !important;
+}
+body :not(.brand-sidebar):not(.brand-sidebar *).text-blue-200 {
+    color: #B6E5D1 !important;
+}
+body :not(.brand-sidebar):not(.brand-sidebar *).border-blue-200,
+body :not(.brand-sidebar):not(.brand-sidebar *).border-blue-300,
+body :not(.brand-sidebar):not(.brand-sidebar *).border-blue-500,
+body :not(.brand-sidebar):not(.brand-sidebar *).border-blue-600 {
+    border-color: var(--brand-primary) !important;
+}
+
+/* Focus rings en inputs / textareas / selects — verde de marca */
+input:focus, textarea:focus, select:focus,
+.focus\:ring-blue-500:focus {
+    outline: none;
+    border-color: var(--brand-primary) !important;
+    box-shadow: 0 0 0 3px rgba(29, 158, 117, 0.20) !important;
+    --tw-ring-color: rgba(29, 158, 117, 0.20) !important;
+}
+
+/* Headings de página (h1/h2 fuera del sidebar) en verde oscuro */
+body :not(.brand-sidebar):not(.brand-sidebar *) h1,
+body :not(.brand-sidebar):not(.brand-sidebar *) h2 {
+    color: var(--brand-dark);
+}
+
+/* Footer universal — se puede insertar como <footer class="brand-footer">…</footer> */
+.brand-footer {
+    text-align: center;
+    padding: 1rem;
+    font-size: 12px;
+    color: #888;
+    margin-top: 2rem;
+    font-family: var(--font-body);
+}
+
+/* Estado vacío — chip pedagógico verde oscuro */
+.brand-empty {
+    color: var(--brand-dark);
+    text-align: center;
+    padding: 2rem 1rem;
+}
+.brand-empty::before {
+    content: "📚";
+    display: block;
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+}

@@ -1421,7 +1421,7 @@
                             onblur="guardarNota(this)"
                             onkeydown="if(event.key==='Enter'){this.blur()}"
                             style="width:60px;text-align:center;border:1px solid #d1d5db;border-radius:6px;padding:4px;font-size:0.85rem;outline:none"
-                            onfocus="this.style.borderColor='#3b82f6'"
+                            onfocus="this.style.borderColor='#1D9E75'"
                             onblur_extra="this.style.borderColor='#d1d5db'"
                             placeholder="—">
                     </td>`;
@@ -1445,7 +1445,7 @@
                 row += `<td style="${tdCell}">
                     <button onclick="descargarBoletinDe('${est.id_estudiante}')"
                         title="Descargar boletín DOCX de este estudiante"
-                        style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;border-radius:6px;padding:3px 8px;font-size:0.72rem;cursor:pointer;font-weight:600">
+                        style="background:#E1F5EE;color:#085041;border:1px solid #B6E5D1;border-radius:6px;padding:3px 8px;font-size:0.72rem;cursor:pointer;font-weight:600">
                         <i class="fas fa-download"></i> DOCX
                     </button>
                 </td>`;
@@ -1472,7 +1472,7 @@
             const emptyMsg = columnas.length === 0
                 ? `<tr><td colspan="3" style="padding:48px;text-align:center;color:#6b7280">
                         No hay evaluaciones para este período.<br>
-                        <button onclick="abrirModalColumna()" style="margin-top:12px;color:#3b82f6;cursor:pointer;background:none;border:none;font-size:0.9rem">
+                        <button onclick="abrirModalColumna()" style="margin-top:12px;color:#1D9E75;cursor:pointer;background:none;border:none;font-size:0.9rem">
                             <i class="fas fa-plus mr-1"></i>Agregar la primera evaluación
                         </button>
                     </td></tr>` : '';
@@ -1486,7 +1486,7 @@
 
             // Re-attach onblur for style reset (inline event handlers conflict)
             wrapper.querySelectorAll('input[data-col]').forEach(inp => {
-                inp.addEventListener('focus', () => { inp.style.borderColor = '#3b82f6'; });
+                inp.addEventListener('focus', () => { inp.style.borderColor = '#1D9E75'; });
                 inp.addEventListener('blur', () => { inp.style.borderColor = '#d1d5db'; });
             });
         }
@@ -1915,5 +1915,6 @@
             }
         }
     </script>
+<footer class="brand-footer">Maestr.ia · Tu colega que conoce la ley</footer>
 </body>
 </html>
