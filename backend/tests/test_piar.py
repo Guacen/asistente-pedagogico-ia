@@ -291,8 +291,10 @@ def test_docx_borrador_incluye_marca_borrador(client, seed_docente, db_session):
                 texto_completo += " " + cell.text
     assert "BORRADOR" in texto_completo
     assert "Sujeto a revisión" in texto_completo
-    # Todas las secciones en el DOCX
-    assert "Caracterización" in texto_completo
+    # Todas las secciones en el DOCX (sprint markdown-docx: nombres nuevos).
+    # "Datos del estudiante" reemplazó "Caracterización" — el backfill del
+    # sanitizador mapea PIARs viejos guardados con schema legacy.
+    assert "Datos del estudiante" in texto_completo
     assert "Barreras" in texto_completo
     assert "Decreto 1421" in texto_completo
 
@@ -339,11 +341,15 @@ def test_contenido_sin_secciones_esperadas_se_marca_pendiente(monkeypatch, clien
     # OJO: el autouse fixture reemplaza el mock DESPUÉS del que puse acá,
     # así que este test valida el helper _sanitizar_contenido directo:
     from piar import _sanitizar_contenido, SECCIONES_PIAR
+    # Post-sprint markdown-docx: los inputs con keys legacy se mapean
+    # automáticamente al esquema nuevo antes de sanitizar. El helper
+    # SIEMPRE devuelve las 6 keys nuevas, con "[PENDIENTE]" en las que
+    # no vinieron. `caracterizacion` legacy → `Datos del estudiante`.
     limpio = _sanitizar_contenido({"caracterizacion": "Solo una sección"})
     for s in SECCIONES_PIAR:
         assert s in limpio
-    assert limpio["caracterizacion"] == "Solo una sección"
-    assert "[PENDIENTE" in limpio["barreras"]
+    assert limpio["Datos del estudiante"] == "Solo una sección"
+    assert "[PENDIENTE" in limpio["Barreras para el aprendizaje y la participación"]
 
 
 # ─── Extra: validación de sub-flow del socket via API ────────────

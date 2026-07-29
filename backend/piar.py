@@ -17,8 +17,7 @@ Nota de diseño (aprobada por el owner):
 """
 from __future__ import annotations
 
-import io
-import json
+import io  # noqa: F401 — reservado por si algún endpoint futuro devuelve BytesIO manual
 import re
 from datetime import datetime
 from typing import List, Optional
@@ -43,13 +42,61 @@ router = APIRouter(prefix="/api/piar", tags=["piar"])
 # ═══════════════════════════════════════════════════════════════
 
 SECCIONES_PIAR = (
-    "caracterizacion",
-    "barreras",
-    "ajustes_razonables",
-    "apoyos",
-    "metas",
-    "seguimiento",
+    "Datos del estudiante",
+    "Descripción del contexto escolar",
+    "Barreras para el aprendizaje y la participación",
+    "Ajustes razonables y apoyos",
+    "Estrategias de evaluación flexible",
+    "Seguimiento y compromisos",
 )
+
+# Mapeo de keys legacy → nuevos títulos. Se usa al RENDERIZAR PIARs
+# guardados con el schema anterior (best-effort). No es destructivo:
+# los PIARs viejos se preservan en DB con sus keys originales.
+_LEGACY_TO_NUEVO = {
+    "caracterizacion":     "Datos del estudiante",
+    "barreras":            "Barreras para el aprendizaje y la participación",
+    "ajustes_razonables":  "Ajustes razonables y apoyos",
+    # `apoyos` legacy se concatena al final de "Ajustes razonables y apoyos"
+    # dentro de _normalizar_a_esquema_nuevo() — no tiene destino propio.
+    "metas":               "Estrategias de evaluación flexible",
+    "seguimiento":         "Seguimiento y compromisos",
+}
+
+
+def _normalizar_a_esquema_nuevo(contenido: dict) -> dict:
+    """
+    Devuelve un dict con las 6 keys nuevas de SECCIONES_PIAR.
+
+    - Si `contenido` ya tiene el esquema nuevo (alguna key en SECCIONES_PIAR),
+      se completa con "" las que falten y se devuelve tal cual.
+    - Si tiene el esquema legacy (keys en _LEGACY_TO_NUEVO), se mapea.
+      El campo legacy `apoyos` se concatena al final de "Ajustes razonables
+      y apoyos" bajo un sub-heading. "Descripción del contexto escolar"
+      no existía en el esquema legacy y queda con string vacío.
+    - Si es dict vacío o no reconocido, se devuelven todas las secciones
+      con string vacío (el generador DOCX pinta "[PENDIENTE — sin
+      información]" en cada una).
+    """
+    if not isinstance(contenido, dict):
+        return {s: "" for s in SECCIONES_PIAR}
+
+    # ¿Ya está en esquema nuevo?
+    if any(k in contenido for k in SECCIONES_PIAR):
+        return {s: str(contenido.get(s, "")).strip() for s in SECCIONES_PIAR}
+
+    # Esquema legacy → mapear
+    out = {s: "" for s in SECCIONES_PIAR}
+    for legacy_key, nueva_key in _LEGACY_TO_NUEVO.items():
+        v = contenido.get(legacy_key)
+        if isinstance(v, str) and v.strip():
+            out[nueva_key] = v.strip()
+    apoyos_legacy = contenido.get("apoyos")
+    if isinstance(apoyos_legacy, str) and apoyos_legacy.strip():
+        base = out["Ajustes razonables y apoyos"]
+        sub = "\n\n### Apoyos requeridos\n\n" + apoyos_legacy.strip()
+        out["Ajustes razonables y apoyos"] = (base + sub) if base else apoyos_legacy.strip()
+    return out
 
 
 class PIARCreateRequest(BaseModel):
@@ -130,30 +177,29 @@ def _next_version(db: Session, id_estudiante: str, id_grupo: str,
     return (maxv or 0) + 1
 
 
-def _seccion_pendiente(nombre: str) -> str:
-    return f"[PENDIENTE — sin información]"
+_PENDIENTE_MARKER = "[PENDIENTE — sin información]"
 
 
 def _skeleton_pendiente() -> dict:
     """Contenido default cuando la síntesis IA falla o no hay conversación."""
-    return {s: _seccion_pendiente(s) for s in SECCIONES_PIAR}
+    return {s: _PENDIENTE_MARKER for s in SECCIONES_PIAR}
 
 
 def _sanitizar_contenido(bruto: dict) -> dict:
     """
-    Asegura que el JSON de contenido tenga exactamente las 6 secciones
-    esperadas. Secciones extra se descartan; secciones ausentes se marcan
-    como pendientes. Los valores se coercen a string.
+    Recibe el dict crudo del parser Markdown y asegura las 6 secciones
+    esperadas. Secciones extra se descartan; ausentes se marcan pendientes.
+    Los valores se coercen a string. Retro-compat: si viene con keys
+    legacy se normaliza al esquema nuevo primero.
     """
     if not isinstance(bruto, dict):
         return _skeleton_pendiente()
+    normalizado = _normalizar_a_esquema_nuevo(bruto)
     out = {}
     for s in SECCIONES_PIAR:
-        v = bruto.get(s)
-        if isinstance(v, str) and v.strip():
-            out[s] = v.strip()
-        else:
-            out[s] = _seccion_pendiente(s)
+        v = normalizado.get(s, "")
+        v = v.strip() if isinstance(v, str) else ""
+        out[s] = v if v else _PENDIENTE_MARKER
     return out
 
 
@@ -164,17 +210,22 @@ async def _sintetizar_conversacion_a_json(
     historial: List[Mensaje],
 ) -> dict:
     """
-    Envía la conversación PIAR completa a Claude con una instrucción
-    especial de consolidación y espera que devuelva SOLO el JSON con las
-    6 secciones markdown.
+    Envía la conversación PIAR completa al proveedor de IA y espera que
+    devuelva SOLO el documento en Markdown con las 6 secciones fijas de
+    SECCIONES_PIAR (títulos como `## `). El Markdown se parsea con
+    markdown_parser.parse_markdown_sections y se retorna como dict
+    {título: contenido_md}.
 
-    Consume 1 llamada al modelo (contabilizado como uso de rate limit
-    fuera de este helper — política aprobada por el owner).
+    El nombre de la función se preserva por retro-compat con tests que
+    mockean este helper — internamente ya no hay JSON, sólo Markdown.
 
-    Si el JSON no parsea, cae al skeleton de pendientes en vez de crashear.
+    Si la respuesta del modelo no contiene los headings esperados, el
+    parser rellena con "" y `_sanitizar_contenido` completa con el
+    marker de pendiente en vez de crashear.
     """
     from ia import _bloque_contexto_grupo, _bloque_piar
     from prompts import PROMPT_BASE, PROMPT_MODO_PIAR
+    from markdown_parser import parse_markdown_sections
 
     system_prompt = (
         PROMPT_BASE
@@ -192,17 +243,15 @@ async def _sintetizar_conversacion_a_json(
         else:
             messages.append({"role": role, "content": msg.contenido})
 
-    # Turno final de consolidación
+    # Turno final de consolidación (pide Markdown, no JSON).
     instruccion_final = (
         "TURNO DE CONSOLIDACIÓN — Sintetizá TODA la conversación anterior en el "
-        "JSON estructurado del PIAR con las 6 secciones exactas: "
-        f"{', '.join(SECCIONES_PIAR)}. "
-        "Cada sección es un string markdown en registro formal, apto para "
-        "documento oficial, usando el vocabulario del Decreto 1421 "
-        "(BAP, ajustes razonables, apoyos). Las secciones que no se cubrieron "
-        "en la conversación marcalas EXACTAMENTE como '[PENDIENTE — sin información]'. "
-        "No inventes datos. Devolvé SOLO el JSON, sin texto antes ni después, "
-        "sin bloques de código markdown, sin explicaciones."
+        "documento completo del PIAR siguiendo el formato Markdown obligatorio "
+        "descripto arriba en el system prompt. Devolvé EXACTAMENTE las 6 secciones "
+        f"con `## ` y estos nombres exactos: {', '.join(SECCIONES_PIAR)}. "
+        "Cada sección en registro formal, vocabulario del Decreto 1421 (BAP, "
+        "ajustes razonables, apoyos), sin patologizar. Secciones no cubiertas "
+        f"→ `{_PENDIENTE_MARKER}`. Sin texto adicional antes ni después."
     )
     if messages and messages[-1]["role"] == "user":
         messages[-1]["content"] += "\n\n" + instruccion_final
@@ -220,33 +269,24 @@ async def _sintetizar_conversacion_a_json(
     except Exception as exc:
         raise RuntimeError(f"Error llamando al proveedor de IA para síntesis: {exc}") from exc
 
-    # Robustez: si Claude devuelve el JSON envuelto en ```json ... ```
+    # Robustez: si el modelo envuelve la respuesta en ```markdown ... ```
     if raw.startswith("```"):
-        raw = re.sub(r"^```(?:json)?\s*", "", raw)
+        raw = re.sub(r"^```(?:markdown|md)?\s*", "", raw)
         raw = re.sub(r"\s*```$", "", raw)
 
-    try:
-        parsed = json.loads(raw)
-    except json.JSONDecodeError:
-        # No parsea — devolvemos skeleton en vez de romper el flow
-        return _skeleton_pendiente()
-
+    parsed = parse_markdown_sections(raw, esperadas=list(SECCIONES_PIAR))
     return _sanitizar_contenido(parsed)
 
 
 # ═══════════════════════════════════════════════════════════════
-# DOCX GENERATOR (marca BORRADOR si aplica)
+# DOCX GENERATOR — wrapper sobre templates/maestria_template
 # ═══════════════════════════════════════════════════════════════
-
-_SECCION_LABEL = {
-    "caracterizacion": "1. Caracterización del estudiante",
-    "barreras": "2. Barreras para el aprendizaje y la participación (BAP)",
-    "ajustes_razonables": "3. Ajustes razonables",
-    "apoyos": "4. Apoyos requeridos",
-    "metas": "5. Metas de aprendizaje",
-    "seguimiento": "6. Seguimiento y evaluación",
-}
-
+#
+# El pipeline pre-refactor construía el DOCX párrafo por párrafo acá
+# (~150 líneas). Ahora el layout de marca (header, portada, secciones,
+# footer con página) vive en backend/templates/maestria_template.py.
+# Este helper solo prepara los `datos` de portada y el sello
+# BORRADOR/APROBADO, y delega el render al template.
 
 def _construir_piar_docx(
     docente: Docente,
@@ -255,147 +295,48 @@ def _construir_piar_docx(
     piar: PIAR,
 ) -> bytes:
     """
-    Genera el DOCX del PIAR desde el JSON de contenido. Reutiliza el look
-    institucional del generador de documentos IA (backend/documento.py::
-    _set_cell_bg y paleta de constantes).
+    Genera el DOCX del PIAR usando el template Maestr.ia. El sello
+    BORRADOR/APROBADO se inyecta como una "sección virtual" al comienzo
+    del cuerpo, antes de las 6 secciones canónicas de SECCIONES_PIAR.
 
-    Encabezado incluye marca "BORRADOR — Sujeto a revisión" cuando
-    piar.estado == 'borrador'. Cuando 'aprobado', el encabezado muestra la
-    fecha de aprobación en lugar de la marca.
+    Retro-compat: si `piar.contenido` viene con las keys legacy (PIARs
+    guardados antes del sprint markdown-docx), `_normalizar_a_esquema_nuevo`
+    las mapea a los 6 títulos actuales antes de renderizar.
     """
-    from docx import Document
-    from docx.enum.text import WD_ALIGN_PARAGRAPH
-    from docx.shared import Cm, Pt, RGBColor
-    from documento import _set_cell_bg, _HEX_AZUL_OSC, _HEX_GRIS_CLR
+    from templates.maestria_template import generar_piar_docx
 
-    AZUL_OSCURO = RGBColor(0x1E, 0x40, 0xAF)
-    AZUL_MEDIO = RGBColor(0x1D, 0x4E, 0xD8)
-    AZUL_CLARO = RGBColor(0x93, 0xC5, 0xFD)
-    BLANCO = RGBColor(0xFF, 0xFF, 0xFF)
-    GRIS = RGBColor(0x6B, 0x72, 0x80)
-    ROJO_BORRADOR = RGBColor(0xC0, 0x39, 0x2B)
+    # Normalizamos el contenido al esquema nuevo (retro-compat para PIARs
+    # guardados con keys viejas: caracterizacion, ajustes_razonables, etc.)
+    contenido_dict = _normalizar_a_esquema_nuevo(piar.contenido or {})
 
-    doc = Document()
-    for section in doc.sections:
-        section.top_margin = Cm(1.5)
-        section.bottom_margin = Cm(2)
-        section.left_margin = Cm(2.5)
-        section.right_margin = Cm(2.5)
-
-    # Franja superior
-    tbl_top = doc.add_table(rows=1, cols=2)
-    cl = tbl_top.cell(0, 0)
-    _set_cell_bg(cl, _HEX_AZUL_OSC)
-    pl = cl.paragraphs[0]
-    pl.alignment = WD_ALIGN_PARAGRAPH.LEFT
-    pl.paragraph_format.space_before = Pt(8)
-    pl.paragraph_format.space_after = Pt(8)
-    rl = pl.add_run(
-        "  Asistente Pedagógico IA — PIAR"
-    )
-    rl.font.size = Pt(13); rl.font.bold = True; rl.font.color.rgb = BLANCO
-
-    cr = tbl_top.cell(0, 1)
-    _set_cell_bg(cr, _HEX_AZUL_OSC)
-    pr = cr.paragraphs[0]
-    pr.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-    pr.paragraph_format.space_before = Pt(8)
-    pr.paragraph_format.space_after = Pt(8)
-    rr = pr.add_run(f"Generado {datetime.now().strftime('%d/%m/%Y')}  ")
-    rr.font.size = Pt(9); rr.font.color.rgb = AZUL_CLARO
-
-    # Marca BORRADOR / APROBADO
-    marca = doc.add_paragraph()
-    marca.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    marca.paragraph_format.space_before = Pt(6)
-    marca.paragraph_format.space_after = Pt(4)
-    if piar.estado == "borrador":
-        r_marca = marca.add_run("BORRADOR — Sujeto a revisión")
-        r_marca.font.size = Pt(11); r_marca.font.bold = True
-        r_marca.font.color.rgb = ROJO_BORRADOR
-    else:
+    # Sello BORRADOR/APROBADO como primera sección — así aparece arriba
+    # del PIAR sin acoplar el template al modelo PIAR.
+    if piar.estado == "aprobado":
         fecha_aprob = piar.aprobado_en.strftime("%d/%m/%Y") if piar.aprobado_en else "—"
-        r_marca = marca.add_run(f"APROBADO — {fecha_aprob}")
-        r_marca.font.size = Pt(11); r_marca.font.bold = True
-        r_marca.font.color.rgb = RGBColor(0x15, 0x80, 0x3D)
+        sello_md = f"**APROBADO — {fecha_aprob}**"
+    else:
+        sello_md = "**BORRADOR — Sujeto a revisión**"
+    version_line = f"Versión v{piar.version} · Periodo {piar.periodo} · Año {piar.anio}"
 
-    # Metadatos
-    inst = (getattr(docente, "institucion", None) or "Sin institución").strip()
+    secciones: dict[str, str] = {"Estado del documento": f"{sello_md}\n\n{version_line}"}
+    for k in SECCIONES_PIAR:
+        secciones[k] = contenido_dict.get(k, "")
+
+    # Datos de portada — usan campos legacy que ya viven en el modelo.
+    inst = (getattr(docente, "institucion", None) or "").strip()
     ciudad = (getattr(docente, "ciudad", None) or "").strip()
-    inst_display = " — ".join(filter(None, [inst, ciudad]))
+    grado_display = f"{grupo.grado} · {grupo.asignatura} · {grupo.nombre_grupo}"
+    if inst:
+        grado_display += f" ({inst}{' — ' + ciudad if ciudad else ''})"
 
-    tbl_meta = doc.add_table(rows=3, cols=2)
-    meta = [
-        [("Docente:", docente.nombre_completo), ("Institución:", inst_display)],
-        [("Estudiante (código):", estudiante.codigo_estudiante),
-         ("Grupo:", f"{grupo.nombre_grupo} · {grupo.grado} · {grupo.asignatura}")],
-        [("Periodo:", f"{piar.periodo}  ·  Año {piar.anio}"),
-         ("Versión:", f"v{piar.version}  ·  Estado: {piar.estado.upper()}")],
-    ]
-    for ri, fila in enumerate(meta):
-        for ci, (label, valor) in enumerate(fila):
-            cell = tbl_meta.cell(ri, ci)
-            _set_cell_bg(cell, _HEX_GRIS_CLR)
-            p = cell.paragraphs[0]
-            p.paragraph_format.left_indent = Cm(0.3)
-            p.paragraph_format.space_before = Pt(4)
-            p.paragraph_format.space_after = Pt(4)
-            r_lb = p.add_run(label + " ")
-            r_lb.font.size = Pt(8); r_lb.font.bold = True; r_lb.font.color.rgb = AZUL_MEDIO
-            r_val = p.add_run(valor)
-            r_val.font.size = Pt(8); r_val.font.color.rgb = GRIS
+    datos = {
+        "nombre": estudiante.codigo_estudiante,
+        "grado":  grado_display,
+        "docente": docente.nombre_completo,
+        "fecha":  datetime.now().strftime("%d/%m/%Y"),
+    }
 
-    doc.add_paragraph()
-    h = doc.add_heading("Plan Individual de Ajustes Razonables", level=1)
-    h.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    for run in h.runs:
-        run.font.color.rgb = AZUL_OSCURO
-        run.font.size = Pt(16)
-
-    marco = doc.add_paragraph()
-    marco.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    r_marco = marco.add_run(
-        "Decreto 1421 de 2017 · Ministerio de Educación Nacional de Colombia"
-    )
-    r_marco.font.size = Pt(9); r_marco.font.italic = True
-    r_marco.font.color.rgb = GRIS
-
-    # Secciones
-    contenido = piar.contenido or {}
-    for clave, titulo in _SECCION_LABEL.items():
-        h_sec = doc.add_heading(titulo, level=2)
-        for run in h_sec.runs:
-            run.font.color.rgb = AZUL_OSCURO
-            run.font.size = Pt(13)
-        texto = contenido.get(clave) or _seccion_pendiente(clave)
-        # Renderizado plano: preserva saltos de línea; sin parseo markdown
-        # complejo (bullets, negritas) para MVP — se puede enriquecer luego.
-        for parrafo in texto.split("\n\n"):
-            if not parrafo.strip():
-                continue
-            p = doc.add_paragraph(parrafo.strip())
-            p.paragraph_format.space_after = Pt(6)
-            for r in p.runs:
-                r.font.size = Pt(11)
-
-    # Pie
-    doc.add_paragraph()
-    tbl_pie = doc.add_table(rows=1, cols=1)
-    cp = tbl_pie.cell(0, 0)
-    _set_cell_bg(cp, _HEX_GRIS_CLR)
-    pp = cp.paragraphs[0]
-    pp.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    pp.paragraph_format.space_before = Pt(6)
-    pp.paragraph_format.space_after = Pt(6)
-    rp = pp.add_run(
-        "  Documento generado con Asistente Pedagógico IA sobre base del Decreto 1421/2017. "
-        "El template se ajustará al formato oficial del Instituto Manizales cuando esté disponible."
-    )
-    rp.font.size = Pt(8); rp.font.italic = True; rp.font.color.rgb = AZUL_MEDIO
-
-    buf = io.BytesIO()
-    doc.save(buf)
-    buf.seek(0)
+    buf = generar_piar_docx(secciones, datos)
     return buf.read()
 
 
