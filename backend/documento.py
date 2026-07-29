@@ -57,14 +57,14 @@ def _docx_bytes(md: str, titulo: str, docente: Docente, grupo: Grupo) -> bytes:
     from docx.shared import Cm, Pt, RGBColor
 
     # ── Paleta ──────────────────────────────────────────────────
-    AZUL_OSCURO = RGBColor(0x1E, 0x40, 0xAF)   # azul-800 Tailwind
-    AZUL_MEDIO  = RGBColor(0x1D, 0x4E, 0xD8)   # azul-700
-    AZUL_CLARO  = RGBColor(0x93, 0xC5, 0xFD)   # azul-300
+    AZUL_OSCURO = RGBColor(0x0B, 0x3D, 0x2E)   # azul-800 Tailwind
+    AZUL_MEDIO  = RGBColor(0x1D, 0x9E, 0x75)   # azul-700
+    AZUL_CLARO  = RGBColor(0xB6, 0xE5, 0xD1)   # azul-300
     BLANCO      = RGBColor(0xFF, 0xFF, 0xFF)
     GRIS        = RGBColor(0x6B, 0x72, 0x80)
 
-    HEX_AZUL_OSC = '1E40AF'
-    HEX_AZUL_CLR = 'DBEAFE'
+    HEX_AZUL_OSC = '0B3D2E'
+    HEX_AZUL_CLR = 'E1F5EE'
     HEX_GRIS_CLR = 'F3F4F6'
 
     # ── Helpers ─────────────────────────────────────────────────
@@ -103,8 +103,34 @@ def _docx_bytes(md: str, titulo: str, docente: Docente, grupo: Grupo) -> bytes:
         section.left_margin   = Cm(2.5)
         section.right_margin  = Cm(2.5)
 
+    # ── section.header + section.footer con marca (todas las páginas) ──
+    # La "franja superior" que sigue abajo vive en el BODY del documento
+    # (aparece sólo en la primera página); el header/footer de Word se
+    # aplican a TODAS las páginas y son lo que python-docx detecta al
+    # inspeccionar doc.sections[0].header/.footer. Antes quedaban vacíos.
+    for section in doc.sections:
+        # Header: tagline de marca alineado a la derecha
+        h_p = section.header.paragraphs[0] if section.header.paragraphs else section.header.add_paragraph()
+        h_p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+        h_run = h_p.add_run('Maestr.ia · Tu colega que conoce la ley')
+        h_run.font.name = 'Calibri'
+        h_run.font.size = Pt(8)
+        h_run.font.italic = True
+        h_run.font.color.rgb = AZUL_MEDIO   # ahora es verde primario post-rebrand
+
+        # Footer: marca + fecha, centrado
+        f_p = section.footer.paragraphs[0] if section.footer.paragraphs else section.footer.add_paragraph()
+        f_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        f_run = f_p.add_run(
+            f'Maestr.ia · Tu colega que conoce la ley · Generado con IA · '
+            f'{datetime.now().strftime("%d/%m/%Y")}'
+        )
+        f_run.font.name = 'Calibri'
+        f_run.font.size = Pt(8)
+        f_run.font.color.rgb = RGBColor(0x88, 0x88, 0x88)
+
     # ══════════════════════════════════════════════════════════════
-    # FRANJA SUPERIOR — azul sólido con logo/marca
+    # FRANJA SUPERIOR — verde sólido con marca
     # ══════════════════════════════════════════════════════════════
     tbl_top = doc.add_table(rows=1, cols=2)
     no_border_table(tbl_top)
@@ -119,7 +145,7 @@ def _docx_bytes(md: str, titulo: str, docente: Docente, grupo: Grupo) -> bytes:
     pl.paragraph_format.left_indent  = Cm(0.4)
     pl.paragraph_format.space_before = Pt(8)
     pl.paragraph_format.space_after  = Pt(8)
-    rl = pl.add_run('Asistente Pedagógico IA')
+    rl = pl.add_run('Maestr.ia')
     rl.font.size  = Pt(14)
     rl.font.bold  = True
     rl.font.color.rgb = BLANCO
@@ -149,7 +175,7 @@ def _docx_bytes(md: str, titulo: str, docente: Docente, grupo: Grupo) -> bytes:
     meta = [
         [
             ('Docente:', docente.nombre_completo),
-            ('Generado por:', 'Asistente Pedagógico IA'),
+            ('Generado por:', 'Maestr.ia'),
         ],
         [
             ('Institución:', inst_display),
@@ -215,7 +241,7 @@ def _docx_bytes(md: str, titulo: str, docente: Docente, grupo: Grupo) -> bytes:
     pp.paragraph_format.space_before = Pt(6)
     pp.paragraph_format.space_after  = Pt(6)
     rp = pp.add_run(
-        f'Generado con Asistente Pedagógico IA  •  '
+        f'Generado con Maestr.ia  •  '
         f'{datetime.now().strftime("%d/%m/%Y")}  •  '
         'Documento de uso educativo — No editar el encabezado'
     )
@@ -428,8 +454,8 @@ _UMBRAL_APROBADO = 3.5
 _UMBRAL_APROBACION_MIN = 3.0
 
 # Paleta (mismos hex que _docx_bytes)
-_HEX_AZUL_OSC = '1E40AF'
-_HEX_AZUL_CLR = 'DBEAFE'
+_HEX_AZUL_OSC = '0B3D2E'
+_HEX_AZUL_CLR = 'E1F5EE'
 _HEX_GRIS_CLR = 'F3F4F6'
 _HEX_VERDE    = 'DCFCE7'
 _HEX_AMBAR    = 'FEF9C3'
@@ -483,9 +509,9 @@ def _boletin_encabezado(doc, docente: Docente, grupo: Grupo, subtitulo: str, per
     from docx.enum.text import WD_ALIGN_PARAGRAPH
     from docx.shared import Cm, Pt, RGBColor
 
-    AZUL_OSCURO = RGBColor(0x1E, 0x40, 0xAF)
-    AZUL_MEDIO  = RGBColor(0x1D, 0x4E, 0xD8)
-    AZUL_CLARO  = RGBColor(0x93, 0xC5, 0xFD)
+    AZUL_OSCURO = RGBColor(0x0B, 0x3D, 0x2E)
+    AZUL_MEDIO  = RGBColor(0x1D, 0x9E, 0x75)
+    AZUL_CLARO  = RGBColor(0xB6, 0xE5, 0xD1)
     BLANCO      = RGBColor(0xFF, 0xFF, 0xFF)
     GRIS        = RGBColor(0x6B, 0x72, 0x80)
 
@@ -497,7 +523,7 @@ def _boletin_encabezado(doc, docente: Docente, grupo: Grupo, subtitulo: str, per
     pl.alignment = WD_ALIGN_PARAGRAPH.LEFT
     pl.paragraph_format.space_before = Pt(8)
     pl.paragraph_format.space_after  = Pt(8)
-    rl = pl.add_run('  Asistente Pedagógico IA — Boletín de Calificaciones')
+    rl = pl.add_run('  Maestr.ia · Boletín de Calificaciones')
     rl.font.size = Pt(13); rl.font.bold = True; rl.font.color.rgb = BLANCO
 
     cr = tbl_top.cell(0, 1)
@@ -552,7 +578,7 @@ def _boletin_tabla_estudiante(doc, columnas, notas_por_col: dict, promedio: Opti
     from docx.enum.text import WD_ALIGN_PARAGRAPH
     from docx.shared import Cm, Pt, RGBColor
 
-    AZUL_OSCURO = RGBColor(0x1E, 0x40, 0xAF)
+    AZUL_OSCURO = RGBColor(0x0B, 0x3D, 0x2E)
     NEGRO = RGBColor(0x11, 0x18, 0x27)
 
     tbl = doc.add_table(rows=1 + len(columnas) + 1, cols=4)
@@ -615,7 +641,7 @@ def _boletin_pie_leyenda(doc):
     from docx.enum.text import WD_ALIGN_PARAGRAPH
     from docx.shared import Pt, RGBColor
 
-    AZUL_MEDIO = RGBColor(0x1D, 0x4E, 0xD8)
+    AZUL_MEDIO = RGBColor(0x1D, 0x9E, 0x75)
 
     doc.add_paragraph()
     tbl_leg = doc.add_table(rows=1, cols=1)
