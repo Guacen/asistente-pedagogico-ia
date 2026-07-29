@@ -89,6 +89,7 @@ _BOLD_RE = re.compile(r"\*\*(.+?)\*\*")
 _BULLET_RE = re.compile(r"^\s*[-*]\s+(.+)$")
 _TABLE_ROW_RE = re.compile(r"^\s*\|(.+)\|\s*$")
 _TABLE_SEPARATOR_RE = re.compile(r"^\s*\|?[\s:-]+\|[\s:|\-]*$")
+_BLOCKQUOTE_RE = re.compile(r"^\s*>\s?(.*)$")
 
 
 def iter_inline_bold(texto: str):
@@ -199,6 +200,26 @@ def parse_section_blocks(contenido: str):
                 i += 1
             if filas:
                 yield ("table", filas)
+            continue
+
+        # Blockquote — agrupamos líneas consecutivas que empiezan con `>`.
+        # Múltiples > seguidos = un solo bloque. Los `>` internos se quitan;
+        # el generador aplica indentación + borde + fondo mint al render.
+        m_bq = _BLOCKQUOTE_RE.match(linea)
+        if m_bq:
+            p = flush_parrafo()
+            if p:
+                yield p
+            partes: list[str] = [m_bq.group(1).strip()]
+            i += 1
+            while i < n:
+                m2 = _BLOCKQUOTE_RE.match(lineas[i])
+                if not m2:
+                    break
+                partes.append(m2.group(1).strip())
+                i += 1
+            texto = "\n".join([p for p in partes if p is not None])
+            yield ("blockquote", texto)
             continue
 
         # Bullet

@@ -205,3 +205,87 @@ def test_secciones_vacio_dict_genera_docx_valido():
     doc = _abrir_docx(buf)
     # Portada intacta aún sin cuerpo
     assert "Plan Individual de Ajustes Razonables (PIAR)" in _texto_completo(doc)
+
+
+# ═══════════════════════════════════════════════════════════════
+# Fix: estilos globales Heading + blockquotes
+# ═══════════════════════════════════════════════════════════════
+
+def test_estilos_globales_heading_usan_paleta_de_marca():
+    """
+    El template redefine Heading 1/2/3 con colores Maestr.ia — así el
+    docente que edite el DOCX en Word y aplique "Heading 2" a un párrafo
+    nuevo ve verde, no el azul default de python-docx.
+    """
+    from templates.maestria_template import generar_piar_docx
+    from docx.shared import RGBColor
+    buf = generar_piar_docx(_secciones_minimas(), _datos_minimos())
+    doc = _abrir_docx(buf)
+
+    h1, h2, h3 = doc.styles["Heading 1"], doc.styles["Heading 2"], doc.styles["Heading 3"]
+    assert h1.font.color.rgb == RGBColor(0x0B, 0x3D, 0x2E)   # verde oscuro
+    assert h2.font.color.rgb == RGBColor(0x0B, 0x3D, 0x2E)
+    assert h3.font.color.rgb == RGBColor(0x1D, 0x9E, 0x75)   # verde principal
+    assert h1.font.bold and h2.font.bold and h3.font.bold
+
+
+def test_blockquote_no_deja_el_gt_literal_en_el_texto():
+    """
+    Antes del fix, `> texto` quedaba como texto plano con el `>` visible.
+    Ahora se renderiza como bloque callout sin ese carácter.
+    """
+    from templates.maestria_template import generar_piar_docx
+    secciones = {
+        **_secciones_minimas(),
+        "Datos del estudiante": "> Un blockquote con **énfasis** dentro.",
+    }
+    buf = generar_piar_docx(secciones, _datos_minimos())
+    doc = _abrir_docx(buf)
+    # El texto del blockquote está, PERO sin el "> " al comienzo.
+    for p in doc.paragraphs:
+        if "Un blockquote" in p.text:
+            assert not p.text.lstrip().startswith(">"), (
+                f"El '>' quedó literal: '{p.text}'"
+            )
+            break
+    else:
+        raise AssertionError("No se encontró el párrafo del blockquote")
+
+
+def test_blockquote_tiene_borde_izquierdo_verde():
+    """
+    El blockquote se renderiza con un pBdr/left (borde vertical) — así
+    lo diferencia Word visualmente de un párrafo normal.
+    """
+    from templates.maestria_template import generar_piar_docx
+    from docx.oxml.ns import qn
+    secciones = {
+        **_secciones_minimas(),
+        "Datos del estudiante": "> Callout con borde verde",
+    }
+    buf = generar_piar_docx(secciones, _datos_minimos())
+    doc = _abrir_docx(buf)
+
+    con_borde = 0
+    for p in doc.paragraphs:
+        pPr = p._p.find(qn("w:pPr"))
+        if pPr is not None and pPr.find(qn("w:pBdr")) is not None:
+            if pPr.find(qn("w:pBdr")).find(qn("w:left")) is not None:
+                con_borde += 1
+    assert con_borde >= 1, "Ningún blockquote tiene borde izquierdo"
+
+
+def test_blockquote_multilinea_se_agrupa_en_un_solo_parrafo():
+    from templates.maestria_template import generar_piar_docx
+    secciones = {
+        **_secciones_minimas(),
+        "Datos del estudiante": "> Línea uno\n> Línea dos\n> Línea tres",
+    }
+    buf = generar_piar_docx(secciones, _datos_minimos())
+    doc = _abrir_docx(buf)
+    for p in doc.paragraphs:
+        if "Línea uno" in p.text:
+            assert "Línea dos" in p.text and "Línea tres" in p.text
+            break
+    else:
+        raise AssertionError("No se encontró el blockquote multilínea agrupado")

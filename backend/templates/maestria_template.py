@@ -102,6 +102,90 @@ def _run(paragraph, texto: str, *, bold: bool = False, size: int = 11,
     return r
 
 
+def _apply_brand_heading_styles(doc) -> None:
+    """
+    Redefine los estilos globales Heading 1/2/3 del Document con la paleta
+    Maestr.ia. Aplica al render actual Y a cualquier heading que el docente
+    agregue después editando el DOCX en Word — coherencia total.
+
+    Heading 1: 16pt bold  #0B3D2E   (portada / secciones mayores)
+    Heading 2: 13pt bold  #0B3D2E + borde inferior 0.75pt #1D9E75
+    Heading 3: 11pt bold  #1D9E75
+    """
+    specs = [
+        ("Heading 1", 16, VERDE_OSCURO,  False),
+        ("Heading 2", 13, VERDE_OSCURO,  True),   # con borde inferior verde
+        ("Heading 3", 11, VERDE_PRINCIPAL, False),
+    ]
+    for style_name, size, color, con_borde in specs:
+        try:
+            st = doc.styles[style_name]
+        except KeyError:
+            continue
+        st.font.name = FONT_FAMILY
+        st.font.size = Pt(size)
+        st.font.bold = True
+        st.font.color.rgb = color
+        st.paragraph_format.space_before = Pt(10 if size >= 13 else 8)
+        st.paragraph_format.space_after = Pt(4 if size >= 13 else 3)
+        if con_borde:
+            # Borde inferior 0.75pt verde principal aplicado al estilo de
+            # párrafo (no al párrafo puntual), para que todos los H2 lo hereden.
+            p_pr = st.element.get_or_add_pPr()
+            # limpiar cualquier pBdr previo del estilo
+            for existing in p_pr.findall(qn("w:pBdr")):
+                p_pr.remove(existing)
+            pBdr = OxmlElement("w:pBdr")
+            bottom = OxmlElement("w:bottom")
+            bottom.set(qn("w:val"), "single")
+            bottom.set(qn("w:sz"), "6")   # 0.75pt = 6 en octavos de punto
+            bottom.set(qn("w:space"), "1")
+            bottom.set(qn("w:color"),
+                       f"{VERDE_PRINCIPAL[0]:02X}{VERDE_PRINCIPAL[1]:02X}{VERDE_PRINCIPAL[2]:02X}")
+            pBdr.append(bottom)
+            p_pr.append(pBdr)
+
+
+def _add_blockquote(doc, texto: str) -> None:
+    """
+    Blockquote: párrafo con indentación izquierda, borde vertical verde,
+    fondo verde mint suave y texto en itálica verde oscuro. Layout típico
+    de "callout" pedagógico.
+    """
+    from docx.shared import Cm as _Cm
+    p = doc.add_paragraph()
+    p.paragraph_format.left_indent = _Cm(0.6)
+    p.paragraph_format.right_indent = _Cm(0.2)
+    p.paragraph_format.space_before = Pt(6)
+    p.paragraph_format.space_after = Pt(6)
+    p.paragraph_format.line_spacing = 1.2
+
+    # Borde izquierdo grueso + shading suave (via pPr XML).
+    p_pr = p._p.get_or_add_pPr()
+
+    pBdr = OxmlElement("w:pBdr")
+    left = OxmlElement("w:left")
+    left.set(qn("w:val"), "single")
+    left.set(qn("w:sz"), "24")   # 3pt = 24 en octavos de punto
+    left.set(qn("w:space"), "8")
+    left.set(qn("w:color"),
+             f"{VERDE_PRINCIPAL[0]:02X}{VERDE_PRINCIPAL[1]:02X}{VERDE_PRINCIPAL[2]:02X}")
+    pBdr.append(left)
+    p_pr.append(pBdr)
+
+    shd = OxmlElement("w:shd")
+    shd.set(qn("w:val"), "clear")
+    shd.set(qn("w:color"), "auto")
+    shd.set(qn("w:fill"), VERDE_MENTA_HEX)
+    p_pr.append(shd)
+
+    # Contenido en itálica verde oscuro (soporta negrita inline via
+    # iter_inline_bold para preservar énfasis dentro del quote).
+    for segmento, is_bold in iter_inline_bold(texto):
+        _run(p, segmento, bold=is_bold, italic=True, size=10,
+             color=RGBColor(0x08, 0x50, 0x41))   # verde muy oscuro para legibilidad
+
+
 def _add_page_number_field(paragraph) -> None:
     """
     Inserta el campo dinámico { PAGE } que Word / LibreOffice actualizan
@@ -294,6 +378,8 @@ def _add_seccion(doc, titulo: str, contenido_md: str) -> None:
             p = doc.add_paragraph()
             p.paragraph_format.space_before = Pt(8)
             _run(p, payload, bold=True, size=11, color=VERDE_PRINCIPAL)
+        elif tipo == "blockquote":
+            _add_blockquote(doc, payload)
         elif tipo == "table":
             _add_table_from_data(doc, payload)
 
@@ -353,6 +439,11 @@ def generar_piar_docx(
         # Espacio para el header + separator
         section.header_distance = Cm(0.8)
         section.footer_distance = Cm(0.8)
+
+    # Aplicar estilos de marca a los Heading globales del documento.
+    # Impacta tanto al render actual como a headings que el docente pueda
+    # agregar manualmente después editando el DOCX en Word/Docs.
+    _apply_brand_heading_styles(doc)
 
     _build_header(doc, logo_path if logo_path is not None else LOGO_PATH_DEFAULT)
     _build_footer(doc)

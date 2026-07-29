@@ -138,6 +138,30 @@ def test_bullets_con_negrita_inline_preservan_markdown():
     assert bloques[0] == ("bullet", "Item con **énfasis** al medio")
 
 
+def test_blockquote_una_linea():
+    from markdown_parser import parse_section_blocks
+    bloques = list(parse_section_blocks("> Nota importante para el docente."))
+    assert bloques == [("blockquote", "Nota importante para el docente.")]
+
+
+def test_blockquote_multilinea_se_agrupa():
+    """Líneas `> ` consecutivas quedan como UN solo blockquote, unidas con \\n."""
+    from markdown_parser import parse_section_blocks
+    contenido = "> Primera línea del quote\n> Segunda línea del mismo quote\n\nPárrafo normal."
+    bloques = list(parse_section_blocks(contenido))
+    assert bloques[0][0] == "blockquote"
+    assert "Primera línea" in bloques[0][1]
+    assert "Segunda línea" in bloques[0][1]
+    assert bloques[1] == ("paragraph", "Párrafo normal.")
+
+
+def test_blockquote_preserva_negrita_inline():
+    """Los ** ** dentro del quote quedan textuales; el generador los procesa."""
+    from markdown_parser import parse_section_blocks
+    bloques = list(parse_section_blocks("> Con **énfasis** al medio"))
+    assert bloques[0] == ("blockquote", "Con **énfasis** al medio")
+
+
 def test_listas_anidadas_se_aplanan():
     """
     LIMITACIÓN documentada: no soportamos jerarquía de listas. Los items
