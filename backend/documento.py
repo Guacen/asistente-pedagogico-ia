@@ -43,6 +43,39 @@ class GenerarDocumentoRequest(BaseModel):
 # HELPERS DOCX — encabezado institucional estilo Teachy
 # ════════════════════════════════════════════════════════════════
 
+def _apply_brand_heading_styles(doc) -> None:
+    """
+    Redefine los estilos globales Heading 1/2/3 con la paleta Maestr.ia.
+    Aplica al render actual Y a cualquier heading que el docente agregue
+    después editando el DOCX en Word — coherencia total.
+
+    Heading 1: 16pt bold #0B3D2E
+    Heading 2: 13pt bold #0B3D2E
+    Heading 3: 11pt bold #1D9E75
+
+    Bug 3 del ticket "docx-5-bugs": antes Heading 3 heredaba #4F81BD
+    (azul default de python-docx) porque este generador nunca redefinía
+    los estilos — solo forzaba color a nivel de run.
+    """
+    from docx.shared import Pt, RGBColor
+    VERDE_OSCURO = RGBColor(0x0B, 0x3D, 0x2E)
+    VERDE_PRIM   = RGBColor(0x1D, 0x9E, 0x75)
+    specs = [
+        ('Heading 1', 16, VERDE_OSCURO),
+        ('Heading 2', 13, VERDE_OSCURO),
+        ('Heading 3', 11, VERDE_PRIM),
+    ]
+    for name, size, color in specs:
+        try:
+            st = doc.styles[name]
+        except KeyError:
+            continue
+        st.font.name = 'Calibri'
+        st.font.size = Pt(size)
+        st.font.bold = True
+        st.font.color.rgb = color
+
+
 def _docx_bytes(md: str, titulo: str, docente: Docente, grupo: Grupo) -> bytes:
     """
     Construye el DOCX completo:
@@ -108,15 +141,55 @@ def _docx_bytes(md: str, titulo: str, docente: Docente, grupo: Grupo) -> bytes:
     # (aparece sólo en la primera página); el header/footer de Word se
     # aplican a TODAS las páginas y son lo que python-docx detecta al
     # inspeccionar doc.sections[0].header/.footer. Antes quedaban vacíos.
+    # Path del logo — desde backend/documento.py: parent (=backend) +
+    # frontend/assets/logo.png. Calculado con Path.__file__.parent para
+    # que funcione desde cualquier cwd (Railway / dev / tests).
+    from pathlib import Path
+    _LOGO_PATH = Path(__file__).resolve().parent / 'frontend' / 'assets' / 'logo.png'
+
     for section in doc.sections:
-        # Header: tagline de marca alineado a la derecha
-        h_p = section.header.paragraphs[0] if section.header.paragraphs else section.header.add_paragraph()
-        h_p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-        h_run = h_p.add_run('Maestr.ia · Tu colega que conoce la ley')
+        # Header: logo a la izquierda + tagline a la derecha.
+        # Tabla 1x2 sin bordes — así python-docx detecta el drawing
+        # dentro del section.header y el layout queda pareado.
+        header = section.header
+        # Limpiar el paragraph vacío inicial que python-docx crea, sino
+        # queda un espacio en blanco arriba del contenido real del header.
+        if header.paragraphs and not header.paragraphs[0].text.strip():
+            # No lo removemos (rompe el elemento); solo lo usamos como anchor
+            # invisible cerca del top. Toda la marca va en la tabla siguiente.
+            pass
+        h_tbl = header.add_table(rows=1, cols=2, width=Cm(17))
+        h_tbl.autofit = False
+        h_tbl.columns[0].width = Cm(4)
+        h_tbl.columns[1].width = Cm(13)
+
+        # Izquierda: logo PNG si existe, sino fallback texto
+        left_cell = h_tbl.cell(0, 0)
+        left_p = left_cell.paragraphs[0]
+        left_p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+        if _LOGO_PATH.exists():
+            try:
+                left_p.add_run().add_picture(str(_LOGO_PATH), height=Cm(1.0))
+            except Exception as e:
+                print(f"[documento.py] logo header fail: {e} — path={_LOGO_PATH}")
+                _fb = left_p.add_run('Maestr.ia')
+                _fb.font.name = 'Calibri'; _fb.font.bold = True
+                _fb.font.size = Pt(11); _fb.font.color.rgb = AZUL_OSCURO
+        else:
+            print(f"[documento.py] logo no encontrado: {_LOGO_PATH}")
+            _fb = left_p.add_run('Maestr.ia')
+            _fb.font.name = 'Calibri'; _fb.font.bold = True
+            _fb.font.size = Pt(11); _fb.font.color.rgb = AZUL_OSCURO
+
+        # Derecha: tagline
+        right_cell = h_tbl.cell(0, 1)
+        right_p = right_cell.paragraphs[0]
+        right_p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+        h_run = right_p.add_run('Maestr.ia · Tu colega que conoce la ley')
         h_run.font.name = 'Calibri'
         h_run.font.size = Pt(8)
         h_run.font.italic = True
-        h_run.font.color.rgb = AZUL_MEDIO   # ahora es verde primario post-rebrand
+        h_run.font.color.rgb = AZUL_MEDIO   # verde primario post-rebrand
 
         # Footer: marca + fecha, centrado
         f_p = section.footer.paragraphs[0] if section.footer.paragraphs else section.footer.add_paragraph()
@@ -212,18 +285,23 @@ def _docx_bytes(md: str, titulo: str, docente: Docente, grupo: Grupo) -> bytes:
         run.font.color.rgb = AZUL_OSCURO
         run.font.size = Pt(18)
 
-    # Línea divisora
-    p_div = doc.add_paragraph()
-    p_div.paragraph_format.space_before = Pt(0)
-    p_div.paragraph_format.space_after  = Pt(12)
-    r_div = p_div.add_run('─' * 85)
-    r_div.font.color.rgb = AZUL_CLARO
-    r_div.font.size = Pt(8)
+    # Espaciador entre título y cuerpo (antes había una fila de 85 ─,
+    # bug 2 del ticket docx-5-bugs). El space_after del párrafo del
+    # título ya provee la respiración; agregamos solo un párrafo vacío
+    # de altura mínima para no perder el aire.
+    _sp = doc.add_paragraph()
+    _sp.paragraph_format.space_before = Pt(0)
+    _sp.paragraph_format.space_after  = Pt(8)
 
     # ══════════════════════════════════════════════════════════════
     # CUERPO — Markdown → DOCX
     # ══════════════════════════════════════════════════════════════
-    _render_md(doc, md, AZUL_OSCURO)
+    # Aplicar estilos de marca a Heading 1/2/3 globales (bug 3): así
+    # todo add_heading dentro de _render_md hereda los colores verdes
+    # aunque no forcemos color en run explícito.
+    _apply_brand_heading_styles(doc)
+    # Skip primer H1 del markdown si duplica el título de la portada.
+    _render_md(doc, md, AZUL_OSCURO, skip_h1_titulo=titulo)
 
     # ══════════════════════════════════════════════════════════════
     # PIE — franja de marca
@@ -256,15 +334,38 @@ def _docx_bytes(md: str, titulo: str, docente: Docente, grupo: Grupo) -> bytes:
     return buf.read()
 
 
-def _render_md(doc, md: str, h1_color):
+_SEP_CHARS = set('─-—=_')
+
+
+def _es_linea_separador(s: str) -> bool:
+    """
+    Detecta líneas que son solo caracteres decorativos de separación
+    (guiones ASCII o box-drawing U+2500). Bug 2: antes se renderizaban
+    como texto o como una línea gris de 80 ─; el ticket pide eliminarlas
+    y confiar en el space_after de los headings.
+    """
+    st = s.strip()
+    return len(st) > 5 and set(st) <= _SEP_CHARS
+
+
+def _render_md(doc, md: str, h1_color, *, skip_h1_titulo: str = ''):
     """
     Parsea Markdown básico y lo escribe en el documento con python-docx.
-    Soporta: # encabezados, **negrita**, *itálica*, listas, código, párrafos.
+    Soporta: # encabezados, **negrita**, *itálica*, listas, código,
+    tablas Markdown (bug 5), párrafos. Salta el primer H1 si su texto
+    coincide con `skip_h1_titulo` (bug 4 — evita título duplicado con
+    la portada).
     """
     from docx.enum.text import WD_ALIGN_PARAGRAPH
-    from docx.shared import Pt, RGBColor
+    from docx.shared import Cm, Pt, RGBColor
+    from markdown_parser import _parse_fila_tabla, _es_separador_tabla, _TABLE_ROW_RE
 
-    AZUL = h1_color
+    AZUL = h1_color              # nombre legacy — ahora es VERDE_OSCURO
+    VERDE_OSCURO = h1_color
+    VERDE_PRIM = RGBColor(0x1D, 0x9E, 0x75)
+    VERDE_MENTA_HEX = 'E1F5EE'
+    skip_titulo_norm = (skip_h1_titulo or '').strip().lower()
+    ya_saltamos_h1 = False
 
     lines = md.splitlines()
     i = 0
@@ -296,15 +397,70 @@ def _render_md(doc, md: str, h1_color):
         if m:
             level  = min(len(m.group(1)), 4)
             text   = _strip_inline(m.group(2))
+            # Bug 4: skip primer H1 si coincide con el título de portada
+            if (level == 1 and not ya_saltamos_h1
+                    and skip_titulo_norm
+                    and text.strip().lower() == skip_titulo_norm):
+                ya_saltamos_h1 = True
+                i += 1
+                continue
             h = doc.add_heading(text, level=level)
+            # Forzar colores a nivel de RUN (bug 3): el estilo global
+            # ya está redefinido en verde, pero add_heading a veces
+            # inserta runs con color heredado del template default.
             if level == 1:
                 for r in h.runs:
-                    r.font.color.rgb = AZUL
+                    r.font.color.rgb = VERDE_OSCURO
                     r.font.size = Pt(16)
             elif level == 2:
                 for r in h.runs:
-                    r.font.color.rgb = AZUL
+                    r.font.color.rgb = VERDE_OSCURO
+                    r.font.size = Pt(13)
+            elif level == 3:
+                for r in h.runs:
+                    r.font.color.rgb = VERDE_PRIM
+                    r.font.size = Pt(11)
+            elif level == 4:
+                for r in h.runs:
+                    r.font.color.rgb = VERDE_PRIM
+                    r.font.size = Pt(10)
             i += 1
+            continue
+
+        # ── Tabla Markdown (bug 5) ───────────────────────────────
+        # Si la línea empieza con `|` y termina con `|`, y la siguiente
+        # es un separador |---|---|, procesamos el bloque entero como
+        # tabla real de Word.
+        if _TABLE_ROW_RE.match(s) and i + 1 < len(lines) and _es_separador_tabla(lines[i + 1]):
+            filas = []
+            header = _parse_fila_tabla(s)
+            if header:
+                filas.append(header)
+            i += 2  # saltar header + separador
+            while i < len(lines) and _TABLE_ROW_RE.match(lines[i].strip()):
+                fila = _parse_fila_tabla(lines[i].strip())
+                if fila:
+                    filas.append(fila)
+                i += 1
+            if filas:
+                ncols = max(len(f) for f in filas)
+                tbl = doc.add_table(rows=len(filas), cols=ncols)
+                tbl.style = 'Table Grid'
+                for ri, fila in enumerate(filas):
+                    for ci in range(ncols):
+                        celda = tbl.cell(ri, ci)
+                        texto = fila[ci] if ci < len(fila) else ''
+                        p_c = celda.paragraphs[0]
+                        p_c.paragraph_format.left_indent = Cm(0.15)
+                        if ri == 0:
+                            _set_cell_bg(celda, VERDE_MENTA_HEX)
+                            r_c = p_c.add_run(texto)
+                            r_c.font.name = 'Calibri'; r_c.font.bold = True
+                            r_c.font.size = Pt(10); r_c.font.color.rgb = VERDE_OSCURO
+                        else:
+                            r_c = p_c.add_run(texto)
+                            r_c.font.name = 'Calibri'; r_c.font.size = Pt(10)
+                doc.add_paragraph()
             continue
 
         # ── Lista viñetas ────────────────────────────────────────
@@ -323,12 +479,14 @@ def _render_md(doc, md: str, h1_color):
             i += 1
             continue
 
-        # ── Línea horizontal ─────────────────────────────────────
+        # ── Separadores decorativos (bug 2) ──────────────────────
+        # Antes: cualquier línea de --- se renderizaba como 80 ─ grises.
+        # Ahora: se ignoran completamente — el space_after de headings
+        # ya provee la respiración visual entre secciones.
+        if _es_linea_separador(s):
+            i += 1
+            continue
         if re.match(r'^[-*_]{3,}$', s):
-            p = doc.add_paragraph()
-            r = p.add_run('─' * 80)
-            r.font.size = Pt(8)
-            r.font.color.rgb = RGBColor(0xD1, 0xD5, 0xDB)
             i += 1
             continue
 
