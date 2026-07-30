@@ -1,0 +1,180 @@
+/* ==========================================================
+   Maestr.ia — identidad visual
+   Paleta extraída del logo (libro + árbol de conocimiento + sol).
+   ========================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@700;800&family=Inter:wght@400;500;600&display=swap');
+
+:root {
+    --brand-primary:       #1D9E75;   /* verde principal — botones, .ia, árbol */
+    --brand-primary-hover: #0F6E56;
+    --brand-dark:          #0B3D2E;   /* verde oscuro — wordmark "Maestr", sidebar */
+    --brand-amber:         #F5B731;   /* ámbar — destellos, estado activo */
+    --brand-book:          #2ECC71;   /* verde libro — badges secundarios */
+    --brand-mint:          #E1F5EE;   /* verde muy pálido — bandas, highlights */
+    --brand-light:         #FFFFFF;
+    --brand-muted-white:   rgba(255, 255, 255, 0.72);
+    --brand-hover-transp:  rgba(29, 158, 117, 0.30);
+
+    --font-display: 'Nunito', 'Segoe UI', system-ui, sans-serif;
+    --font-body:    'Inter',  'Segoe UI', system-ui, sans-serif;
+
+    --radius-md: 8px;
+}
+
+/* Tipografía base — respeta Tailwind pero fija la familia global */
+body { font-family: var(--font-body); }
+h1, h2, h3, h4, .brand-display {
+    font-family: var(--font-display);
+    letter-spacing: -0.01em;
+}
+
+/* ─── Utilitarias ─────────────────────────────────────────────── */
+
+.brand-logo    { height: 36px; width: auto; display: block; }
+.brand-logo-sm { height: 28px; width: auto; display: block; }
+.brand-logo-lg { height: 56px; width: auto; display: block; }
+
+.btn-primary {
+    background: var(--brand-primary);
+    color: #FFFFFF;
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    padding: 0.5rem 1rem;
+    transition: background 120ms ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    border: none;
+    cursor: pointer;
+}
+.btn-primary:hover:not(:disabled) { background: var(--brand-primary-hover); }
+.btn-primary:disabled { background: #9CA3AF; cursor: not-allowed; }
+
+.badge-piar {
+    background: rgba(46, 204, 113, 0.15);
+    color: var(--brand-dark);
+    border: 1px solid rgba(46, 204, 113, 0.35);
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+/* ─── Sidebar oscuro: patrón para dashboard/aside principal ────
+   Al aplicar .brand-sidebar al <aside>, sus hijos con clases
+   Tailwind claras (bg-white/gray/blue-50, text-gray-*) se re-tonalizan
+   en runtime para contrastar sobre el verde oscuro. Se hace con
+   !important porque Tailwind CDN inserta reglas con especificidad alta. */
+
+.brand-sidebar { background: var(--brand-dark); color: var(--brand-muted-white); }
+
+.brand-sidebar a, .brand-sidebar button {
+    color: var(--brand-muted-white);
+    transition: background 120ms ease, color 120ms ease;
+}
+.brand-sidebar a:hover, .brand-sidebar button:hover {
+    background: var(--brand-hover-transp);
+    color: #FFFFFF;
+}
+.brand-sidebar .is-active,
+.brand-sidebar a.is-active {
+    color: var(--brand-amber);
+    background: rgba(245, 183, 49, 0.12);
+}
+
+.brand-sidebar .bg-white,
+.brand-sidebar .bg-gray-50, .brand-sidebar .bg-gray-100,
+.brand-sidebar .bg-blue-50, .brand-sidebar .bg-blue-100 {
+    background-color: rgba(255, 255, 255, 0.08) !important;
+    border-color:     rgba(255, 255, 255, 0.15) !important;
+}
+.brand-sidebar .border, .brand-sidebar .border-b,
+.brand-sidebar .border-t, .brand-sidebar .border-r {
+    border-color: rgba(255, 255, 255, 0.15) !important;
+}
+.brand-sidebar,
+.brand-sidebar .text-gray-500, .brand-sidebar .text-gray-600,
+.brand-sidebar .text-gray-700, .brand-sidebar .text-gray-800,
+.brand-sidebar .text-gray-900,
+.brand-sidebar .text-blue-700, .brand-sidebar .text-blue-800,
+.brand-sidebar .text-blue-900 {
+    color: rgba(255, 255, 255, 0.85) !important;
+}
+.brand-sidebar h1, .brand-sidebar h2, .brand-sidebar h3,
+.brand-sidebar .font-semibold, .brand-sidebar .font-bold {
+    color: #FFFFFF !important;
+}
+.brand-sidebar .text-blue-600, .brand-sidebar .text-blue-500 {
+    color: var(--brand-amber) !important;
+}
+.brand-sidebar .bg-blue-200, .brand-sidebar .bg-blue-600 {
+    background-color: rgba(29, 158, 117, 0.40) !important;
+}
+.brand-sidebar .hover\:bg-gray-100:hover,
+.brand-sidebar .hover\:bg-gray-200:hover,
+.brand-sidebar .hover\:bg-blue-50:hover {
+    background-color: rgba(255, 255, 255, 0.10) !important;
+}
+
+/* ─── Overrides globales — tokens azules Tailwind → paleta verde ──
+   FUERA de .brand-sidebar (que tiene sus overrides propios arriba). */
+
+body :not(.brand-sidebar):not(.brand-sidebar *).bg-blue-500,
+body :not(.brand-sidebar):not(.brand-sidebar *).bg-blue-600 {
+    background-color: var(--brand-primary) !important;
+}
+.hover\:bg-blue-600:hover, .hover\:bg-blue-700:hover {
+    background-color: var(--brand-primary-hover) !important;
+}
+body :not(.brand-sidebar):not(.brand-sidebar *).bg-blue-50,
+body :not(.brand-sidebar):not(.brand-sidebar *).bg-blue-100 {
+    background-color: var(--brand-mint) !important;
+}
+.hover\:bg-blue-50:hover { background-color: var(--brand-mint) !important; }
+body :not(.brand-sidebar):not(.brand-sidebar *).bg-blue-200 {
+    background-color: #B6E5D1 !important;
+}
+body :not(.brand-sidebar):not(.brand-sidebar *).text-blue-500,
+body :not(.brand-sidebar):not(.brand-sidebar *).text-blue-600,
+body :not(.brand-sidebar):not(.brand-sidebar *).text-blue-700 {
+    color: var(--brand-primary) !important;
+}
+body :not(.brand-sidebar):not(.brand-sidebar *).text-blue-800,
+body :not(.brand-sidebar):not(.brand-sidebar *).text-blue-900 {
+    color: #085041 !important;
+}
+body :not(.brand-sidebar):not(.brand-sidebar *).text-blue-200 {
+    color: #B6E5D1 !important;
+}
+body :not(.brand-sidebar):not(.brand-sidebar *).border-blue-200,
+body :not(.brand-sidebar):not(.brand-sidebar *).border-blue-300,
+body :not(.brand-sidebar):not(.brand-sidebar *).border-blue-500,
+body :not(.brand-sidebar):not(.brand-sidebar *).border-blue-600 {
+    border-color: var(--brand-primary) !important;
+}
+
+/* Focus rings verdes en inputs / textareas / selects */
+input:focus, textarea:focus, select:focus,
+.focus\:ring-blue-500:focus {
+    outline: none;
+    border-color: var(--brand-primary) !important;
+    box-shadow: 0 0 0 3px rgba(29, 158, 117, 0.20) !important;
+    --tw-ring-color: rgba(29, 158, 117, 0.20) !important;
+}
+
+/* Headings h1/h2 de página (fuera del sidebar) en verde oscuro */
+body :not(.brand-sidebar):not(.brand-sidebar *) h1,
+body :not(.brand-sidebar):not(.brand-sidebar *) h2 {
+    color: var(--brand-dark);
+}
+
+/* Footer universal — <footer class="brand-footer">…</footer> */
+.brand-footer {
+    text-align: center;
+    padding: 1rem;
+    font-size: 12px;
+    color: #888;
+    margin-top: 2rem;
+    font-family: var(--font-body);
+}
