@@ -292,9 +292,10 @@ def test_docx_borrador_incluye_marca_borrador(client, seed_docente, db_session):
     assert "BORRADOR" in texto_completo
     assert "Sujeto a revisión" in texto_completo
     # Todas las secciones en el DOCX (sprint markdown-docx: nombres nuevos).
-    # "Datos del estudiante" reemplazó "Caracterización" — el backfill del
-    # sanitizador mapea PIARs viejos guardados con schema legacy.
-    assert "Datos del estudiante" in texto_completo
+    # Post-sprint piar-legal-framework: "Información del estudiante" es
+    # la nueva sección donde cae "caracterizacion" (super-legacy). El
+    # backfill 2-nivel mapea schemas anteriores al vuelo.
+    assert "Información del estudiante" in texto_completo
     assert "Barreras" in texto_completo
     assert "Decreto 1421" in texto_completo
 
@@ -341,14 +342,13 @@ def test_contenido_sin_secciones_esperadas_se_marca_pendiente(monkeypatch, clien
     # OJO: el autouse fixture reemplaza el mock DESPUÉS del que puse acá,
     # así que este test valida el helper _sanitizar_contenido directo:
     from piar import _sanitizar_contenido, SECCIONES_PIAR
-    # Post-sprint markdown-docx: los inputs con keys legacy se mapean
-    # automáticamente al esquema nuevo antes de sanitizar. El helper
-    # SIEMPRE devuelve las 6 keys nuevas, con "[PENDIENTE]" en las que
-    # no vinieron. `caracterizacion` legacy → `Datos del estudiante`.
+    # Post-sprint piar-legal-framework: el backfill 2-nivel mapea inputs
+    # super-legacy (snake_case) al esquema NUEVO de 10 secciones.
+    # `caracterizacion` → `Información del estudiante`.
     limpio = _sanitizar_contenido({"caracterizacion": "Solo una sección"})
     for s in SECCIONES_PIAR:
         assert s in limpio
-    assert limpio["Datos del estudiante"] == "Solo una sección"
+    assert limpio["Información del estudiante"] == "Solo una sección"
     assert "[PENDIENTE" in limpio["Barreras para el aprendizaje y la participación"]
 
 
