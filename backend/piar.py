@@ -42,60 +42,84 @@ router = APIRouter(prefix="/api/piar", tags=["piar"])
 # ═══════════════════════════════════════════════════════════════
 
 SECCIONES_PIAR = (
-    "Datos del estudiante",
-    "Descripción del contexto escolar",
+    "Información del estudiante",
+    "Contexto escolar y familiar",
+    "Fortalezas e intereses",
     "Barreras para el aprendizaje y la participación",
-    "Ajustes razonables y apoyos",
-    "Estrategias de evaluación flexible",
-    "Seguimiento y compromisos",
+    "Ajustes razonables y estrategias DUA",
+    "Evaluación flexible",
+    "Apoyos requeridos",
+    "Metas del período",
+    "Acuerdos y compromisos",
+    "Seguimiento",
 )
 
-# Mapeo de keys legacy → nuevos títulos. Se usa al RENDERIZAR PIARs
-# guardados con el schema anterior (best-effort). No es destructivo:
-# los PIARs viejos se preservan en DB con sus keys originales.
-_LEGACY_TO_NUEVO = {
-    "caracterizacion":     "Datos del estudiante",
+# Backfill 2 niveles: PIARs guardados con schemas anteriores se mapean
+# al nuevo al RENDERIZAR el DOCX (no destructivo — la DB conserva las
+# keys originales). Nivel 1 = schema super-legacy (pre markdown-docx).
+# Nivel 2 = schema intermedio (6 secciones post markdown-docx).
+
+_SUPER_LEGACY_TO_NUEVO = {
+    # Pre-sprint markdown-docx (JSON con snake_case)
+    "caracterizacion":     "Información del estudiante",
     "barreras":            "Barreras para el aprendizaje y la participación",
-    "ajustes_razonables":  "Ajustes razonables y apoyos",
-    # `apoyos` legacy se concatena al final de "Ajustes razonables y apoyos"
-    # dentro de _normalizar_a_esquema_nuevo() — no tiene destino propio.
-    "metas":               "Estrategias de evaluación flexible",
-    "seguimiento":         "Seguimiento y compromisos",
+    "ajustes_razonables":  "Ajustes razonables y estrategias DUA",
+    # `apoyos` snake_case → "Apoyos requeridos" (nueva sección propia).
+    "apoyos":              "Apoyos requeridos",
+    "metas":               "Metas del período",
+    "seguimiento":         "Seguimiento",
+}
+
+_INTERMEDIO_TO_NUEVO = {
+    # Post-sprint markdown-docx (6 secciones nombradas)
+    "Datos del estudiante":                              "Información del estudiante",
+    "Descripción del contexto escolar":                  "Contexto escolar y familiar",
+    "Barreras para el aprendizaje y la participación":   "Barreras para el aprendizaje y la participación",
+    "Ajustes razonables y apoyos":                       "Ajustes razonables y estrategias DUA",
+    "Estrategias de evaluación flexible":                "Evaluación flexible",
+    "Seguimiento y compromisos":                         "Seguimiento",
 }
 
 
 def _normalizar_a_esquema_nuevo(contenido: dict) -> dict:
     """
-    Devuelve un dict con las 6 keys nuevas de SECCIONES_PIAR.
+    Devuelve un dict con las 10 keys nuevas de SECCIONES_PIAR.
 
-    - Si `contenido` ya tiene el esquema nuevo (alguna key en SECCIONES_PIAR),
-      se completa con "" las que falten y se devuelve tal cual.
-    - Si tiene el esquema legacy (keys en _LEGACY_TO_NUEVO), se mapea.
-      El campo legacy `apoyos` se concatena al final de "Ajustes razonables
-      y apoyos" bajo un sub-heading. "Descripción del contexto escolar"
-      no existía en el esquema legacy y queda con string vacío.
-    - Si es dict vacío o no reconocido, se devuelven todas las secciones
-      con string vacío (el generador DOCX pinta "[PENDIENTE — sin
-      información]" en cada una).
+    Cadena de decisión:
+    1. Si `contenido` tiene alguna key del schema NUEVO → completar
+       con "" las faltantes y devolver.
+    2. Si tiene keys del schema INTERMEDIO (6 títulos post markdown-docx)
+       → mapear cada una a su equivalente nuevo.
+    3. Si tiene keys del schema SUPER-LEGACY (snake_case pre-markdown)
+       → mapear via _SUPER_LEGACY_TO_NUEVO.
+    4. Si es dict vacío o no reconocido → todas las secciones en "".
+
+    "Fortalezas e intereses", "Acuerdos y compromisos" son secciones
+    NUEVAS que no existían en ningún schema anterior — quedan "" en
+    PIARs migrados (el DOCX renderiza [PENDIENTE — sin información]).
     """
     if not isinstance(contenido, dict):
         return {s: "" for s in SECCIONES_PIAR}
 
-    # ¿Ya está en esquema nuevo?
+    # (1) Ya está en esquema nuevo
     if any(k in contenido for k in SECCIONES_PIAR):
         return {s: str(contenido.get(s, "")).strip() for s in SECCIONES_PIAR}
 
-    # Esquema legacy → mapear
     out = {s: "" for s in SECCIONES_PIAR}
-    for legacy_key, nueva_key in _LEGACY_TO_NUEVO.items():
-        v = contenido.get(legacy_key)
+
+    # (2) Intermedio (6 secciones post markdown-docx)
+    if any(k in contenido for k in _INTERMEDIO_TO_NUEVO):
+        for viejo, nuevo in _INTERMEDIO_TO_NUEVO.items():
+            v = contenido.get(viejo)
+            if isinstance(v, str) and v.strip():
+                out[nuevo] = v.strip()
+        return out
+
+    # (3) Super-legacy (snake_case)
+    for viejo, nuevo in _SUPER_LEGACY_TO_NUEVO.items():
+        v = contenido.get(viejo)
         if isinstance(v, str) and v.strip():
-            out[nueva_key] = v.strip()
-    apoyos_legacy = contenido.get("apoyos")
-    if isinstance(apoyos_legacy, str) and apoyos_legacy.strip():
-        base = out["Ajustes razonables y apoyos"]
-        sub = "\n\n### Apoyos requeridos\n\n" + apoyos_legacy.strip()
-        out["Ajustes razonables y apoyos"] = (base + sub) if base else apoyos_legacy.strip()
+            out[nuevo] = v.strip()
     return out
 
 
