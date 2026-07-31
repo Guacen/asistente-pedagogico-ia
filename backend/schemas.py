@@ -12,6 +12,11 @@ class DocenteCreate(BaseModel):
     nombre_completo: str
     email: EmailStr
     password: str
+    # Sprint email-verification-consent — Ley 1581.
+    # Requerido para nuevos registros. El caller (auth.register) valida
+    # que sea True antes de crear el docente. Docentes existentes al
+    # momento del deploy quedan con NULL y aceptan via banner post-login.
+    consentimiento_datos: bool = False
 
 
 class DocenteUpdate(BaseModel):
@@ -29,6 +34,8 @@ class DocenteOut(BaseModel):
     ciudad: Optional[str]
     departamento: Optional[str]
     fecha_registro: datetime
+    email_verificado: bool = False
+    consentimiento_datos: Optional[bool] = None
 
     model_config = {"from_attributes": True}
 
@@ -42,6 +49,17 @@ class Token(BaseModel):
     access_token: str
     token_type: str
     docente: DocenteOut
+
+
+# ── Sprint email-verification-consent ──
+# Aceptación de política de datos por docentes existentes (grandfathered)
+# que loguearon después del deploy y todavía tienen consentimiento_datos=NULL.
+class AceptarConsentimiento(BaseModel):
+    aceptado: bool  # el frontend siempre manda True; falso se rechaza en el endpoint
+
+
+class ReenviarVerificacion(BaseModel):
+    email: EmailStr
 
 
 # ============================================================

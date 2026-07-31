@@ -53,7 +53,7 @@
                 <i class="fas fa-check-circle mt-0.5 mr-2"></i>
                 <div>
                     <p class="font-semibold">¡Cuenta creada!</p>
-                    <p class="text-sm">Redirigiendo al dashboard...</p>
+                    <p class="text-sm">Te enviamos un correo para verificar tu cuenta. Revisa tu bandeja.</p>
                 </div>
             </div>
             
@@ -155,19 +155,20 @@
                     <p id="password-confirm-error" class="text-red-600 text-xs mt-1 hidden"></p>
                 </div>
                 
-                <!-- Términos -->
-                <div class="flex items-start">
-                    <input 
-                        type="checkbox" 
-                        id="terminos" 
-                        required
-                        class="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                    >
-                    <label for="terminos" class="ml-2 text-sm text-gray-600">
-                        Acepto los 
-                        <a href="#" class="text-blue-600 hover:underline">Términos y Condiciones</a> 
-                        y la 
-                        <a href="#" class="text-blue-600 hover:underline">Política de Privacidad</a>
+                <!-- Consentimiento Ley 1581 — sprint email-verification-consent -->
+                <div style="border: 1px solid #E1F5EE; border-radius: 8px; padding: 1rem; margin-bottom: 0.5rem; background: #F9FAFB;">
+                    <label for="consentimiento" style="display: flex; gap: 10px; align-items: flex-start; cursor: pointer;">
+                        <input
+                            type="checkbox"
+                            id="consentimiento"
+                            required
+                            style="margin-top: 3px; accent-color: #1D9E75; flex-shrink: 0;"
+                        >
+                        <span style="font-size: 13px; color: #374151; line-height: 1.45;">
+                            Acepto la
+                            <a href="politica-datos.html" target="_blank" rel="noopener" style="color:#1D9E75; text-decoration: underline;">Política de Tratamiento de Datos Personales</a>
+                            (Ley 1581 de 2012) y autorizo a Maestr.ia a tratar mis datos con las finalidades ahí descritas.
+                        </span>
                     </label>
                 </div>
                 
@@ -262,10 +263,19 @@
             const email = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value;
             const passwordConfirm = document.getElementById('password-confirm').value;
-            
+            const consentimiento = document.getElementById('consentimiento').checked;
+
             // Validar contraseñas coinciden
             if (password !== passwordConfirm) {
                 document.getElementById('error-message').textContent = 'Las contraseñas no coinciden';
+                document.getElementById('error-alert').classList.remove('hidden');
+                return;
+            }
+
+            // Ley 1581: el consentimiento es obligatorio. El input tiene
+            // `required` pero validamos explícito por si alguien lo bypasa.
+            if (!consentimiento) {
+                document.getElementById('error-message').textContent = 'Debes aceptar la Política de Tratamiento de Datos Personales para continuar.';
                 document.getElementById('error-alert').classList.remove('hidden');
                 return;
             }
@@ -281,27 +291,23 @@
             document.getElementById('error-alert').classList.add('hidden');
             
             try {
-                // Registrar
-                await api.register(nombre, email, password);
-                
-                // Auto-login
-                await api.login(email, password);
-                
-                // Guardar usuario
-                const user = await api.getMe();
-                localStorage.setItem('user', JSON.stringify(user));
-                
-                // Mostrar éxito
+                // Registrar — backend crea el docente con email_verificado=false,
+                // envía correo con link de verificación (24h) y devuelve token JWT.
+                // El JWT queda guardado en localStorage por api.register, pero el
+                // docente no puede usar la app hasta clicar el link del correo.
+                await api.register(nombre, email, password, consentimiento);
+
+                // Mostrar éxito (el mensaje ahora dice "revisa tu bandeja").
                 document.getElementById('success-alert').classList.remove('hidden');
                 document.getElementById('registro-form').classList.add('hidden');
-                
-                // Redirigir — replace() por el mismo motivo que login.html:
-                // el usuario ya está autenticado, "atrás" no debe volver
-                // a registro.html donde el guard lo rebotaría.
+
+                // Redirigir a la landing de verificación en lugar del dashboard —
+                // el dashboard le rebotaría con 401 code=email_no_verificado. La
+                // landing tiene el flujo "reenviar" por si el correo no llegó.
                 setTimeout(() => {
-                    window.location.replace('dashboard.html');
-                }, 1500);
-                
+                    window.location.replace('verificar-email.html?email=' + encodeURIComponent(email));
+                }, 1800);
+
             } catch (error) {
                 document.getElementById('error-message').textContent = error.message || 'Error al crear la cuenta';
                 document.getElementById('error-alert').classList.remove('hidden');

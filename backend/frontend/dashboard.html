@@ -121,6 +121,41 @@
             <!-- Contenido -->
             <main class="flex-1 overflow-y-auto p-6">
 
+                <!-- Banner consentimiento Ley 1581 (grandfathered) — sprint email-verification-consent.
+                     Se muestra sólo si el docente tiene consentimiento_datos === null. -->
+                <div id="banner-consentimiento" class="hidden mb-6 rounded-xl border-l-4 p-4" style="background:#F9FAFB; border-left-color:#1D9E75;">
+                    <div class="flex items-start gap-3">
+                        <i class="fas fa-shield-halved text-xl mt-1" style="color:#1D9E75"></i>
+                        <div class="flex-1">
+                            <p class="font-semibold text-gray-900 mb-1">Necesitamos tu autorización de datos</p>
+                            <p class="text-sm text-gray-700 mb-3">
+                                Actualizamos nuestra Política de Tratamiento de Datos Personales (Ley 1581 de 2012).
+                                Para seguir usando Maestr.ia con tranquilidad, revisa y acepta la
+                                <a href="politica-datos.html" target="_blank" rel="noopener" class="underline" style="color:#1D9E75">política vigente</a>.
+                            </p>
+                            <div class="flex flex-wrap gap-2">
+                                <button
+                                    id="btn-aceptar-consentimiento"
+                                    class="px-4 py-2 rounded-lg text-white text-sm font-semibold"
+                                    style="background:#1D9E75"
+                                >
+                                    Aceptar y continuar
+                                </button>
+                                <a
+                                    href="politica-datos.html"
+                                    target="_blank"
+                                    rel="noopener"
+                                    class="px-4 py-2 rounded-lg text-sm font-semibold border border-gray-300 text-gray-700 hover:bg-gray-100"
+                                >
+                                    Leer la política
+                                </a>
+                            </div>
+                            <p id="banner-consentimiento-msg" class="text-xs mt-2 hidden"></p>
+                        </div>
+                    </div>
+                </div>
+
+
                 <!-- ── Stats ─────────────────────────────────── -->
                 <div class="grid sm:grid-cols-3 gap-4 mb-8">
                     <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
@@ -376,10 +411,21 @@
             renderSidebar();
             if (sub) renderPlan();
             renderStats();
+            mostrarBannerConsentimientoSiAplica(u);
 
         } catch (err) {
             console.error(err);
-            if (err.message?.includes('401') || err.message?.includes('Token')) {
+            const msg = err.message || '';
+            // Sprint email-verification-consent: /me devuelve 401 con
+            // code="email_no_verificado" cuando el docente autenticó pero
+            // aún no clicó el link. Redirigimos a la landing con su email
+            // para ofrecer el botón "reenviar" — NO limpiamos el token.
+            if (msg.includes('email_no_verificado')) {
+                const email = (Auth.getUser() || {}).email || '';
+                window.location.replace('verificar-email.html?email=' + encodeURIComponent(email));
+                return;
+            }
+            if (msg.includes('401') || msg.includes('Token')) {
                 // CRÍTICO: limpiar el token ANTES de redirigir. Si dejamos
                 // el token expirado/inválido en localStorage, el guard de
                 // login.html lo valida como bueno y nos rebota a dashboard
@@ -393,6 +439,35 @@
                 document.getElementById('no-grupos-msg').classList.remove('hidden');
             }
         }
+    }
+
+    // ── Banner consentimiento Ley 1581 (grandfathered) ────────────────
+    function mostrarBannerConsentimientoSiAplica(u) {
+        // Sólo los docentes creados antes del sprint tienen consentimiento
+        // en NULL. Nuevos registros pasan por el checkbox y quedan en TRUE.
+        if (!u || u.consentimiento_datos !== null) return;
+        const banner = document.getElementById('banner-consentimiento');
+        if (!banner) return;
+        banner.classList.remove('hidden');
+        const btn = document.getElementById('btn-aceptar-consentimiento');
+        btn.addEventListener('click', async function () {
+            const msg = document.getElementById('banner-consentimiento-msg');
+            btn.disabled = true;
+            const orig = btn.textContent;
+            btn.textContent = 'Guardando...';
+            try {
+                const actualizado = await api.aceptarConsentimiento();
+                Auth.setUser(actualizado);
+                banner.classList.add('hidden');
+                toast('Gracias, tu autorización quedó registrada.', 'success');
+            } catch (e) {
+                msg.textContent = 'No pudimos guardar tu autorización. Intenta de nuevo.';
+                msg.className = 'text-xs mt-2 text-red-600';
+                msg.classList.remove('hidden');
+                btn.disabled = false;
+                btn.textContent = orig;
+            }
+        }, { once: false });
     }
 
     // ── Header ────────────────────────────────────────────────────────

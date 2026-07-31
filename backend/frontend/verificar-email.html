@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verifica tu correo · Maestr.ia</title>
+    <link rel="icon" type="image/png" href="assets/icon.png">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/brand.css">
+</head>
+<body class="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 min-h-screen flex items-center justify-center p-4">
+
+    <div class="max-w-md w-full">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 text-center">
+
+            <img src="assets/logo.png" alt="Maestr.ia" class="mx-auto mb-4 brand-logo-lg">
+
+            <!-- Estado: cargando (mientras consultamos backend) -->
+            <div id="estado-cargando" class="py-6">
+                <i class="fas fa-spinner fa-spin text-4xl" style="color:#1D9E75"></i>
+                <p class="mt-4 text-gray-600">Verificando tu correo...</p>
+            </div>
+
+            <!-- Estado: revisa tu bandeja (post-registro, sin token) -->
+            <div id="estado-bandeja" class="hidden py-4">
+                <div class="mx-auto mb-4 w-16 h-16 rounded-full flex items-center justify-center" style="background:#E1F5EE">
+                    <i class="fas fa-envelope-open-text text-3xl" style="color:#1D9E75"></i>
+                </div>
+                <h1 class="text-2xl font-bold text-gray-900 mb-3">Revisa tu correo</h1>
+                <p class="text-gray-600 mb-4">
+                    Te enviamos un enlace de verificación a
+                    <strong id="email-destino" class="text-gray-900"></strong>.
+                    Haz clic en el botón del correo para activar tu cuenta.
+                </p>
+                <p class="text-xs text-gray-500 mb-6">
+                    ¿No ves el correo? Revisa la carpeta de spam o pídenos otro enlace.
+                </p>
+                <button
+                    id="btn-reenviar"
+                    class="w-full py-3 rounded-lg font-semibold text-white transition-colors"
+                    style="background:#1D9E75"
+                >
+                    Reenviar enlace de verificación
+                </button>
+                <p id="reenvio-msg" class="text-xs mt-3 hidden"></p>
+            </div>
+
+            <!-- Estado: verificado (ok) -->
+            <div id="estado-ok" class="hidden py-4">
+                <div class="mx-auto mb-4 w-16 h-16 rounded-full flex items-center justify-center" style="background:#E1F5EE">
+                    <i class="fas fa-check text-3xl" style="color:#1D9E75"></i>
+                </div>
+                <h1 class="text-2xl font-bold text-gray-900 mb-3">¡Correo verificado!</h1>
+                <p class="text-gray-600 mb-6">
+                    Tu cuenta está activa. Ya puedes iniciar sesión y empezar a usar Maestr.ia.
+                </p>
+                <a
+                    href="login.html"
+                    class="inline-block w-full py-3 rounded-lg font-semibold text-white"
+                    style="background:#1D9E75"
+                >
+                    Ir a iniciar sesión
+                </a>
+            </div>
+
+            <!-- Estado: enlace expirado -->
+            <div id="estado-expirado" class="hidden py-4">
+                <div class="mx-auto mb-4 w-16 h-16 rounded-full flex items-center justify-center bg-yellow-100">
+                    <i class="fas fa-clock text-3xl text-yellow-600"></i>
+                </div>
+                <h1 class="text-2xl font-bold text-gray-900 mb-3">El enlace expiró</h1>
+                <p class="text-gray-600 mb-4">
+                    Los enlaces de verificación son válidos por 24 horas. Ingresa tu correo y te enviamos uno nuevo.
+                </p>
+                <input
+                    type="email"
+                    id="email-reenvio"
+                    placeholder="tu@correo.com"
+                    class="w-full px-4 py-3 border border-gray-300 rounded-lg mb-3 focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                >
+                <button
+                    id="btn-reenviar-expirado"
+                    class="w-full py-3 rounded-lg font-semibold text-white transition-colors"
+                    style="background:#1D9E75"
+                >
+                    Enviar nuevo enlace
+                </button>
+                <p id="reenvio-msg-expirado" class="text-xs mt-3 hidden"></p>
+            </div>
+
+            <!-- Estado: enlace inválido / no encontrado -->
+            <div id="estado-invalido" class="hidden py-4">
+                <div class="mx-auto mb-4 w-16 h-16 rounded-full flex items-center justify-center bg-red-100">
+                    <i class="fas fa-times text-3xl text-red-600"></i>
+                </div>
+                <h1 class="text-2xl font-bold text-gray-900 mb-3">Enlace inválido</h1>
+                <p class="text-gray-600 mb-6">
+                    El enlace no es válido o ya fue usado. Intenta iniciar sesión o solicita uno nuevo desde el registro.
+                </p>
+                <a
+                    href="login.html"
+                    class="inline-block w-full py-3 rounded-lg font-semibold text-white"
+                    style="background:#1D9E75"
+                >
+                    Ir a iniciar sesión
+                </a>
+            </div>
+        </div>
+
+        <div class="mt-6 text-center">
+            <a href="index.html" class="text-gray-600 hover:text-gray-900 inline-flex items-center">
+                <i class="fas fa-arrow-left mr-2"></i>
+                Volver al inicio
+            </a>
+        </div>
+    </div>
+
+    <script src="js/config.js"></script>
+    <script src="js/api.js"></script>
+
+    <script>
+        const params = new URLSearchParams(window.location.search);
+        const token = params.get('token');
+        const emailFromQuery = params.get('email');
+
+        function mostrar(id) {
+            ['estado-cargando', 'estado-bandeja', 'estado-ok', 'estado-expirado', 'estado-invalido']
+                .forEach(x => document.getElementById(x).classList.add('hidden'));
+            document.getElementById(id).classList.remove('hidden');
+        }
+
+        async function pedirReenvio(email, msgId, btn) {
+            const msg = document.getElementById(msgId);
+            btn.disabled = true;
+            const original = btn.textContent;
+            btn.textContent = 'Enviando...';
+            try {
+                await api.reenviarVerificacion(email);
+                msg.textContent = 'Listo. Si tu correo está registrado y aún no está verificado, te enviamos un nuevo enlace.';
+                msg.className = 'text-xs mt-3 text-green-700';
+            } catch (e) {
+                msg.textContent = 'No pudimos enviar el correo. Intenta más tarde.';
+                msg.className = 'text-xs mt-3 text-red-600';
+            }
+            msg.classList.remove('hidden');
+            setTimeout(() => {
+                btn.disabled = false;
+                btn.textContent = original;
+            }, 3000);
+        }
+
+        (async function main() {
+            // Modo A: llegamos desde el correo, con ?token=XXX → consumir
+            if (token) {
+                try {
+                    await api.verificarEmail(token);
+                    mostrar('estado-ok');
+                    return;
+                } catch (e) {
+                    // El backend devuelve 410 code=token_expirado, 404 si el
+                    // token no existe. El mensaje del error viene serializado
+                    // como JSON en e.message a veces — buscamos el keyword.
+                    const msg = (e && e.message) ? String(e.message) : '';
+                    if (msg.includes('token_expirado') || msg.includes('410') || msg.toLowerCase().includes('expir')) {
+                        mostrar('estado-expirado');
+                    } else {
+                        mostrar('estado-invalido');
+                    }
+                    return;
+                }
+            }
+
+            // Modo B: llegamos desde el registro, con ?email=X → mostrar
+            // "revisa tu bandeja" y ofrecer botón de reenvío.
+            if (emailFromQuery) {
+                document.getElementById('email-destino').textContent = emailFromQuery;
+                mostrar('estado-bandeja');
+                document.getElementById('btn-reenviar').addEventListener('click', function () {
+                    pedirReenvio(emailFromQuery, 'reenvio-msg', this);
+                });
+                return;
+            }
+
+            // Sin querystring: no sabemos qué mostrar, tratamos como inválido.
+            mostrar('estado-invalido');
+        })();
+
+        // Handler del formulario "enlace expirado"
+        document.getElementById('btn-reenviar-expirado').addEventListener('click', function () {
+            const em = document.getElementById('email-reenvio').value.trim();
+            if (!em) {
+                const msg = document.getElementById('reenvio-msg-expirado');
+                msg.textContent = 'Ingresa tu correo.';
+                msg.className = 'text-xs mt-3 text-red-600';
+                msg.classList.remove('hidden');
+                return;
+            }
+            pedirReenvio(em, 'reenvio-msg-expirado', this);
+        });
+    </script>
+</body>
+</html>

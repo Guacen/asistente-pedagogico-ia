@@ -122,6 +122,55 @@ def apply_migrations():
             conn.commit()
             print("✅ Migración: columna 'id_sesion' agregada a 'mensajes' (nullable)")
 
+    # ── Sprint email-verification-consent ──
+    # 5 columnas nuevas en docentes + tabla email_verifications.
+    # IMPORTANTE: este bloque va ANTES de _backfill_instituciones_unipersonales
+    # porque el backfill hace SELECT docentes.* — si el ALTER TABLE corre
+    # después, SQLAlchemy pide columnas que la DB aún no tiene y crashea
+    # (mismo patrón que ya se documentó para 'es_admin').
+    #
+    # Grandfathered: los docentes existentes al momento del deploy quedan
+    # con email_verificado=TRUE — no queremos cortar sesiones activas.
+    cols_doc_v3 = [c["name"] for c in inspect(engine).get_columns("docentes")]
+    with engine.connect() as conn:
+        if "email_verificado" not in cols_doc_v3:
+            conn.execute(text(
+                "ALTER TABLE docentes ADD COLUMN email_verificado BOOLEAN NOT NULL DEFAULT FALSE"
+            ))
+            conn.execute(text("UPDATE docentes SET email_verificado = TRUE"))
+            conn.commit()
+            print("✅ Migración: 'email_verificado' agregada a 'docentes' + backfill grandfathered")
+        if "fecha_verificacion" not in cols_doc_v3:
+            conn.execute(text(
+                "ALTER TABLE docentes ADD COLUMN fecha_verificacion TIMESTAMP"
+            ))
+            conn.commit()
+            print("✅ Migración: 'fecha_verificacion' agregada a 'docentes'")
+        if "consentimiento_datos" not in cols_doc_v3:
+            # NULL para grandfathered — el frontend muestra banner al login
+            # y los NUEVOS registros lo setean en TRUE via el flujo del form.
+            conn.execute(text(
+                "ALTER TABLE docentes ADD COLUMN consentimiento_datos BOOLEAN"
+            ))
+            conn.commit()
+            print("✅ Migración: 'consentimiento_datos' agregada a 'docentes' (NULL para existentes)")
+        if "fecha_consentimiento" not in cols_doc_v3:
+            conn.execute(text(
+                "ALTER TABLE docentes ADD COLUMN fecha_consentimiento TIMESTAMP"
+            ))
+            conn.commit()
+            print("✅ Migración: 'fecha_consentimiento' agregada a 'docentes'")
+        if "ip_consentimiento" not in cols_doc_v3:
+            conn.execute(text(
+                "ALTER TABLE docentes ADD COLUMN ip_consentimiento VARCHAR(45)"
+            ))
+            conn.commit()
+            print("✅ Migración: 'ip_consentimiento' agregada a 'docentes'")
+
+    # Tabla email_verifications — create_all idempotente
+    from models import EmailVerification  # noqa: F401
+    Base.metadata.create_all(bind=engine, tables=[EmailVerification.__table__])
+
     # Backfill uni-personal: cada docente sin id_institucion recibe una
     # Institucion nueva a su nombre. Idempotente — si ya tiene, no toca.
     _backfill_instituciones_unipersonales()
@@ -136,6 +185,8 @@ def apply_migrations():
         print("✅ Migración: tabla 'instituciones' verificada/creada")
     if "chat_sesiones" in inspector.get_table_names():
         print("✅ Migración: tabla 'chat_sesiones' verificada/creada")
+    if "email_verifications" in inspector.get_table_names():
+        print("✅ Migración: tabla 'email_verifications' verificada/creada")
 
     print("✅ Migraciones aplicadas")
 

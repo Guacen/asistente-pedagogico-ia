@@ -34,9 +34,9 @@ def test_engine():
     )
     from database import Base
     from models import (  # noqa: F401 — asegura registro de tablas en Base
-        Archivo, Calificacion, ChatSesion, Docente, Estudiante,
-        EvaluacionColumna, Grupo, Institucion, Mensaje, Nota, PIAR,
-        RateLimitCounter, Suscripcion, UsoMensual,
+        Archivo, Calificacion, ChatSesion, Docente, EmailVerification,
+        Estudiante, EvaluacionColumna, Grupo, Institucion, Mensaje, Nota,
+        PIAR, RateLimitCounter, Suscripcion, UsoMensual,
     )
     Base.metadata.create_all(bind=engine)
     yield engine
@@ -54,13 +54,24 @@ def db_session(test_engine):
 
 
 # ─── Docentes sembrados (para tests que necesitan datos base) ──────────────
-def _make_docente(db_session, email: str, nombre: str, password_plain: str = "test1234"):
+def _make_docente(
+    db_session, email: str, nombre: str, password_plain: str = "test1234",
+    email_verificado: bool = True,
+):
+    """
+    Fabrica un docente sembrado. Por default queda con `email_verificado=True`
+    para simular el estado grandfathered (todos los docentes que existían
+    antes del sprint email-verification-consent tienen la columna en TRUE
+    tras el backfill de la migración). Tests del sprint que necesiten
+    probar el bloqueo de /me pueden pedir `email_verificado=False`.
+    """
     from models import Docente
     from auth import hash_password
     docente = Docente(
         nombre_completo=nombre,
         email=email,
         password_hash=hash_password(password_plain),
+        email_verificado=email_verificado,
     )
     db_session.add(docente)
     db_session.commit()
