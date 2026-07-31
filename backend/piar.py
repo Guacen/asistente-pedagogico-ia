@@ -123,6 +123,123 @@ def _normalizar_a_esquema_nuevo(contenido: dict) -> dict:
     return out
 
 
+# ═══════════════════════════════════════════════════════════════
+# SCHEMA JSON FIJO (sprint piar-fixed-format)
+# ═══════════════════════════════════════════════════════════════
+#
+# En el schema fijo el LLM devuelve JSON con 14 claves snake_case,
+# nosotros rellenamos un template Markdown estático (piar_template.md)
+# y el DOCX se genera de eso. Ventajas: 100% determinístico en formato,
+# validación estricta, sub-campos que antes se agrupaban (compromisos
+# separados institución/docente/familia) quedan explícitos.
+
+from pathlib import Path
+
+# Path al template — se calcula una vez y se cachea.
+_PIAR_TEMPLATE_PATH = Path(__file__).resolve().parent / "templates" / "piar_template.md"
+_piar_template_cache: Optional[str] = None
+
+# Las 14 claves que el LLM debe devolver. NO incluyen los 5 metadatos
+# del estudiante (nombre, grado, docente, diagnostico, fecha) porque
+# esos vienen del backend, no del LLM.
+CLAVES_JSON_PIAR = (
+    "contexto_escolar_familiar",
+    "fortalezas_intereses",
+    "barreras_bap",
+    "dua_representacion",
+    "dua_expresion",
+    "dua_motivacion",
+    "evaluacion_flexible",
+    "apoyos_requeridos",
+    "metas_periodo",
+    "compromisos_institucion",
+    "compromisos_docente",
+    "compromisos_familia",
+    "fecha_revision",
+    "observaciones_seguimiento",
+)
+
+
+def _cargar_template_piar() -> str:
+    """Lee el template una vez y lo cachea en memoria."""
+    global _piar_template_cache
+    if _piar_template_cache is None:
+        _piar_template_cache = _PIAR_TEMPLATE_PATH.read_text(encoding="utf-8")
+    return _piar_template_cache
+
+
+def _es_esquema_json_14_claves(contenido: dict) -> bool:
+    """
+    True si el dict corresponde al schema del sprint piar-fixed-format.
+    Detección: al menos una key esperada del snake_case Y ninguna key
+    del schema de 10-secciones (para no confundir con super-legacy que
+    también tiene snake_case pero con otras keys).
+    """
+    if not isinstance(contenido, dict) or not contenido:
+        return False
+    tiene_nuevas = any(k in contenido for k in CLAVES_JSON_PIAR)
+    tiene_secciones_nombradas = any(k in contenido for k in SECCIONES_PIAR)
+    return tiene_nuevas and not tiene_secciones_nombradas
+
+
+def _sanitizar_json_14_claves(bruto: dict) -> dict:
+    """
+    Garantiza las 14 keys en el dict + string clean. Missing keys → "".
+    NO agrega defaults semánticos ("PENDIENTE") acá; eso queda para el
+    rendering final donde el markdown_parser detecta strings vacíos.
+    """
+    if not isinstance(bruto, dict):
+        return {k: "" for k in CLAVES_JSON_PIAR}
+    out = {}
+    for k in CLAVES_JSON_PIAR:
+        v = bruto.get(k, "")
+        out[k] = v.strip() if isinstance(v, str) else ""
+    return out
+
+
+def _rellenar_template_markdown(json_llm: dict, datos_estudiante: dict) -> str:
+    """
+    Combina los 14 campos del LLM + 5 metadatos del estudiante en el
+    template piar_template.md y retorna el Markdown final listo para
+    parsear.
+
+    Validación: si al JSON del LLM le faltan claves, se levanta
+    ValueError con la lista de faltantes — la política es "fallar
+    rápido y explícito" en vez de generar un PIAR malformado.
+
+    Datos del estudiante que el template espera:
+        nombre, grado, docente, diagnostico, fecha
+    Si alguno no viene en datos_estudiante, se rellena con "—".
+    """
+    if not isinstance(json_llm, dict):
+        raise ValueError("json_llm debe ser un dict con las 14 claves del PIAR")
+    faltantes = [k for k in CLAVES_JSON_PIAR if k not in json_llm]
+    if faltantes:
+        raise ValueError(
+            f"PIAR incompleto — el LLM no devolvió estas claves: {faltantes}"
+        )
+
+    # Rellenar campos vacíos con marcador de pendiente para preservar
+    # el layout uniforme del documento.
+    json_saneado = {
+        k: (json_llm.get(k, "") or "").strip() or "[PENDIENTE — sin información]"
+        for k in CLAVES_JSON_PIAR
+    }
+
+    # Metadatos del estudiante con defaults defensivos.
+    meta_defaults = {
+        "nombre":      "—",
+        "grado":       "—",
+        "docente":     "—",
+        "diagnostico": "—",
+        "fecha":       datetime.utcnow().strftime("%d/%m/%Y"),
+    }
+    meta = {**meta_defaults, **{k: v for k, v in (datos_estudiante or {}).items() if v}}
+
+    template = _cargar_template_piar()
+    return template.format_map({**meta, **json_saneado})
+
+
 class PIARCreateRequest(BaseModel):
     id_estudiante: str
     periodo: int = Field(ge=1, le=4)
@@ -234,22 +351,21 @@ async def _sintetizar_conversacion_a_json(
     historial: List[Mensaje],
 ) -> dict:
     """
-    Envía la conversación PIAR completa al proveedor de IA y espera que
-    devuelva SOLO el documento en Markdown con las 6 secciones fijas de
-    SECCIONES_PIAR (títulos como `## `). El Markdown se parsea con
-    markdown_parser.parse_markdown_sections y se retorna como dict
-    {título: contenido_md}.
+    Sprint piar-fixed-format: el LLM devuelve JSON con las 14 claves
+    fijas de CLAVES_JSON_PIAR (snake_case). Se persiste ese dict en
+    PIAR.contenido; al renderizar el DOCX se combina con el template
+    piar_template.md para garantizar formato 100% determinístico.
 
-    El nombre de la función se preserva por retro-compat con tests que
-    mockean este helper — internamente ya no hay JSON, sólo Markdown.
+    Nombre de la función preservado por retro-compat con tests que
+    mockean este helper.
 
-    Si la respuesta del modelo no contiene los headings esperados, el
-    parser rellena con "" y `_sanitizar_contenido` completa con el
-    marker de pendiente en vez de crashear.
+    Si el JSON no parsea (modelo devolvió otra cosa), fallback a un
+    skeleton con las 14 keys vacías — el generador DOCX pondrá
+    "[PENDIENTE — sin información]" en cada campo.
     """
+    import json as _json
     from ia import _bloque_contexto_grupo, _bloque_piar
     from prompts import PROMPT_BASE, PROMPT_MODO_PIAR
-    from markdown_parser import parse_markdown_sections
 
     system_prompt = (
         PROMPT_BASE
@@ -267,24 +383,40 @@ async def _sintetizar_conversacion_a_json(
         else:
             messages.append({"role": role, "content": msg.contenido})
 
-    # Turno final de consolidación (pide Markdown, no JSON).
+    # Turno final de consolidación: pide JSON con las 14 claves EXACTAS.
+    claves_bullet = "\n".join(f'  "{k}": "..."' for k in CLAVES_JSON_PIAR)
     instruccion_final = (
-        "TURNO DE CONSOLIDACIÓN — Sintetizá TODA la conversación anterior en el "
-        "documento completo del PIAR siguiendo el formato Markdown obligatorio "
-        "descripto arriba en el system prompt. Devolvé EXACTAMENTE las 6 secciones "
-        f"con `## ` y estos nombres exactos: {', '.join(SECCIONES_PIAR)}. "
-        "Cada sección en registro formal, vocabulario del Decreto 1421 (BAP, "
-        "ajustes razonables, apoyos), sin patologizar. Secciones no cubiertas "
-        f"→ `{_PENDIENTE_MARKER}`. Sin texto adicional antes ni después."
+        "TURNO DE CONSOLIDACIÓN — Sintetizá TODA la conversación anterior "
+        "en JSON estructurado. Devolvé SOLO el JSON con exactamente estas "
+        "14 claves, sin texto antes ni después, sin ```json:\n\n"
+        "{\n" + claves_bullet + "\n}\n\n"
+        "Reglas:\n"
+        "- Cada valor es texto Markdown en registro formal, apto para "
+        "documento legal que la familia pueda leer.\n"
+        "- fortalezas_intereses SIEMPRE antes que barreras_bap en la "
+        "conversación previa; escribí ambas con el mismo cuidado.\n"
+        "- barreras_bap describe el CONTEXTO (metodología uniforme, "
+        "material inaccesible, evaluación no diversificada, etc.), NO al "
+        "estudiante. Usá 'el contexto presenta barreras de tipo…'.\n"
+        "- dua_representacion / dua_expresion / dua_motivacion: cada uno "
+        "con al menos 2 estrategias concretas aplicables en el aula.\n"
+        "- evaluacion_flexible: enumerar AL MENOS 3 alternativas concretas "
+        "(oral, portafolio, proyecto, rúbrica adaptada, etc.).\n"
+        "- apoyos_requeridos: citá el Decreto 1421 al menos una vez.\n"
+        "- compromisos_institucion / compromisos_docente / compromisos_"
+        "familia: acciones concretas, medibles.\n"
+        "- fecha_revision: formato DD/MM/YYYY o descripción textual "
+        "(ej: 'Final del período académico').\n"
+        "- Prohibido: 'sufre', 'padece', 'déficit', 'trastorno'.\n"
+        "- Si algún campo no se cubrió, dejá string vacío (\"\") — el "
+        "generador lo marcará como pendiente.\n"
     )
     if messages and messages[-1]["role"] == "user":
         messages[-1]["content"] += "\n\n" + instruccion_final
     else:
         messages.append({"role": "user", "content": instruccion_final})
 
-    # Llamada sin streaming — respuesta de una sola vez para parseo.
-    # Delega en el proveedor activo (Claude / Gemini). El endpoint captura
-    # el RuntimeError o el ProveedorNoConfiguradoError y decide el status.
+    # Llamada al proveedor activo (Claude / Gemini).
     import llm
     try:
         raw = (await llm.respuesta_completa(
@@ -293,13 +425,18 @@ async def _sintetizar_conversacion_a_json(
     except Exception as exc:
         raise RuntimeError(f"Error llamando al proveedor de IA para síntesis: {exc}") from exc
 
-    # Robustez: si el modelo envuelve la respuesta en ```markdown ... ```
+    # Robustez: si el modelo envuelve el JSON en ```json ... ```
     if raw.startswith("```"):
-        raw = re.sub(r"^```(?:markdown|md)?\s*", "", raw)
+        raw = re.sub(r"^```(?:json)?\s*", "", raw)
         raw = re.sub(r"\s*```$", "", raw)
 
-    parsed = parse_markdown_sections(raw, esperadas=list(SECCIONES_PIAR))
-    return _sanitizar_contenido(parsed)
+    # Fallback tolerante: si no parsea, devolvemos las 14 keys vacías —
+    # es mejor un PIAR con secciones pendientes que un 500 al usuario.
+    try:
+        parsed = _json.loads(raw)
+    except Exception:
+        return _sanitizar_json_14_claves({})
+    return _sanitizar_json_14_claves(parsed if isinstance(parsed, dict) else {})
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -319,48 +456,73 @@ def _construir_piar_docx(
     piar: PIAR,
 ) -> bytes:
     """
-    Genera el DOCX del PIAR usando el template Maestr.ia. El sello
-    BORRADOR/APROBADO se inyecta como una "sección virtual" al comienzo
-    del cuerpo, antes de las 6 secciones canónicas de SECCIONES_PIAR.
+    Genera el DOCX del PIAR con formato 100% determinístico.
 
-    Retro-compat: si `piar.contenido` viene con las keys legacy (PIARs
-    guardados antes del sprint markdown-docx), `_normalizar_a_esquema_nuevo`
-    las mapea a los 6 títulos actuales antes de renderizar.
+    Router 3-schemas (post sprint piar-fixed-format):
+    - Schema NUEVO (JSON de 14 claves snake_case): se rellena
+      piar_template.md con format_map y se parsea a secciones. El LLM
+      no controla los títulos ni el orden — solo el contenido.
+    - Schema anterior (10 secciones nombradas / intermedio / super-legacy):
+      _normalizar_a_esquema_nuevo mapea y se renderiza directo. PIARs
+      guardados antes de este sprint siguen abriéndose bien.
+
+    El sello BORRADOR/APROBADO se inyecta como "sección virtual" al
+    inicio en ambos casos, sin acoplar el template al modelo PIAR.
     """
     from templates.maestria_template import generar_piar_docx
+    from markdown_parser import parse_markdown_sections
 
-    # Normalizamos el contenido al esquema nuevo (retro-compat para PIARs
-    # guardados con keys viejas: caracterizacion, ajustes_razonables, etc.)
-    contenido_dict = _normalizar_a_esquema_nuevo(piar.contenido or {})
-
-    # Sello BORRADOR/APROBADO como primera sección — así aparece arriba
-    # del PIAR sin acoplar el template al modelo PIAR.
-    if piar.estado == "aprobado":
-        fecha_aprob = piar.aprobado_en.strftime("%d/%m/%Y") if piar.aprobado_en else "—"
-        sello_md = f"**APROBADO — {fecha_aprob}**"
-    else:
-        sello_md = "**BORRADOR — Sujeto a revisión**"
-    version_line = f"Versión v{piar.version} · Periodo {piar.periodo} · Año {piar.anio}"
-
-    secciones: dict[str, str] = {"Estado del documento": f"{sello_md}\n\n{version_line}"}
-    for k in SECCIONES_PIAR:
-        secciones[k] = contenido_dict.get(k, "")
-
-    # Datos de portada — usan campos legacy que ya viven en el modelo.
+    # Datos de portada — comunes a ambos schemas.
     inst = (getattr(docente, "institucion", None) or "").strip()
     ciudad = (getattr(docente, "ciudad", None) or "").strip()
     grado_display = f"{grupo.grado} · {grupo.asignatura} · {grupo.nombre_grupo}"
     if inst:
         grado_display += f" ({inst}{' — ' + ciudad if ciudad else ''})"
 
-    datos = {
+    datos_docx = {
         "nombre": estudiante.codigo_estudiante,
         "grado":  grado_display,
         "docente": docente.nombre_completo,
         "fecha":  datetime.now().strftime("%d/%m/%Y"),
     }
 
-    buf = generar_piar_docx(secciones, datos)
+    # Sello BORRADOR/APROBADO — misma lógica en ambos schemas.
+    if piar.estado == "aprobado":
+        fecha_aprob = piar.aprobado_en.strftime("%d/%m/%Y") if piar.aprobado_en else "—"
+        sello_md = f"**APROBADO — {fecha_aprob}**"
+    else:
+        sello_md = "**BORRADOR — Sujeto a revisión**"
+    version_line = f"Versión v{piar.version} · Periodo {piar.periodo} · Año {piar.anio}"
+    sello_seccion = {"Estado del documento": f"{sello_md}\n\n{version_line}"}
+
+    contenido = piar.contenido or {}
+
+    if _es_esquema_json_14_claves(contenido):
+        # ── Path NUEVO: template estático + JSON del LLM ──
+        # Datos del estudiante que van INTO el template piar_template.md.
+        # `diagnostico` viene de estudiante (campo legacy en la ficha).
+        datos_template = {
+            "nombre":      estudiante.codigo_estudiante,
+            "grado":       grado_display,
+            "docente":     docente.nombre_completo,
+            "diagnostico": (getattr(estudiante, "diagnostico", "") or "—").strip(),
+            "fecha":       datetime.now().strftime("%d/%m/%Y"),
+        }
+        markdown_final = _rellenar_template_markdown(contenido, datos_template)
+        # parse_markdown_sections divide por `## `, preservando cada
+        # bloque en orden. El template garantiza que aparezcan las 10
+        # secciones canónicas siempre en el mismo orden y con los
+        # mismos nombres — el LLM no puede cambiarlo.
+        secciones_parseadas = parse_markdown_sections(markdown_final)
+        secciones = {**sello_seccion, **secciones_parseadas}
+    else:
+        # ── Path RETRO-COMPAT: mapear al schema de 10 secciones ──
+        contenido_dict = _normalizar_a_esquema_nuevo(contenido)
+        secciones = dict(sello_seccion)
+        for k in SECCIONES_PIAR:
+            secciones[k] = contenido_dict.get(k, "")
+
+    buf = generar_piar_docx(secciones, datos_docx)
     return buf.read()
 
 
