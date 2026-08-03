@@ -123,6 +123,8 @@ def on_startup():
         print(f"🤖 Proveedor IA: Gemini (Google) — {settings.GEMINI_MODEL} (modo gratuito)")
     else:
         print("❌ Sin proveedor IA configurado — set ANTHROPIC_API_KEY (o CLAUDE_API_KEY) o GOOGLE_API_KEY")
+    if not settings.STRIPE_SECRET_KEY:
+        print("⚠️  WARNING: STRIPE_SECRET_KEY vacío — /api/suscripciones/checkout y el webhook fallarán (503) hasta configurarlo")
     print("📖 Docs: http://localhost:8000/docs")
     print("🚀 App:  http://localhost:8000")
 
