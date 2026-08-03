@@ -16,19 +16,19 @@
 - **Pasarela de pago Stripe** ya integrada: checkout, cancelación de suscripción, webhook (`suscripciones.py`). En USD, orientada a un modelo de precios que aún no está en COP.
 - **Identidad de marca Maestr.ia** aplicada a los 11 HTML del frontend, logo y paleta de colores (`css/brand.css`), exportación DOCX rebrandeada (planes, rúbricas, boletines, PIAR).
 - **CI**: GitHub Actions corre la suite completa de pytest en cada push/PR contra `main`.
+- **Endpoint admin de mantenimiento** (`backend/admin.py`, PR #37): `POST /api/admin/reset-limites-periodo` purga `rate_limit_counter`, protegido por `Docente.es_admin`. Pensado para llamarse a mano o desde un cron externo (no incluye scheduler propio — ver nota en el backlog).
 
 ### Tests
 
-- **263 tests**, distribuidos en 26 archivos bajo `backend/tests/`.
-- **263 passed, 0 failed** en la corrida completa (~65s) al momento de este análisis (255 previos + 8 de `test_password_reset.py`, PR #34).
-- Cobertura por área: auth (incluye recuperación de contraseña), aislamiento entre docentes (multi-tenant), chat multi-modo (unitario + integración), sesiones, PIAR (generación, formato, validación JSON, cumplimiento legal, ficha de estudiante), calificaciones/boletines, DOCX (template + markdown parser), multi-institución, panel docente, import CSV, verificación de email + consentimiento.
+- **266 tests**, distribuidos en 28 archivos bajo `backend/tests/`.
+- **266 passed, 0 failed** en la corrida completa (~66s) al momento de este análisis (255 base + 8 de `test_password_reset.py` PR #34 + 3 de `test_admin_reset_limites.py` PR #37).
+- Cobertura por área: auth (incluye recuperación de contraseña), aislamiento entre docentes (multi-tenant), chat multi-modo (unitario + integración), sesiones, PIAR (generación, formato, validación JSON, cumplimiento legal, ficha de estudiante), calificaciones/boletines, DOCX (template + markdown parser), multi-institución, panel docente, import CSV, verificación de email + consentimiento, reset de rate limits admin.
 - No hay medición de cobertura de línea (`coverage.py`) configurada — el número de tests es alto y cubre casos de negocio, pero no hay un % de cobertura de código reportado.
 
 ### Deuda técnica conocida
 
-- **Responsive real es parcial**: todos los HTML tienen `<meta viewport>`, pero solo hay **1 media query** en `css/main.css` y ninguna en `css/brand.css`. La base está, pero no hay trabajo de adaptación real a pantallas chicas.
+- **Responsive móvil parcial** (PR #36): se corrigió el caso más grave — sidebar de dashboard.html y panel de sesiones de chat.html ya no se comen 70-85% de un viewport de 375px. Verificado por lectura de código (breakpoints Tailwind vs. anchos en px), **no hay herramienta de browser/screenshot en este entorno para confirmarlo visualmente** — pendiente que alguien lo abra en un dispositivo/DevTools real. `precios.html`, `grupos.html`, `grupo-panel.html` y `panel-docente.html` (mismo patrón de sidebar `w-64`) no se tocaron — quedan con el mismo problema si tienen el mismo layout.
 - **`precios.html` desactualizado**: muestra precios placeholder en USD ($9.99 / $7.99) con color `blue-600` hardcodeado que no corresponde a la paleta de marca (`#1D9E75` / `#0B3D2E` / `#F5B731`). No refleja los 4 planes en COP.
-- **Sin reset de límites por período académico**: `RateLimitCounter` resetea solo (es por fecha diaria) y `UsoMensual` es por mes calendario — ninguno de los dos está atado al `periodo_actual` del `Grupo` (períodos académicos colombianos: bimestres/trimestres). Un docente que cambia de período sigue con los mismos contadores.
 - **Sin mascota Chispa** en ningún HTML/CSS del frontend.
 - **Sin exportación a PDF** desde el chat (solo DOCX vía PIAR/documento.py).
 - **Sin programa de referidos** ni código de benchmark de modelos IA (Claude/GPT/Gemini) — ninguno tiene rastro en el código todavía, aunque el diseño experimental ya existe (ver "Contexto académico").
@@ -56,6 +56,9 @@
 13. **Verificación de correo + consentimiento Ley 1581** (PR #32, mergeado 2026-08-03).
 14. **Cache-busting de assets estáticos** (commit directo a `main`, 2026-08-03) — `?v=` en todos los `<script>`/`<link>` locales.
 15. **Recuperación de contraseña** (PR #34, 2026-08-03) — mismo patrón que verificación de email: `PasswordResetToken` (1h TTL, un solo uso), `forgot-password` / `reset-password`, `recuperar-password.html` + `nueva-password.html`.
+16. **Confirmación de estado del backlog** (PR #35, 2026-08-03) — PIAR template JSON y Decreto 1421 ya estaban done desde PRs anteriores, corregido en este documento.
+17. **Responsive móvil — dashboard y chat** (PR #36, 2026-08-03) — sidebar de dashboard.html a drawer con backdrop en <768px, panel de sesiones de chat.html colapsado por defecto en mobile, fix de un overflow introducido por el PR #34 en login.html.
+18. **Reset de límites por período académico** (PR #37, 2026-08-03) — `POST /api/admin/reset-limites-periodo`, protegido por `Docente.es_admin`, purga `rate_limit_counter`.
 
 ---
 
@@ -70,10 +73,10 @@
 | Recuperación de contraseña | Flujo "olvidé mi contraseña" vía email (token + reset) | Media | ✅ done — 2026-08-03, PR #34 |
 | PIAR formato fijo con template JSON | Estructura de secciones inamovible, JSON del LLM sobre template estático | Alta | ✅ done — ya implementado en PR #31 (verificado de nuevo el 2026-08-03, sin cambios de código). `backend/templates/piar_template.md` existe con 10 secciones top-level (una de ellas, "Ajustes razonables y estrategias DUA", se subdivide en 3 sub-secciones DUA — 13 bloques de contenido en total, no 14). El test pedido ("3 PIARs distintos deben tener siempre las mismas secciones") ya existe: `test_3_piars_distintos_producen_las_mismas_10_secciones_en_el_mismo_orden` en `test_piar_format_consistency.py`. |
 | Prompts con Decreto 1421 completo | Marco legal completo en el prompt del modo PIAR | Alta | ✅ done — ya implementado, verificado de nuevo el 2026-08-03 sin cambios de código (17 tests de cumplimiento legal en `test_piar_legal_compliance.py`) |
-| Pasarela de pago (Wompi) | Cobro en COP vía pasarela colombiana | Media-Alta | 🟡 Stripe ya integrado (USD) — falta evaluar si se reemplaza o se suma Wompi para COP |
+| Pasarela de pago (Wompi) | Cobro en COP vía pasarela colombiana (PSE + Nequi + tarjetas); Wompi no tiene SDK Python oficial, requiere integrar su API REST directamente | Media-Alta | ⏸️ **Pausado a propósito** — 2026-08-03: el usuario pidió explícitamente no tocar nada de pagos sin revisarlo junto a él antes. Stripe sigue siendo la única pasarela integrada (USD); no se tocó código de `suscripciones.py` en esta sesión. |
 | Landing page de marketing | `index.html` con hero, features, pricing, testimonios | Media | 🟡 Existe una versión (heredada del sprint Hostinger); necesita revisión con marca Maestr.ia actual y precios reales |
-| Responsive móvil | Adaptación real a pantallas chicas | Media | 🟡 Solo 1 media query en todo el CSS — trabajo pendiente real |
-| Reset de límites por período académico | Atar rate limit/uso a `periodo_actual` del grupo, no solo a fecha/mes calendario | Media | ❌ No implementado |
+| Responsive móvil | Adaptación real a pantallas chicas | Media | 🟡 done parcial — 2026-08-03, PR #36 (dashboard + chat + fix de login). Sin verificación visual real (sin herramienta de browser en este entorno). `precios.html`, `grupos.html`, `grupo-panel.html`, `panel-docente.html` con el mismo patrón de sidebar quedan pendientes. |
+| Reset de límites por período académico | Atar rate limit/uso a `periodo_actual` del grupo, no solo a fecha/mes calendario | Media | ✅ done — 2026-08-03, PR #37. Endpoint admin (no cron automático — ver nota abajo) que purga `rate_limit_counter` completo. No toca `UsoMensual` ni `periodo_actual` de grupos directamente. |
 
 ### Prioridad 2 — Mejoras de producto
 
@@ -242,9 +245,9 @@ de ejecución una vez estén disponibles las API keys de OpenAI y Google.
 
 ## Próxima sesión recomendada
 
-1. **Recuperación de contraseña** — es el hueco de Prioridad 1 más simple de cerrar (patrón ya existe en verificación de email: token + tabla + endpoint) y bloquea a cualquier docente que pierda su clave.
-2. **Definir y cablear el modelo de negocio en COP** — actualizar `precios.html` con los 4 planes reales, decidir Stripe vs. Wompi, y conectar `STRIPE_PRICE_ID_PRO` (o su equivalente) a precios reales antes de cualquier cobro.
-3. **Cerrar el PR #32** (verificación de correo + consentimiento) y confirmar que el banner de consentimiento para usuarios grandfathered esté realmente wireado en el frontend, antes de sumar más features encima.
+1. **Decidir Wompi vs. Stripe para pagos en COP** — pausado a propósito en la sesión del 2026-08-03 a pedido explícito del usuario ("avisame antes de tocar cualquier cosa relacionada con pagos"). Es el único ítem de Prioridad 1 que sigue completamente sin arrancar.
+2. **Verificación visual real del responsive** (PR #36) — abrir login.html, dashboard.html y chat.html en DevTools o un dispositivo a 375px. Esta sesión no tuvo herramienta de browser disponible; el cambio se hizo por lectura de código, no por prueba visual.
+3. **Definir y cablear el modelo de negocio en COP** — actualizar `precios.html` con los 4 planes reales y colores de marca (hoy sigue en USD con `blue-600` hardcodeado), y extender el mismo tratamiento responsive de dashboard/chat a `grupos.html`, `grupo-panel.html` y `panel-docente.html` (mismo patrón de sidebar `w-64`, no tocado en el PR #36).
 
 ---
 *Generado automáticamente por Claude Code el 2026-08-03*
