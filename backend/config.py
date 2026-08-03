@@ -32,7 +32,12 @@ class Settings(BaseSettings):
     # Stripe
     STRIPE_SECRET_KEY: str = ""
     STRIPE_WEBHOOK_SECRET: str = ""
-    STRIPE_PRICE_ID_PRO: str = ""
+    STRIPE_PRICE_ID_PRO: str = ""  # legacy (USD) — ya no lo referencia el checkout, ver STRIPE_PRICE_ID_PRO_COP
+
+    # Sprint stripe-colombia — Price IDs en COP, creados a mano en el
+    # Stripe Dashboard (este código no los crea, solo los referencia).
+    STRIPE_PRICE_ID_DOCENTE_COP: str = ""
+    STRIPE_PRICE_ID_PRO_COP: str = ""
 
     # CORS
     FRONTEND_URL: str = "http://localhost:8080"
@@ -64,3 +69,18 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+
+# ============================================================
+# LÍMITES POR PLAN (sprint stripe-colombia)
+# Antes vivían hardcodeados en suscripciones.py — movidos acá para
+# poder ajustarlos sin tocar el módulo de pagos. Las claves son los
+# valores de Suscripcion.plan ("free"/"pro"); el checkout de Stripe
+# ofrece dos precios en COP ("docente"/"pro") pero ambos activan el
+# mismo plan interno "pro" — el webhook no distingue entre ellos (no
+# se tocó esa lógica en este sprint).
+# ============================================================
+LIMITES_PLAN: dict = {
+    "free": {"mensajes": 10, "grupos": 1},
+    "pro": {"mensajes": 999999, "grupos": 999999},
+}

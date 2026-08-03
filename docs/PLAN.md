@@ -13,16 +13,16 @@
 - **Multi-institución con roles**: `docente` / `coordinador` / `rector`, dashboard institucional agregado (grupos y PIARs consolidados por institución), invitar/remover docentes, cambiar rol.
 - **Gestión de grupos y estudiantes**: CRUD completo, import CSV de estudiantes, libro de calificaciones con columnas ponderadas por período, boletines en DOCX.
 - **Proveedor de IA con fallback**: Claude (Anthropic) como proveedor primario, Gemini (Google) como alternativa automática si no hay `CLAUDE_API_KEY` válida configurada — abstracción única en `llm.py`, sin lógica duplicada en `ia.py`/`piar.py`.
-- **Pasarela de pago Stripe** ya integrada: checkout, cancelación de suscripción, webhook (`suscripciones.py`). En USD, orientada a un modelo de precios que aún no está en COP.
+- **Pasarela de pago Stripe configurada para Colombia** (PR #39): checkout con dos planes en COP ("Docente" $25.000/mes, "Pro" $45.000/mes vía `STRIPE_PRICE_ID_DOCENTE_COP`/`STRIPE_PRICE_ID_PRO_COP`), PSE y Nequi habilitados como métodos de pago junto a tarjeta, checkout en español (`locale='es'`), cancelación de suscripción, webhook. Decisión: se quedó con Stripe en vez de migrar a Wompi (Stripe ya soporta PSE/Nequi/COP directamente).
 - **Identidad de marca Maestr.ia** aplicada a los 11 HTML del frontend, logo y paleta de colores (`css/brand.css`), exportación DOCX rebrandeada (planes, rúbricas, boletines, PIAR).
 - **CI**: GitHub Actions corre la suite completa de pytest en cada push/PR contra `main`.
 - **Endpoint admin de mantenimiento** (`backend/admin.py`, PR #37): `POST /api/admin/reset-limites-periodo` purga `rate_limit_counter`, protegido por `Docente.es_admin`. Pensado para llamarse a mano o desde un cron externo (no incluye scheduler propio — ver nota en el backlog).
 
 ### Tests
 
-- **266 tests**, distribuidos en 28 archivos bajo `backend/tests/`.
-- **266 passed, 0 failed** en la corrida completa (~66s) al momento de este análisis (255 base + 8 de `test_password_reset.py` PR #34 + 3 de `test_admin_reset_limites.py` PR #37).
-- Cobertura por área: auth (incluye recuperación de contraseña), aislamiento entre docentes (multi-tenant), chat multi-modo (unitario + integración), sesiones, PIAR (generación, formato, validación JSON, cumplimiento legal, ficha de estudiante), calificaciones/boletines, DOCX (template + markdown parser), multi-institución, panel docente, import CSV, verificación de email + consentimiento, reset de rate limits admin.
+- **273 tests**, distribuidos en 29 archivos bajo `backend/tests/`.
+- **273 passed, 0 failed** en la corrida completa (~68s) al momento de este análisis (266 base + 7 de `test_suscripciones.py`, PR #39 — antes el módulo de pagos tenía cero tests).
+- Cobertura por área: auth (incluye recuperación de contraseña), aislamiento entre docentes (multi-tenant), chat multi-modo (unitario + integración), sesiones, PIAR (generación, formato, validación JSON, cumplimiento legal, ficha de estudiante), calificaciones/boletines, DOCX (template + markdown parser), multi-institución, panel docente, import CSV, verificación de email + consentimiento, reset de rate limits admin, pagos/Stripe (checkout, webhook, cancelación — mockeado, sin red real).
 - No hay medición de cobertura de línea (`coverage.py`) configurada — el número de tests es alto y cubre casos de negocio, pero no hay un % de cobertura de código reportado.
 
 ### Deuda técnica conocida
@@ -59,6 +59,7 @@
 16. **Confirmación de estado del backlog** (PR #35, 2026-08-03) — PIAR template JSON y Decreto 1421 ya estaban done desde PRs anteriores, corregido en este documento.
 17. **Responsive móvil — dashboard y chat** (PR #36, 2026-08-03) — sidebar de dashboard.html a drawer con backdrop en <768px, panel de sesiones de chat.html colapsado por defecto en mobile, fix de un overflow introducido por el PR #34 en login.html.
 18. **Reset de límites por período académico** (PR #37, 2026-08-03) — `POST /api/admin/reset-limites-periodo`, protegido por `Docente.es_admin`, purga `rate_limit_counter`.
+19. **Stripe configurado para Colombia** (PR #39, 2026-08-03) — PSE + Nequi + tarjeta, dos precios COP (Docente/Pro) vía `STRIPE_PRICE_ID_DOCENTE_COP`/`STRIPE_PRICE_ID_PRO_COP`, `locale='es'`, límites de plan movidos a `config.LIMITES_PLAN`, WARNING de startup si `STRIPE_SECRET_KEY` está vacío, 7 tests nuevos (módulo antes sin cobertura). Decisión: se descartó migrar a Wompi.
 
 ---
 
@@ -73,7 +74,7 @@
 | Recuperación de contraseña | Flujo "olvidé mi contraseña" vía email (token + reset) | Media | ✅ done — 2026-08-03, PR #34 |
 | PIAR formato fijo con template JSON | Estructura de secciones inamovible, JSON del LLM sobre template estático | Alta | ✅ done — ya implementado en PR #31 (verificado de nuevo el 2026-08-03, sin cambios de código). `backend/templates/piar_template.md` existe con 10 secciones top-level (una de ellas, "Ajustes razonables y estrategias DUA", se subdivide en 3 sub-secciones DUA — 13 bloques de contenido en total, no 14). El test pedido ("3 PIARs distintos deben tener siempre las mismas secciones") ya existe: `test_3_piars_distintos_producen_las_mismas_10_secciones_en_el_mismo_orden` en `test_piar_format_consistency.py`. |
 | Prompts con Decreto 1421 completo | Marco legal completo en el prompt del modo PIAR | Alta | ✅ done — ya implementado, verificado de nuevo el 2026-08-03 sin cambios de código (17 tests de cumplimiento legal en `test_piar_legal_compliance.py`) |
-| Pasarela de pago (Wompi) | Cobro en COP vía pasarela colombiana (PSE + Nequi + tarjetas); Wompi no tiene SDK Python oficial, requiere integrar su API REST directamente | Media-Alta | ⏸️ **Pausado a propósito** — 2026-08-03: el usuario pidió explícitamente no tocar nada de pagos sin revisarlo junto a él antes. Stripe sigue siendo la única pasarela integrada (USD); no se tocó código de `suscripciones.py` en esta sesión. |
+| Pasarela de pago Colombia | Cobro en COP con PSE + Nequi + tarjetas | Media-Alta | ✅ done — 2026-08-03, PR #39. Decisión final: **Stripe configurado para Colombia**, no Wompi — Stripe ya soporta PSE/Nequi/COP nativamente vía `payment_method_types`, evitando integrar la API REST de Wompi a mano (sin SDK Python oficial). Checkout con dos precios COP (Docente/Pro), `locale='es'`. Límites de plan movidos de `suscripciones.py` a `config.LIMITES_PLAN`. Módulo de pagos sin tests → 7 tests nuevos en `test_suscripciones.py` (antes tenía cero). |
 | Landing page de marketing | `index.html` con hero, features, pricing, testimonios | Media | 🟡 Existe una versión (heredada del sprint Hostinger); necesita revisión con marca Maestr.ia actual y precios reales |
 | Responsive móvil | Adaptación real a pantallas chicas | Media | 🟡 done parcial — 2026-08-03, PR #36 (dashboard + chat + fix de login). Sin verificación visual real (sin herramienta de browser en este entorno). `precios.html`, `grupos.html`, `grupo-panel.html`, `panel-docente.html` con el mismo patrón de sidebar quedan pendientes. |
 | Reset de límites por período académico | Atar rate limit/uso a `periodo_actual` del grupo, no solo a fecha/mes calendario | Media | ✅ done — 2026-08-03, PR #37. Endpoint admin (no cron automático — ver nota abajo) que purga `rate_limit_counter` completo. No toca `UsoMensual` ni `periodo_actual` de grupos directamente. |
@@ -164,7 +165,9 @@ Una sola URL sirve todo: `http://localhost:8000/` (frontend), `/api/...` (REST),
 | `GEMINI_MODEL` | Modelo de Gemini a usar |
 | `STRIPE_SECRET_KEY` | Clave secreta de Stripe |
 | `STRIPE_WEBHOOK_SECRET` | Secreto del webhook de Stripe |
-| `STRIPE_PRICE_ID_PRO` | ID del precio del plan Pro en Stripe |
+| `STRIPE_PRICE_ID_PRO` | Legacy (USD) — ya no lo referencia el checkout |
+| `STRIPE_PRICE_ID_DOCENTE_COP` | ID del precio del plan Docente en COP (Stripe Dashboard) |
+| `STRIPE_PRICE_ID_PRO_COP` | ID del precio del plan Pro en COP (Stripe Dashboard) |
 | `FRONTEND_URL` | URL del frontend, usada para CORS |
 | `SENDGRID_API_KEY` | Clave de SendGrid (envío de correo, opción 1) |
 | `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASSWORD` / `SMTP_TLS` | Config SMTP (envío de correo, opción 2, fallback si no hay SendGrid) |
@@ -217,9 +220,11 @@ Si ninguno de `SENDGRID_API_KEY` o el bloque SMTP está configurado, `email_serv
 | Plan | Precio COP | Límites | Estado |
 |------|------------|---------|--------|
 | Gratis | $0 | Límites diarios por modo actuales (10 planeación / 20 socioemocional / 20 calificación / 5 PIAR) | 🟡 Límites técnicos existen, falta confirmar si corresponden al plan Gratis o son globales |
-| Docente | Por definir | Por definir | ❌ No existe en código — hoy solo hay `free`/`pro` en `Suscripcion.plan` |
-| Pro | Hoy en USD ($9.99/mes, $7.99/mes anual) en `precios.html`, placeholder sin conectar a Stripe real | Sin límites diarios (a confirmar) | 🟡 Precio placeholder, no en COP, no verificado contra Stripe |
+| Docente | $25.000 COP/mes (checkout vía `STRIPE_PRICE_ID_DOCENTE_COP`, PR #39) | Igual que Pro (999999 — "ilimitado") | 🟡 El checkout ya ofrece este precio, pero internamente activa el mismo `Suscripcion.plan="pro"` que el plan Pro (el webhook no distingue entre ambos) — no es un tier separado a nivel de datos, solo a nivel de precio de venta |
+| Pro | $45.000 COP/mes (checkout vía `STRIPE_PRICE_ID_PRO_COP`, PR #39) | `config.LIMITES_PLAN["pro"]` — sin límites diarios de mensajes/grupos | ✅ Checkout en COP con PSE/Nequi/tarjeta funcionando (falta cargar los Price IDs reales en Railway) |
 | Institución | Por definir | Roles coordinador/rector, agregados institucionales | 🟡 Backend de roles ya existe (`Institucion.plan == 'institucional'`), falta modelo de precio |
+
+`precios.html` (frontend) sigue sin actualizar — todavía muestra el placeholder en USD de la Prioridad 1 pendiente "Landing page de marketing". El backend ya está listo para los precios en COP; falta reflejarlos en la página.
 
 ---
 
@@ -245,9 +250,9 @@ de ejecución una vez estén disponibles las API keys de OpenAI y Google.
 
 ## Próxima sesión recomendada
 
-1. **Decidir Wompi vs. Stripe para pagos en COP** — pausado a propósito en la sesión del 2026-08-03 a pedido explícito del usuario ("avisame antes de tocar cualquier cosa relacionada con pagos"). Es el único ítem de Prioridad 1 que sigue completamente sin arrancar.
-2. **Verificación visual real del responsive** (PR #36) — abrir login.html, dashboard.html y chat.html en DevTools o un dispositivo a 375px. Esta sesión no tuvo herramienta de browser disponible; el cambio se hizo por lectura de código, no por prueba visual.
-3. **Definir y cablear el modelo de negocio en COP** — actualizar `precios.html` con los 4 planes reales y colores de marca (hoy sigue en USD con `blue-600` hardcodeado), y extender el mismo tratamiento responsive de dashboard/chat a `grupos.html`, `grupo-panel.html` y `panel-docente.html` (mismo patrón de sidebar `w-64`, no tocado en el PR #36).
+1. **Cargar los Price IDs reales de Stripe en Railway** — `STRIPE_PRICE_ID_DOCENTE_COP` y `STRIPE_PRICE_ID_PRO_COP` (PR #39) siguen vacíos en producción hasta crear los dos precios en COP desde el Stripe Dashboard y confirmar que la cuenta tiene Colombia habilitado (requisito de PSE/Nequi).
+2. **Actualizar `precios.html` con los precios COP reales** ($25.000 Docente / $45.000 Pro) y la paleta de marca — hoy sigue en USD con `blue-600` hardcodeado, desconectado del checkout que ya funciona en el backend.
+3. **Verificación visual real del responsive** (PR #36) — abrir login.html, dashboard.html y chat.html en DevTools o un dispositivo a 375px. Esta sesión no tuvo herramienta de browser disponible; el cambio se hizo por lectura de código, no por prueba visual. De paso, extender el mismo tratamiento a `grupos.html`, `grupo-panel.html` y `panel-docente.html` (mismo patrón de sidebar `w-64`, no tocado en el PR #36).
 
 ---
 *Generado automáticamente por Claude Code el 2026-08-03*

@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from auth import get_current_docente
-from config import settings
+from config import LIMITES_PLAN, settings
 from database import get_db
 from models import Docente, Grupo, Suscripcion, UsoMensual
 from schemas import CheckoutCreate, SuscripcionOut
@@ -14,9 +14,12 @@ router = APIRouter(tags=["suscripciones"])
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
-LIMITES = {
-    "free": {"mensajes": 10, "grupos": 1},
-    "pro": {"mensajes": 999999, "grupos": 999999},
+# Sprint stripe-colombia — Price IDs en COP por plan de checkout. El
+# docente elige uno de los dos al pagar; ambos activan el mismo plan
+# interno "pro" en el webhook (no se tocó esa lógica en este sprint).
+PRICE_IDS_CHECKOUT_COP = {
+    "docente": lambda: settings.STRIPE_PRICE_ID_DOCENTE_COP,
+    "pro": lambda: settings.STRIPE_PRICE_ID_PRO_COP,
 }
 
 
@@ -47,7 +50,7 @@ def get_suscripcion(
     db: Session = Depends(get_db),
 ):
     plan = docente.suscripcion.plan if docente.suscripcion else "free"
-    limites = LIMITES.get(plan, LIMITES["free"])
+    limites = LIMITES_PLAN.get(plan, LIMITES_PLAN["free"])
 
     uso = _get_uso_mes_actual(docente.id_docente, db)
     grupos_count = db.query(Grupo).filter(Grupo.id_docente == docente.id_docente).count()
@@ -70,7 +73,10 @@ def create_checkout(
     docente: Docente = Depends(get_current_docente),
     db: Session = Depends(get_db),
 ):
-    if not settings.STRIPE_SECRET_KEY or not settings.STRIPE_PRICE_ID_PRO:
+    price_id_getter = PRICE_IDS_CHECKOUT_COP.get(data.plan)
+    price_id = price_id_getter() if price_id_getter else None
+
+    if not settings.STRIPE_SECRET_KEY or not price_id:
         raise HTTPException(status_code=503, detail="Stripe no configurado")
 
     try:
@@ -89,15 +95,26 @@ def create_checkout(
                 suscripcion.stripe_customer_id = customer_id
                 db.commit()
 
-        # Crear Checkout Session
+        # Crear Checkout Session — el precio ya viene en COP desde el
+        # Price ID (Stripe fija la moneda en el Price del Dashboard, no
+        # se puede pasar `currency` acá cuando se referencia un Price
+        # existente por id: Stripe rechaza la Session con
+        # "invalid_request_error" si se intenta combinar ambos).
+        # PSE y Nequi requieren una cuenta Stripe con Colombia habilitado
+        # (Dashboard) — si no está habilitado, Stripe devuelve un error
+        # al crear la Session, no es un bug de este código.
         session = stripe.checkout.Session.create(
             customer=customer_id,
-            payment_method_types=["card"],
-            line_items=[{"price": settings.STRIPE_PRICE_ID_PRO, "quantity": 1}],
+            payment_method_types=["card", "pse", "nequi"],
+            payment_method_options={
+                "pse": {"setup_future_usage": "none"},
+            },
+            line_items=[{"price": price_id, "quantity": 1}],
             mode="subscription",
             success_url=data.success_url,
             cancel_url=data.cancel_url,
             metadata={"docente_id": docente.id_docente},
+            locale="es",
         )
 
         return {"checkout_url": session.url, "session_id": session.id}
