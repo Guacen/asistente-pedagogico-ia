@@ -88,17 +88,17 @@
 
         <!-- Header -->
         <header class="bg-white border-b px-5 py-3 flex items-center justify-between flex-shrink-0">
-            <div class="flex items-center gap-3">
-                <a href="dashboard.html" class="text-gray-400 hover:text-gray-700 transition-colors">
+            <div class="flex items-center gap-3 min-w-0">
+                <a href="dashboard.html" class="text-gray-400 hover:text-gray-700 transition-colors flex-shrink-0">
                     <i class="fas fa-arrow-left"></i>
                 </a>
-                <div>
-                    <h1 class="text-lg font-bold text-gray-900 leading-tight" id="grupo-nombre">Cargando…</h1>
-                    <p class="text-xs text-gray-500" id="grupo-info"></p>
+                <div class="min-w-0">
+                    <h1 class="text-lg font-bold text-gray-900 leading-tight truncate" id="grupo-nombre">Cargando…</h1>
+                    <p class="text-xs text-gray-500 truncate" id="grupo-info"></p>
                 </div>
             </div>
             <button onclick="toggleSidebar()" title="Info del grupo"
-                class="w-9 h-9 flex items-center justify-center rounded-xl text-gray-500 hover:bg-gray-100 transition-colors">
+                class="w-9 h-9 flex items-center justify-center rounded-xl text-gray-500 hover:bg-gray-100 transition-colors flex-shrink-0">
                 <i class="fas fa-bars"></i>
             </button>
         </header>
@@ -1295,6 +1295,20 @@ function toggleSesionesPanel() {
     }
 }
 
+// En pantallas angostas (<768px) el panel de sesiones (w-64) más el
+// riel de modos (w-16) ya ocupan 320px — no queda espacio para el chat.
+// Arranca colapsado en mobile reusando el mismo toggle de siempre; el
+// docente lo puede reabrir con el botón de flecha si lo necesita.
+function colapsarPanelSesionesEnMobile() {
+    const panel = document.getElementById('sesiones-panel');
+    const btn = document.getElementById('sesiones-toggle-btn');
+    if (!panel || !btn) return;
+    if (window.innerWidth < 768 && !panel.classList.contains('hidden')) {
+        panel.classList.add('hidden');
+        btn.classList.remove('hidden');
+    }
+}
+
 async function verHistorialAnterior() {
     try {
         const legacy = await api.request(
@@ -1367,6 +1381,7 @@ function cerrarSesion() {
 }
 
 // ── Arranque ───────────────────────────────────────────────────
+colapsarPanelSesionesEnMobile();
 init();
 </script>
 </body>
