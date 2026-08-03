@@ -65,11 +65,11 @@
 
 | Tarea | Descripción | Complejidad | Estado |
 |-------|-------------|-------------|--------|
-| Verificación de correo | Token de verificación por email, 24h de validez, bloqueo de `/me` hasta verificar | Media | ✅ Implementado (PR #32, no mergeado a main aún) |
-| Consentimiento Ley 1581 con banner | Campo + endpoint de aceptación, banner pendiente de confirmar en frontend para usuarios grandfathered | Baja | 🟡 Backend listo, verificar wiring del banner en frontend |
+| Verificación de correo | Token de verificación por email, 24h de validez, bloqueo de `/me` hasta verificar | Media | ✅ done — 2026-08-03, PR #32 |
+| Consentimiento Ley 1581 con banner | Campo + endpoint de aceptación, banner pendiente de confirmar en frontend para usuarios grandfathered | Baja | 🟡 Backend listo (PR #32), falta confirmar visualmente el wiring del banner en frontend |
 | Recuperación de contraseña | Flujo "olvidé mi contraseña" vía email (token + reset) | Media | ✅ done — 2026-08-03, PR #34 |
-| PIAR formato fijo con template JSON | Estructura de 10 secciones inamovible, JSON del LLM sobre template estático | Alta | ✅ Implementado y probado (#31) |
-| Prompts con Decreto 1421 completo | Marco legal completo en el prompt del modo PIAR | Alta | ✅ Implementado y probado (17 tests de cumplimiento legal) — **el template original lo daba por pendiente; ya está hecho** |
+| PIAR formato fijo con template JSON | Estructura de secciones inamovible, JSON del LLM sobre template estático | Alta | ✅ done — ya implementado en PR #31 (verificado de nuevo el 2026-08-03, sin cambios de código). `backend/templates/piar_template.md` existe con 10 secciones top-level (una de ellas, "Ajustes razonables y estrategias DUA", se subdivide en 3 sub-secciones DUA — 13 bloques de contenido en total, no 14). El test pedido ("3 PIARs distintos deben tener siempre las mismas secciones") ya existe: `test_3_piars_distintos_producen_las_mismas_10_secciones_en_el_mismo_orden` en `test_piar_format_consistency.py`. |
+| Prompts con Decreto 1421 completo | Marco legal completo en el prompt del modo PIAR | Alta | ✅ done — ya implementado, verificado de nuevo el 2026-08-03 sin cambios de código (17 tests de cumplimiento legal en `test_piar_legal_compliance.py`) |
 | Pasarela de pago (Wompi) | Cobro en COP vía pasarela colombiana | Media-Alta | 🟡 Stripe ya integrado (USD) — falta evaluar si se reemplaza o se suma Wompi para COP |
 | Landing page de marketing | `index.html` con hero, features, pricing, testimonios | Media | 🟡 Existe una versión (heredada del sprint Hostinger); necesita revisión con marca Maestr.ia actual y precios reales |
 | Responsive móvil | Adaptación real a pantallas chicas | Media | 🟡 Solo 1 media query en todo el CSS — trabajo pendiente real |
