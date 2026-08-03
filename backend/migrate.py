@@ -171,6 +171,11 @@ def apply_migrations():
     from models import EmailVerification  # noqa: F401
     Base.metadata.create_all(bind=engine, tables=[EmailVerification.__table__])
 
+    # ── Sprint password-reset ──
+    # Tabla nueva, sin ALTER TABLE necesario — create_all idempotente.
+    from models import PasswordResetToken  # noqa: F401
+    Base.metadata.create_all(bind=engine, tables=[PasswordResetToken.__table__])
+
     # Backfill uni-personal: cada docente sin id_institucion recibe una
     # Institucion nueva a su nombre. Idempotente — si ya tiene, no toca.
     _backfill_instituciones_unipersonales()
@@ -187,6 +192,8 @@ def apply_migrations():
         print("✅ Migración: tabla 'chat_sesiones' verificada/creada")
     if "email_verifications" in inspector.get_table_names():
         print("✅ Migración: tabla 'email_verifications' verificada/creada")
+    if "password_reset_tokens" in inspector.get_table_names():
+        print("✅ Migración: tabla 'password_reset_tokens' verificada/creada")
 
     print("✅ Migraciones aplicadas")
 

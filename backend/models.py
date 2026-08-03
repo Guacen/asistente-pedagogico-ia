@@ -192,6 +192,32 @@ class EmailVerification(Base):
     creado_en = Column(DateTime, default=datetime.utcnow, nullable=False)
 
 
+class PasswordResetToken(Base):
+    """
+    Tokens de recuperación de contraseña. Mismo patrón que
+    `EmailVerification`: un docente puede tener N filas (reintentos de
+    "olvidé mi contraseña"); cada token expira a la hora y es de un solo
+    uso (`used_at`).
+
+    TTL más corto que el de verificación de email (1h vs 24h) porque un
+    link de reset de contraseña es más sensible si queda vivo mucho
+    tiempo en una bandeja de entrada comprometida.
+    """
+    __tablename__ = "password_reset_tokens"
+
+    id_reset = Column(String(36), primary_key=True, default=new_uuid)
+    id_docente = Column(
+        String(36),
+        ForeignKey("docentes.id_docente"),
+        nullable=False,
+        index=True,
+    )
+    token = Column(String(64), unique=True, nullable=False, index=True)
+    expires_at = Column(DateTime, nullable=False)
+    used_at = Column(DateTime, nullable=True)   # None hasta que se use
+    creado_en = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
 class Grupo(Base):
     __tablename__ = "grupos"
 

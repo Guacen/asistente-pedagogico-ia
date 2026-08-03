@@ -62,6 +62,15 @@ class ReenviarVerificacion(BaseModel):
     email: EmailStr
 
 
+# ── Sprint password-reset ──
+class ForgotPassword(BaseModel):
+    email: EmailStr
+
+
+class ResetPassword(BaseModel):
+    password_nuevo: str
+
+
 # ============================================================
 # GRUPOS
 # ============================================================
