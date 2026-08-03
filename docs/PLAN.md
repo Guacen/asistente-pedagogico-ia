@@ -4,7 +4,7 @@
 
 ### Lo que ya funciona
 
-- **Autenticación completa**: registro, login (JWT), verificación de correo por token (24h de validez, tabla `email_verifications`), reenvío de verificación, cambio de contraseña (estando logueado), eliminar cuenta.
+- **Autenticación completa**: registro, login (JWT), verificación de correo por token (24h de validez, tabla `email_verifications`), reenvío de verificación, cambio de contraseña (estando logueado), recuperación de contraseña vía email (token de 1h, un solo uso, tabla `password_reset_tokens` — PR #34), eliminar cuenta.
 - **Consentimiento Ley 1581**: campos `consentimiento_datos`, `fecha_consentimiento`, `ip_consentimiento` en `Docente`; endpoint `POST /api/auth/aceptar-consentimiento`; usuarios pre-existentes quedan "grandfathered" (`NULL`) para que el frontend les muestre el banner.
 - **Chat multi-modo**: `planeacion`, `socioemocional`, `calificacion`, `piar`, cada uno con su prompt especializado, rate limit diario configurable por modo (10/20/20/5) y bypass para docentes marcados como admin.
 - **Sesiones temáticas de chat**: cada conversación es una sesión con título automático (generado por el LLM tras el primer intercambio), archivable, aislada por (grupo, modo, estudiante).
@@ -19,14 +19,13 @@
 
 ### Tests
 
-- **255 tests**, distribuidos en 25 archivos bajo `backend/tests/`.
-- **255 passed, 0 failed** en la corrida completa (61s) al momento de este análisis.
-- Cobertura por área: auth, aislamiento entre docentes (multi-tenant), chat multi-modo (unitario + integración), sesiones, PIAR (generación, formato, validación JSON, cumplimiento legal, ficha de estudiante), calificaciones/boletines, DOCX (template + markdown parser), multi-institución, panel docente, import CSV, verificación de email + consentimiento.
+- **263 tests**, distribuidos en 26 archivos bajo `backend/tests/`.
+- **263 passed, 0 failed** en la corrida completa (~65s) al momento de este análisis (255 previos + 8 de `test_password_reset.py`, PR #34).
+- Cobertura por área: auth (incluye recuperación de contraseña), aislamiento entre docentes (multi-tenant), chat multi-modo (unitario + integración), sesiones, PIAR (generación, formato, validación JSON, cumplimiento legal, ficha de estudiante), calificaciones/boletines, DOCX (template + markdown parser), multi-institución, panel docente, import CSV, verificación de email + consentimiento.
 - No hay medición de cobertura de línea (`coverage.py`) configurada — el número de tests es alto y cubre casos de negocio, pero no hay un % de cobertura de código reportado.
 
 ### Deuda técnica conocida
 
-- **No existe recuperación de contraseña** ("olvidé mi contraseña"): `auth.py` solo tiene `cambiar-password`, que requiere sesión activa. Un docente que pierde su contraseña queda bloqueado.
 - **Responsive real es parcial**: todos los HTML tienen `<meta viewport>`, pero solo hay **1 media query** en `css/main.css` y ninguna en `css/brand.css`. La base está, pero no hay trabajo de adaptación real a pantallas chicas.
 - **`precios.html` desactualizado**: muestra precios placeholder en USD ($9.99 / $7.99) con color `blue-600` hardcodeado que no corresponde a la paleta de marca (`#1D9E75` / `#0B3D2E` / `#F5B731`). No refleja los 4 planes en COP.
 - **Sin reset de límites por período académico**: `RateLimitCounter` resetea solo (es por fecha diaria) y `UsoMensual` es por mes calendario — ninguno de los dos está atado al `periodo_actual` del `Grupo` (períodos académicos colombianos: bimestres/trimestres). Un docente que cambia de período sigue con los mismos contadores.
@@ -54,7 +53,9 @@
 10. **Fix de bugs de documento.py** — 5 bugs (logo, separadores, headings, tabla, título duplicado).
 11. **PIAR marco legal completo + 10 secciones con DUA (#30)** — expansión del prompt a la estructura legal completa verificada por tests.
 12. **PIAR formato fijo e inamovible (#31)** — template estático + JSON del LLM, no editable en estructura.
-13. **Verificación de correo + consentimiento Ley 1581** (commit más reciente, PR #32 abierto contra `main`) — el sprint sobre el que trabaja actualmente el usuario.
+13. **Verificación de correo + consentimiento Ley 1581** (PR #32, mergeado 2026-08-03).
+14. **Cache-busting de assets estáticos** (commit directo a `main`, 2026-08-03) — `?v=` en todos los `<script>`/`<link>` locales.
+15. **Recuperación de contraseña** (PR #34, 2026-08-03) — mismo patrón que verificación de email: `PasswordResetToken` (1h TTL, un solo uso), `forgot-password` / `reset-password`, `recuperar-password.html` + `nueva-password.html`.
 
 ---
 
@@ -66,7 +67,7 @@
 |-------|-------------|-------------|--------|
 | Verificación de correo | Token de verificación por email, 24h de validez, bloqueo de `/me` hasta verificar | Media | ✅ Implementado (PR #32, no mergeado a main aún) |
 | Consentimiento Ley 1581 con banner | Campo + endpoint de aceptación, banner pendiente de confirmar en frontend para usuarios grandfathered | Baja | 🟡 Backend listo, verificar wiring del banner en frontend |
-| Recuperación de contraseña | Flujo "olvidé mi contraseña" vía email (token + reset) | Media | ❌ No implementado — cero endpoints relacionados |
+| Recuperación de contraseña | Flujo "olvidé mi contraseña" vía email (token + reset) | Media | ✅ done — 2026-08-03, PR #34 |
 | PIAR formato fijo con template JSON | Estructura de 10 secciones inamovible, JSON del LLM sobre template estático | Alta | ✅ Implementado y probado (#31) |
 | Prompts con Decreto 1421 completo | Marco legal completo en el prompt del modo PIAR | Alta | ✅ Implementado y probado (17 tests de cumplimiento legal) — **el template original lo daba por pendiente; ya está hecho** |
 | Pasarela de pago (Wompi) | Cobro en COP vía pasarela colombiana | Media-Alta | 🟡 Stripe ya integrado (USD) — falta evaluar si se reemplaza o se suma Wompi para COP |
