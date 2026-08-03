@@ -79,6 +79,28 @@ class Docente(Base):
     #   UPDATE docentes SET es_admin = TRUE WHERE email = '<email>';
     es_admin = Column(Boolean, nullable=False, default=False)
 
+    # ── Verificación de email + Consentimiento Ley 1581 ──
+    # Sprint email-verification-consent.
+    #
+    # email_verificado: TRUE tras clicar el link enviado al registrarse.
+    # Los docentes existentes al momento del deploy fueron grandfathered
+    # via migrate.py (UPDATE docentes SET email_verificado = TRUE WHERE ...).
+    # Nuevos registros arrancan en False y no pueden usar /api/auth/me
+    # hasta verificar (401 con code="email_no_verificado").
+    #
+    # consentimiento_datos: TRUE si el docente aceptó la política Ley 1581.
+    # NULL para grandfathered — el frontend muestra banner al login para
+    # que acepten. False sólo aparece si rechazan explícitamente (no hay
+    # UI para eso hoy, queda reservado).
+    #
+    # ip_consentimiento: guardada para auditoría legal — la Ley 1581 exige
+    # poder demostrar que el consentimiento fue otorgado.
+    email_verificado = Column(Boolean, nullable=False, default=False)
+    fecha_verificacion = Column(DateTime, nullable=True)
+    consentimiento_datos = Column(Boolean, nullable=True, default=None)
+    fecha_consentimiento = Column(DateTime, nullable=True)
+    ip_consentimiento = Column(String(45), nullable=True)  # IPv6 max = 45 chars
+
     # Relaciones
     grupos = relationship("Grupo", back_populates="docente", cascade="all, delete")
     suscripcion = relationship("Suscripcion", back_populates="docente", uselist=False, cascade="all, delete")
@@ -142,6 +164,32 @@ class RateLimitCounter(Base):
     fecha = Column(String(10), nullable=False, index=True)  # 'YYYY-MM-DD'
     modo = Column(String(32), nullable=False, index=True)
     count = Column(Integer, default=0, nullable=False)
+
+
+class EmailVerification(Base):
+    """
+    Tokens de verificación de email. Un docente puede tener N filas
+    (por reintentos de reenviar-verificación) — el `verified_at` del
+    docente en `docentes.fecha_verificacion` es la fuente de verdad;
+    esta tabla es sólo el registro de tokens emitidos.
+
+    El token expira a las 24h; después de esa ventana se ignora y hay
+    que pedir reenvío. Se puede purgar por cron los tokens con
+    `expires_at < now() - 30 days` para no acumular basura.
+    """
+    __tablename__ = "email_verifications"
+
+    id_verification = Column(String(36), primary_key=True, default=new_uuid)
+    id_docente = Column(
+        String(36),
+        ForeignKey("docentes.id_docente"),
+        nullable=False,
+        index=True,
+    )
+    token = Column(String(64), unique=True, nullable=False, index=True)
+    expires_at = Column(DateTime, nullable=False)
+    verified_at = Column(DateTime, nullable=True)   # None hasta que se use
+    creado_en = Column(DateTime, default=datetime.utcnow, nullable=False)
 
 
 class Grupo(Base):

@@ -37,6 +37,22 @@ class Settings(BaseSettings):
     # CORS
     FRONTEND_URL: str = "http://localhost:8080"
 
+    # ── Envío de correo (sprint email-verification-consent) ──
+    # Adapter con fallback automático: SendGrid > SMTP > LogOnly.
+    # En dev local nada está configurado y cae al LogOnly, que sólo
+    # imprime el link de verificación por consola — el flujo funciona
+    # igual sin necesidad de cuenta de correo.
+    # En Railway, se define UNA de las dos: SENDGRID_API_KEY o el bloque
+    # SMTP completo. FROM_EMAIL siempre debe estar (dirección del "from").
+    SENDGRID_API_KEY: str = ""
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_TLS: bool = True
+    FROM_EMAIL: str = "no-reply@maestria.co"
+    FROM_NAME: str = "Maestr.ia"
+
     # Archivos
     UPLOAD_DIR: str = "uploads"
     MAX_FILE_SIZE_MB: int = 10

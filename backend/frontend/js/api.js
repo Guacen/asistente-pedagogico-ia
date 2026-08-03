@@ -80,19 +80,48 @@ class ApiClient {
         return data;
     }
     
-    async register(nombre, email, password) {
+    async register(nombre, email, password, consentimientoDatos = false) {
         return this.request('/api/auth/register', {
             method: 'POST',
             body: JSON.stringify({
                 nombre_completo: nombre,
                 email,
-                password
+                password,
+                consentimiento_datos: consentimientoDatos,
             })
         });
     }
-    
+
     async getMe() {
         return this.request('/api/auth/me');
+    }
+
+    async getMeRaw() {
+        // Igual que getMe pero NO exige email verificado — la usan las
+        // pantallas del flujo de verificación para saber quién es el
+        // docente sin dispararse el 401 code=email_no_verificado.
+        return this.request('/api/auth/me-raw');
+    }
+
+    async verificarEmail(token) {
+        // GET con querystring; el backend responde 200 + {verificado:true}
+        return this.request(`/api/auth/verificar-email?token=${encodeURIComponent(token)}`);
+    }
+
+    async reenviarVerificacion(email) {
+        return this.request('/api/auth/reenviar-verificacion', {
+            method: 'POST',
+            body: JSON.stringify({ email }),
+        });
+    }
+
+    async aceptarConsentimiento() {
+        // Endpoint para grandfathered: docentes con consentimiento_datos = NULL
+        // aceptan la Ley 1581 vía banner post-login.
+        return this.request('/api/auth/aceptar-consentimiento', {
+            method: 'POST',
+            body: JSON.stringify({ aceptado: true }),
+        });
     }
 
     async updatePerfil(data) {

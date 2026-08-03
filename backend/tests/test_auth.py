@@ -112,6 +112,7 @@ def test_registro_nuevo_docente(client_no_auth):
         "nombre_completo": "Nuevo Docente",
         "email": "nuevo@test.com",
         "password": "supersegura",
+        "consentimiento_datos": True,  # sprint email-verification-consent
     })
     assert r.status_code in (200, 201), r.text
     # Ahora puede loguearse
@@ -124,5 +125,6 @@ def test_registro_con_email_duplicado_falla(client_no_auth, seed_docente):
         "nombre_completo": "Otro Docente",
         "email": seed_docente["docente"].email,  # ya existe
         "password": "cualquiera",
+        "consentimiento_datos": True,
     })
     assert r.status_code >= 400, f"Debería fallar por email duplicado, obtuvo {r.status_code}"
