@@ -10,17 +10,22 @@ from sqlalchemy.orm import Session
 
 from config import settings
 from database import get_db
-from email_service import enviar_correo_verificacion
-from models import Docente, EmailVerification, Suscripcion, UsoMensual
+from email_service import enviar_correo_reset_password, enviar_correo_verificacion
+from models import Docente, EmailVerification, PasswordResetToken, Suscripcion, UsoMensual
 from schemas import (
     AceptarConsentimiento, ChangePassword, DocenteCreate, DocenteOut,
-    DocenteUpdate, ReenviarVerificacion, Token,
+    DocenteUpdate, ForgotPassword, ReenviarVerificacion, ResetPassword, Token,
 )
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 # Ventana de vida de un token de verificación. 24h según el sprint.
 _TOKEN_VERIFICACION_HORAS = 24
+
+# Ventana de vida de un token de recuperación de contraseña. Más corto
+# que el de verificación de email (1h vs 24h) — un link de reset es más
+# sensible si queda vivo mucho tiempo en una bandeja comprometida.
+_TOKEN_RESET_PASSWORD_HORAS = 1
 
 # Configuración de seguridad
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -136,6 +141,26 @@ def _crear_token_verificacion(
 
     base = str(request.base_url).rstrip("/")
     return f"{base}/verificar-email.html?token={token}"
+
+
+def _crear_token_reset_password(
+    db: Session, docente: Docente, request: Request,
+) -> str:
+    """
+    Crea un PasswordResetToken (1h TTL) y devuelve el link absoluto que
+    debe ir al correo. Mismo patrón que `_crear_token_verificacion`.
+    """
+    token = secrets.token_urlsafe(32)  # 43 chars — cabe en VARCHAR(64)
+    reset = PasswordResetToken(
+        id_docente=docente.id_docente,
+        token=token,
+        expires_at=datetime.utcnow() + timedelta(hours=_TOKEN_RESET_PASSWORD_HORAS),
+    )
+    db.add(reset)
+    db.commit()
+
+    base = str(request.base_url).rstrip("/")
+    return f"{base}/nueva-password.html?token={token}"
 
 
 def _obtener_ip_cliente(request: Request) -> Optional[str]:
@@ -367,6 +392,66 @@ def cambiar_password(
     docente.password_hash = hash_password(data.password_nuevo)
     db.commit()
     return {"mensaje": "Contraseña actualizada correctamente"}
+
+
+@router.post("/forgot-password")
+def forgot_password(
+    data: ForgotPassword,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """
+    Inicia la recuperación de contraseña. Mismo contrato de privacidad
+    que `reenviar_verificacion`: devuelve 200 con mensaje genérico sea el
+    email conocido o no, para no exponer qué correos están registrados.
+    """
+    docente = db.query(Docente).filter(Docente.email == data.email).first()
+    if docente:
+        link = _crear_token_reset_password(db, docente, request)
+        enviar_correo_reset_password(docente.email, docente.nombre_completo, link)
+
+    return {"mensaje": "Si el correo está registrado, te enviamos un enlace para restablecer tu contraseña."}
+
+
+@router.post("/reset-password")
+def reset_password(
+    token: str,
+    data: ResetPassword,
+    db: Session = Depends(get_db),
+):
+    """
+    Consume un token de recuperación y establece la nueva contraseña.
+    De un solo uso: `used_at` se marca al consumirlo y una segunda
+    llamada con el mismo token es rechazada como inválida.
+    """
+    reset = db.query(PasswordResetToken).filter(
+        PasswordResetToken.token == token
+    ).first()
+    if not reset or reset.used_at is not None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Token de recuperación no encontrado o ya utilizado.",
+        )
+    if reset.expires_at < datetime.utcnow():
+        raise HTTPException(
+            status_code=status.HTTP_410_GONE,
+            detail={
+                "code": "token_expirado",
+                "message": "El enlace expiró. Solicita uno nuevo.",
+            },
+        )
+
+    docente = db.query(Docente).filter(
+        Docente.id_docente == reset.id_docente
+    ).first()
+    if not docente:
+        raise HTTPException(status_code=404, detail="Docente asociado no existe.")
+
+    docente.password_hash = hash_password(data.password_nuevo)
+    reset.used_at = datetime.utcnow()
+    db.commit()
+
+    return {"mensaje": "Contraseña actualizada correctamente."}
 
 
 @router.delete("/cuenta")

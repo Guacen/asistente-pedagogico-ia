@@ -138,6 +138,20 @@ class ApiClient {
         });
     }
 
+    async forgotPassword(email) {
+        return this.request('/api/auth/forgot-password', {
+            method: 'POST',
+            body: JSON.stringify({ email }),
+        });
+    }
+
+    async resetPassword(token, passwordNuevo) {
+        return this.request(`/api/auth/reset-password?token=${encodeURIComponent(token)}`, {
+            method: 'POST',
+            body: JSON.stringify({ password_nuevo: passwordNuevo }),
+        });
+    }
+
     async deleteAccount() {
         return this.request('/api/auth/cuenta', {
             method: 'DELETE'

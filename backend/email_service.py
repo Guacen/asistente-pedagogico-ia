@@ -177,6 +177,72 @@ def enviar_correo_verificacion(
     return prov.enviar(email, nombre, asunto, html, texto)
 
 
+def enviar_correo_reset_password(
+    email: str,
+    nombre: str,
+    link_reset: str,
+    provider: Optional[EmailProvider] = None,
+) -> bool:
+    """
+    Envía el correo de recuperación de contraseña. `link_reset` debe ser
+    la URL absoluta a `/nueva-password.html?token=XXX`. Válido por 1h —
+    más corto que el de verificación de email porque un link de reset
+    es más sensible si queda vivo mucho tiempo en una bandeja comprometida.
+
+    Igual contrato que `enviar_correo_verificacion`: el caller no debe
+    abortar el flujo si esto devuelve False (el docente puede reintentar).
+    """
+    prov = provider or _elegir_provider()
+    asunto = "Recupera tu contraseña en Maestr.ia"
+    texto = (
+        f"Hola {nombre},\n\n"
+        f"Recibimos una solicitud para restablecer tu contraseña en Maestr.ia. "
+        f"Si fuiste vos, hacé clic en el siguiente enlace (válido por 1 hora):\n\n"
+        f"{link_reset}\n\n"
+        f"Si no pediste esto, podés ignorar este correo — tu contraseña no cambia.\n\n"
+        f"— El equipo de Maestr.ia"
+    )
+    html = _plantilla_html_reset_password(nombre, link_reset)
+    return prov.enviar(email, nombre, asunto, html, texto)
+
+
+def _plantilla_html_reset_password(nombre: str, link: str) -> str:
+    """HTML minimal, inline styles, safe para clientes de correo."""
+    from html import escape
+    nombre_esc = escape(nombre)
+    link_esc = escape(link, quote=True)
+    return f"""<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"></head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #F5F7FA; margin: 0; padding: 32px 16px;">
+  <div style="max-width: 520px; margin: 0 auto; background: #FFFFFF; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
+    <div style="background: #1D9E75; padding: 24px 32px; color: #FFFFFF;">
+      <h1 style="margin: 0; font-size: 22px; font-weight: 600;">Maestr.ia</h1>
+    </div>
+    <div style="padding: 32px;">
+      <p style="font-size: 16px; color: #1F2937; margin: 0 0 16px;">Hola {nombre_esc},</p>
+      <p style="font-size: 15px; color: #374151; line-height: 1.55;">
+        Recibimos una solicitud para restablecer tu contraseña. Si fuiste vos, elegí una nueva con el botón de abajo. El enlace es válido por <strong>1 hora</strong>.
+      </p>
+      <div style="text-align: center; margin: 28px 0;">
+        <a href="{link_esc}" style="display: inline-block; background: #1D9E75; color: #FFFFFF; padding: 12px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 15px;">
+          Elegir nueva contraseña
+        </a>
+      </div>
+      <p style="font-size: 13px; color: #6B7280; line-height: 1.5;">
+        Si el botón no funciona, copia y pega este enlace en tu navegador:<br>
+        <span style="word-break: break-all; color: #1D9E75;">{link_esc}</span>
+      </p>
+      <hr style="border: none; border-top: 1px solid #E5E7EB; margin: 24px 0;">
+      <p style="font-size: 12px; color: #9CA3AF; margin: 0;">
+        Si no pediste este cambio, podés ignorar este correo — tu contraseña actual sigue funcionando.
+      </p>
+    </div>
+  </div>
+</body>
+</html>"""
+
+
 def _plantilla_html_verificacion(nombre: str, link: str) -> str:
     """HTML minimal, inline styles, safe para clientes de correo."""
     # Escapamos el nombre del docente por precaución (fuente: form de registro).

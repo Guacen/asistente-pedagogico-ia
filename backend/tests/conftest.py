@@ -36,7 +36,7 @@ def test_engine():
     from models import (  # noqa: F401 — asegura registro de tablas en Base
         Archivo, Calificacion, ChatSesion, Docente, EmailVerification,
         Estudiante, EvaluacionColumna, Grupo, Institucion, Mensaje, Nota,
-        PIAR, RateLimitCounter, Suscripcion, UsoMensual,
+        PIAR, PasswordResetToken, RateLimitCounter, Suscripcion, UsoMensual,
     )
     Base.metadata.create_all(bind=engine)
     yield engine
