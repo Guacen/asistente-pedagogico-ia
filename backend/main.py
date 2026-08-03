@@ -27,6 +27,7 @@ from database import create_tables
 from migrate import apply_migrations, seed_pro_user
 
 # Importar routers
+import admin
 import auth
 import chat
 import documento
@@ -78,6 +79,7 @@ app.add_middleware(
 # ROUTERS API  (/api/...)
 # ============================================================
 
+app.include_router(admin.router)
 app.include_router(auth.router)
 app.include_router(grupos.router)
 app.include_router(chat.router)
