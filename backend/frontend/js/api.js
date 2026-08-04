@@ -273,7 +273,48 @@ class ApiClient {
             `PIAR_${piarId}.docx`,
         );
     }
-    
+
+    // ==========================================
+    // OBSERVACIONES (Observador del Alumno + seguimiento)
+    // ==========================================
+
+    async crearObservacion(data) {
+        return this.request('/api/observaciones', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        });
+    }
+
+    async listarObservaciones(params = {}) {
+        const qs = new URLSearchParams(
+            Object.fromEntries(Object.entries(params).filter(([, v]) => v))
+        ).toString();
+        return this.request(`/api/observaciones${qs ? '?' + qs : ''}`);
+    }
+
+    async getObservacion(idObservacion) {
+        return this.request(`/api/observaciones/${encodeURIComponent(idObservacion)}`);
+    }
+
+    async actualizarObservacion(idObservacion, data) {
+        return this.request(`/api/observaciones/${encodeURIComponent(idObservacion)}`, {
+            method: 'PATCH',
+            body: JSON.stringify(data),
+        });
+    }
+
+    async seguimientosPendientes() {
+        return this.request('/api/observaciones/seguimientos-pendientes');
+    }
+
+    async descargarObservacionDocx(idObservacion) {
+        return this._descargarBlob(
+            `/api/observaciones/${encodeURIComponent(idObservacion)}/exportar`,
+            `observacion_${idObservacion}.docx`,
+            'POST',
+        );
+    }
+
     // ==========================================
     // ESTUDIANTES
     // ==========================================
@@ -421,10 +462,10 @@ class ApiClient {
     // Ambos endpoints devuelven un stream DOCX que descargamos directo.
     // Helper: encapsula fetch + Blob download y valida el Content-Type.
 
-    async _descargarBlob(url, filenameFallback) {
+    async _descargarBlob(url, filenameFallback, method = 'GET') {
         const token = this.getToken();
         const res = await fetch(`${this.baseUrl}${url}`, {
-            method: 'GET',
+            method,
             headers: { ...(token && { Authorization: `Bearer ${token}` }) },
         });
         if (!res.ok) {

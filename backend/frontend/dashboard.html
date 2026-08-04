@@ -169,6 +169,14 @@
                     </div>
                 </div>
 
+                <!-- Alerta de seguimientos pendientes (sprint observaciones-seguimiento).
+                     Sólo se muestra si hay observaciones con fecha_seguimiento vencida. -->
+                <a id="banner-seguimientos" href="grupos.html" class="hidden mb-6 rounded-xl border-l-4 p-4 flex items-center gap-3 hover:opacity-90 transition-opacity"
+                   style="background:#FFFBEB; border-left-color:#F5B731;">
+                    <i class="fas fa-triangle-exclamation text-xl" style="color:#F5B731"></i>
+                    <p class="text-sm font-medium text-gray-800" id="banner-seguimientos-msg"></p>
+                    <i class="fas fa-arrow-right ml-auto text-gray-400"></i>
+                </a>
 
                 <!-- ── Stats ─────────────────────────────────── -->
                 <div class="grid sm:grid-cols-3 gap-4 mb-8">
@@ -435,6 +443,7 @@
             if (sub) renderPlan();
             renderStats();
             mostrarBannerConsentimientoSiAplica(u);
+            mostrarBannerSeguimientosPendientes();
 
         } catch (err) {
             console.error(err);
@@ -461,6 +470,24 @@
                 document.getElementById('grupos-skeleton').classList.add('hidden');
                 document.getElementById('no-grupos-msg').classList.remove('hidden');
             }
+        }
+    }
+
+    // ── Alerta de seguimientos pendientes (sprint observaciones-seguimiento) ──
+    // No bloquea el fallo — si el endpoint falla, el dashboard sigue andando
+    // igual, sólo sin la alerta.
+    async function mostrarBannerSeguimientosPendientes() {
+        const banner = document.getElementById('banner-seguimientos');
+        const msg = document.getElementById('banner-seguimientos-msg');
+        if (!banner || !msg) return;
+        try {
+            const pendientes = await api.seguimientosPendientes();
+            if (!pendientes || pendientes.length === 0) return;
+            const n = pendientes.length;
+            msg.textContent = `⚠️ ${n} observaci${n === 1 ? 'ón' : 'ones'} requiere${n === 1 ? '' : 'n'} seguimiento hoy`;
+            banner.classList.remove('hidden');
+        } catch (err) {
+            console.warn('[dashboard] no pude cargar seguimientos pendientes:', err);
         }
     }
 

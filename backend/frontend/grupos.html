@@ -555,6 +555,25 @@
                         </div>
                     </div>
 
+                    <!-- Sección Observaciones (sprint observaciones-seguimiento) — sólo en
+                         modo edición. A diferencia de PIAR, se muestra para CUALQUIER
+                         estudiante, no sólo los que tienen tiene_piar=true. -->
+                    <div id="observaciones-section" class="hidden pt-4 border-t border-gray-200">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="text-sm font-semibold text-gray-800">
+                                <i class="fas fa-eye text-teal-600 mr-1"></i>
+                                Observaciones
+                            </h3>
+                            <button type="button" id="btn-nueva-observacion" onclick="irAlChatParaNuevaObservacion()"
+                                class="px-3 py-1.5 text-xs bg-teal-600 text-white rounded hover:bg-teal-700">
+                                <i class="fas fa-plus mr-1"></i>Nueva observación
+                            </button>
+                        </div>
+                        <div id="observaciones-list" class="space-y-2 text-sm">
+                            <p class="text-xs text-gray-400 italic">Cargando…</p>
+                        </div>
+                    </div>
+
                     <div class="flex justify-end space-x-3 pt-4">
                         <button type="button" onclick="cerrarModalEstudiante()"
                             class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">

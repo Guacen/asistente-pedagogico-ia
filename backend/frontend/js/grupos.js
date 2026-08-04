@@ -538,6 +538,7 @@ function abrirModalNuevoEstudiante() {
     document.getElementById('estudiante-grupo-id').value = grupoSeleccionado;
     document.getElementById('piar-fields').classList.add('hidden');
     document.getElementById('piars-section').classList.add('hidden');
+    document.getElementById('observaciones-section').classList.add('hidden');
     document.getElementById('btn-guardar-est-text').textContent = 'Agregar Estudiante';
 
     document.getElementById('modal-estudiante').classList.remove('hidden');
@@ -568,6 +569,8 @@ async function editarEstudiante(estudianteId) {
 
         // Cargar sección de PIARs generados (Issue #48) — solo en edición
         cargarPiarsEnFicha(estudiante);
+        // Sprint observaciones-seguimiento — solo en edición, cualquier estudiante
+        cargarObservacionesEnFicha(estudiante);
 
     } catch (error) {
         console.error('Error cargando estudiante:', error);
@@ -683,6 +686,121 @@ function _redirigirAChatPiar(idGrupo, idEstudiante) {
         modo: 'piar',
         estudiante: idEstudiante,
     });
+    window.location.href = `chat.html?${qs.toString()}`;
+}
+
+/**
+ * Sprint observaciones-seguimiento — sección "Observaciones" en la ficha
+ * del estudiante. A diferencia de PIAR, se muestra siempre (no sólo si
+ * tiene_piar=true) — cualquier estudiante puede tener observaciones.
+ * Consume GET /api/observaciones?id_estudiante={id}.
+ */
+async function cargarObservacionesEnFicha(estudiante) {
+    const section = document.getElementById('observaciones-section');
+    const list = document.getElementById('observaciones-list');
+    const btnNueva = document.getElementById('btn-nueva-observacion');
+    if (!section || !list) return;
+
+    section.classList.remove('hidden');
+    if (btnNueva) btnNueva.dataset.estudianteId = estudiante.id_estudiante;
+    list.innerHTML = '<p class="text-xs text-gray-400 italic">Cargando…</p>';
+
+    try {
+        const observaciones = await api.listarObservaciones({ id_estudiante: estudiante.id_estudiante });
+        if (!observaciones || observaciones.length === 0) {
+            list.innerHTML = `
+                <p class="text-xs text-gray-500 italic">
+                    Aún no hay observaciones registradas para este estudiante.
+                </p>`;
+            return;
+        }
+        list.innerHTML = observaciones.map(o => _observacionRowHtml(o)).join('');
+    } catch (err) {
+        console.error('Error cargando observaciones:', err);
+        list.innerHTML = '<p class="text-xs text-red-600">No se pudieron cargar las observaciones.</p>';
+    }
+}
+
+const _NIVEL_ESCALACION_BADGE = {
+    docente: 'bg-green-100 text-green-800',
+    coordinador: 'bg-amber-100 text-amber-800',
+    orientador: 'bg-amber-100 text-amber-800',
+    externo: 'bg-red-100 text-red-800',
+    icbf: 'bg-red-100 text-red-800',
+};
+const _ESTADO_OBSERVACION_BADGE = {
+    abierta: 'bg-blue-100 text-blue-800',
+    en_seguimiento: 'bg-amber-100 text-amber-800',
+    cerrada: 'bg-gray-200 text-gray-600',
+};
+
+function _observacionRowHtml(o) {
+    const fecha = o.creado_en ? new Date(o.creado_en).toLocaleDateString('es-CO', {
+        year: 'numeric', month: 'short', day: 'numeric',
+    }) : '—';
+    const nivelClass = _NIVEL_ESCALACION_BADGE[o.nivel_escalacion] || 'bg-gray-100 text-gray-800';
+    const estadoClass = _ESTADO_OBSERVACION_BADGE[o.estado] || 'bg-gray-100 text-gray-800';
+    const btnCerrar = o.estado !== 'cerrada'
+        ? `<button type="button" onclick="cerrarObservacionDesdeFicha('${escapeAttr(o.id_observacion)}')"
+             class="text-xs text-gray-600 hover:underline">
+             Marcar cerrada
+           </button>`
+        : '';
+    return `
+      <div class="flex items-center justify-between px-3 py-2 bg-gray-50 rounded border border-gray-200">
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="text-xs px-2 py-0.5 rounded-full ${estadoClass} font-semibold">
+            ${escapeHtml(o.estado.replace('_', ' ').toUpperCase())}
+          </span>
+          <span class="text-xs px-2 py-0.5 rounded-full ${nivelClass}">
+            ${escapeHtml(o.nivel_escalacion)}
+          </span>
+          <span class="text-sm text-gray-800">${escapeHtml(o.tipo)}</span>
+          <span class="text-xs text-gray-500">${fecha}</span>
+        </div>
+        <div class="flex items-center gap-3">
+          ${btnCerrar}
+          <button type="button" onclick="descargarObservacionDesdeFicha('${escapeAttr(o.id_observacion)}')"
+            class="text-xs text-gray-700 hover:text-teal-700">
+            <i class="fas fa-file-download mr-1"></i>DOCX
+          </button>
+        </div>
+      </div>`;
+}
+
+async function cerrarObservacionDesdeFicha(idObservacion) {
+    try {
+        await api.actualizarObservacion(idObservacion, { estado: 'cerrada' });
+        const idEst = document.getElementById('btn-nueva-observacion')?.dataset.estudianteId;
+        if (idEst) {
+            const estudiante = await api.getEstudiante(grupoSeleccionado, idEst);
+            cargarObservacionesEnFicha(estudiante);
+        }
+    } catch (err) {
+        mostrarAlerta('No se pudo actualizar la observación', 'error');
+    }
+}
+
+async function descargarObservacionDesdeFicha(idObservacion) {
+    try {
+        await api.descargarObservacionDocx(idObservacion);
+    } catch (err) {
+        console.error('Error descargando observación DOCX:', err);
+        mostrarAlerta('No se pudo descargar el DOCX de la observación', 'error');
+    }
+}
+
+function irAlChatParaNuevaObservacion() {
+    const btn = document.getElementById('btn-nueva-observacion');
+    const idEst = btn && btn.dataset.estudianteId;
+    if (!grupoSeleccionado) return;
+    _redirigirAChatObservaciones(grupoSeleccionado, idEst || null);
+}
+
+function _redirigirAChatObservaciones(idGrupo, idEstudiante) {
+    const params = { id: idGrupo, modo: 'observaciones' };
+    if (idEstudiante) params.estudiante = idEstudiante;
+    const qs = new URLSearchParams(params);
     window.location.href = `chat.html?${qs.toString()}`;
 }
 
@@ -945,6 +1063,11 @@ window.filtrarGrupos = filtrarGrupos;
 window.irAlChatParaNuevoPiar = irAlChatParaNuevoPiar;
 window.continuarPiarEnChat = continuarPiarEnChat;
 window.descargarPiarDesdeFicha = descargarPiarDesdeFicha;
+
+// Sprint observaciones-seguimiento — sección Observaciones en la ficha
+window.irAlChatParaNuevaObservacion = irAlChatParaNuevaObservacion;
+window.cerrarObservacionDesdeFicha = cerrarObservacionDesdeFicha;
+window.descargarObservacionDesdeFicha = descargarObservacionDesdeFicha;
 
 // ==========================================
 // LOG DE DESARROLLO

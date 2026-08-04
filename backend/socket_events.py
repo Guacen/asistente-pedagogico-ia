@@ -39,6 +39,7 @@ from prompts import (
     LIMITES_DIARIOS,
     MODO_CALIFICACION,
     MODO_DEFAULT,
+    MODO_OBSERVACIONES,
     MODO_PIAR,
     MODO_SOCIOEMOCIONAL,
     MODOS_ACTIVOS,
@@ -76,6 +77,7 @@ def _label_modo(modo: str) -> str:
         "socioemocional": "socioemocional",
         "calificacion": "calificación",
         "piar": "PIAR",
+        "observaciones": "observaciones",
     }.get(modo, modo)
 
 
@@ -425,9 +427,11 @@ async def send_message(sid, data):
                 }, to=sid)
                 return
 
-        # 2. Verificar límite del plan (mensual)
+        # 2. Verificar límite del plan (mensual) — observaciones queda
+        # exento: son urgentes (Ley 1620/1098) y no deben quedar detrás
+        # de un paywall, ni siquiera el tope mensual del plan free.
         docente = db.query(Docente).filter(Docente.id_docente == docente_id).first()
-        if not _verificar_limite_plan(docente, db):
+        if modo != MODO_OBSERVACIONES and not _verificar_limite_plan(docente, db):
             await sio.emit("ia_error", {
                 "message": "Alcanzaste el límite de 10 mensajes/mes del plan Free. "
                            "Actualiza a Pro para mensajes ilimitados."
@@ -539,10 +543,12 @@ async def send_message(sid, data):
                 .all()
             )
 
-        if modo in (MODO_SOCIOEMOCIONAL, MODO_CALIFICACION, MODO_PIAR):
+        if modo in (MODO_SOCIOEMOCIONAL, MODO_CALIFICACION, MODO_PIAR, MODO_OBSERVACIONES):
             # Notas registradas por estudiante — sirve para detectar bajos
             # rendimientos en socioemocional, para tener contexto real en
-            # calificacion, y para contextualizar rendimiento en PIAR.
+            # calificacion, para contextualizar rendimiento en PIAR, y para
+            # dar contexto de desempeño al redactar observaciones tipo
+            # "academica".
             cals = (
                 db.query(Calificacion)
                 .filter(Calificacion.id_grupo == grupo_id)
