@@ -33,6 +33,7 @@ import chat
 import documento
 import grupos
 import institucion
+import observaciones
 import piar
 import sesiones
 import suscripciones
@@ -86,6 +87,7 @@ app.include_router(chat.router)
 app.include_router(documento.router)
 app.include_router(piar.router)
 app.include_router(institucion.router)
+app.include_router(observaciones.router)
 app.include_router(sesiones.router)
 app.include_router(suscripciones.router)
 

@@ -194,6 +194,11 @@
                             title="Generación de PIAR — Decreto 1421/2017 (borrador)">
                             <span>📋</span><span>PIAR</span>
                         </button>
+                        <button type="button" data-modo="observaciones"
+                            class="mode-btn flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors whitespace-nowrap"
+                            title="Observador del Alumno + seguimiento — Ley 1620/1098">
+                            <span>👁️</span><span>Observaciones</span>
+                        </button>
                         <span id="mode-hint" class="ml-2 text-[11px] text-gray-500 whitespace-nowrap"></span>
                     </div>
 
@@ -222,6 +227,47 @@
                             Este grupo no tiene estudiantes con PIAR activo. Actívalo en la ficha de un estudiante para usar este modo.
                         </div>
                         <div id="piar-versiones" class="hidden mt-2 text-[11px] text-orange-900 flex flex-wrap gap-1.5"></div>
+                    </div>
+
+                    <!-- Panel Observaciones — sólo visible cuando modo=observaciones -->
+                    <div id="observ-panel" class="hidden mb-2 p-3 bg-teal-50 border border-teal-200 rounded-lg">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <label class="text-xs font-semibold text-teal-900">Tipo:</label>
+                            <select id="observ-tipo-select" class="text-xs px-2 py-1 border border-teal-300 rounded bg-white">
+                                <option value="academica">Académica</option>
+                                <option value="convivencia">Convivencia</option>
+                                <option value="familiar">Familiar</option>
+                                <option value="salud">Salud</option>
+                                <option value="asistencia">Asistencia</option>
+                                <option value="piar">PIAR</option>
+                                <option value="logro">Logro</option>
+                            </select>
+                            <label class="text-xs font-semibold text-teal-900">Estudiante:</label>
+                            <select id="observ-estudiante-select"
+                                class="text-xs px-2 py-1 border border-teal-300 rounded bg-white flex-1 min-w-[180px]"
+                                onchange="onObservEstudianteChange(this.value)">
+                                <option value="">— Observación grupal (sin estudiante) —</option>
+                            </select>
+                            <button type="button" id="observ-generar-btn"
+                                onclick="generarObservacion()"
+                                class="text-xs px-3 py-1 bg-teal-600 text-white rounded font-semibold hover:bg-teal-700 disabled:bg-gray-300 disabled:cursor-not-allowed whitespace-nowrap"
+                                title="Redacta la observación con IA y la clasifica según la Ley 1620">
+                                <i class="fas fa-file-signature mr-1"></i>Generar observación
+                            </button>
+                        </div>
+                        <p class="mt-2 text-[11px] text-teal-800">
+                            Escribí la situación en el cuadro de abajo (hechos objetivos: qué pasó, cuándo, qué hiciste) y presioná "Generar observación".
+                        </p>
+                        <div id="observ-resultado" class="hidden mt-2 p-2.5 bg-white border border-teal-300 rounded text-xs text-gray-800">
+                            <div class="flex items-center justify-between mb-1">
+                                <span id="observ-nivel-badge" class="px-2 py-0.5 rounded-full font-semibold"></span>
+                                <button type="button" id="observ-descargar-btn" onclick="descargarObservacionActual()"
+                                    class="text-teal-700 hover:underline">
+                                    <i class="fas fa-file-word mr-1"></i>Descargar DOCX
+                                </button>
+                            </div>
+                            <ul id="observ-acciones-list" class="list-disc list-inside space-y-0.5"></ul>
+                        </div>
                     </div>
 
                     <!-- Rate limit banner (Fase B) -->
@@ -402,6 +448,9 @@ async function init() {
         // Fase C: cache de estudiantes con tiene_piar=true del grupo actual.
         // No persiste entre grupos ni en localStorage — se recalcula acá.
         piarEstudiantesConPiar = (estudiantes || []).filter(e => e.tiene_piar);
+        // Observaciones: a diferencia de PIAR, aplica a CUALQUIER estudiante
+        // del grupo (o a ninguno — observación grupal).
+        todosLosEstudiantes = estudiantes || [];
         // Re-render del selector: puede que el chip PIAR necesite deshabilitarse
         // si no hay ningún estudiante con PIAR en este grupo.
         renderModoSelector();
@@ -425,6 +474,18 @@ async function init() {
             }
         }
 
+        // Deep-link desde la ficha del estudiante para Observaciones:
+        //   chat.html?id={grupo}&modo=observaciones&estudiante={id}
+        // A diferencia de PIAR, cualquier estudiante del grupo es válido
+        // (no requiere tiene_piar=true).
+        if (modoQP === 'observaciones') {
+            localStorage.setItem(modoStorageKey(), 'observaciones');
+            if (estudianteQP && todosLosEstudiantes.some(e => e.id_estudiante === estudianteQP)) {
+                observEstudianteId = estudianteQP;
+            }
+            renderModoSelector();
+        }
+
         // Historial — filtrado por el modo activo (Fase B/C). En modo PIAR
         // sin estudiante seleccionado el empty-state se muestra directo.
         const modoInicial = getModoActivo();
@@ -443,6 +504,9 @@ async function init() {
                 pintarHistorial([], modoInicial);
             }
         } else {
+            if (modoInicial === 'observaciones') {
+                toggleObservPanel(true);
+            }
             const historial = await api.getChatHistorial(grupoId, 50, modoInicial);
             pintarHistorial(historial, modoInicial);
             scrollBottom();
@@ -868,13 +932,16 @@ function ocultarRateLimit() {
 // evitar cruce de contexto entre grupos.
 const MODOS = ['planeacion', 'socioemocional', 'calificacion', 'piar'];
 const MODO_DEFAULT = 'planeacion';
-const MODOS_HABILITADOS = ['planeacion', 'socioemocional', 'calificacion', 'piar'];
+const MODOS_HABILITADOS = ['planeacion', 'socioemocional', 'calificacion', 'piar', 'observaciones'];
 
 // Estado PIAR — NO persiste en localStorage (spec Fase C):
 // el estudiante seleccionado muere al recargar o cambiar de grupo,
 // para evitar cruce de contexto entre grupos.
 let piarEstudianteId = null;
 let piarEstudiantesConPiar = [];  // cache de estudiantes del grupo con tiene_piar=true
+let todosLosEstudiantes = [];     // cache de TODOS los estudiantes del grupo — usado por Observaciones
+let observEstudianteId = null;
+let observacionActualId = null;   // última observación generada — para el botón "Descargar DOCX"
 
 function modoStorageKey() {
     return `modo_chat_${grupoId}`;
@@ -894,12 +961,16 @@ function setModoActivo(modo) {
 
     // Panel PIAR: mostrar/ocultar según modo activo
     togglePiarPanel(modo === 'piar');
+    toggleObservPanel(modo === 'observaciones');
 
     // Al salir de PIAR el estudiante se resetea (no persiste); al volver
     // el docente debe re-seleccionarlo. Al cambiar de estudiante dentro
     // de PIAR también se recarga historial.
     if (modo !== 'piar') {
         piarEstudianteId = null;
+    }
+    if (modo !== 'observaciones') {
+        observEstudianteId = null;
     }
 
     // Recarga historial filtrado por modo (y estudiante si aplica)
@@ -943,6 +1014,7 @@ function renderModoSelector() {
         socioemocional: 'Describe la situación del estudiante o grupo',
         calificacion: 'Diseña rúbricas o valorá desempeño',
         piar: 'Conversación guiada para PIAR (Decreto 1421)',
+        observaciones: 'Describí la situación que querés documentar…',
     };
     const hintEl = document.getElementById('mode-hint');
     if (hintEl) hintEl.textContent = hints[activo] || '';
@@ -1129,6 +1201,105 @@ async function cargarEstudiantesConPiar() {
     // Si estamos en modo piar, refrescar el panel
     if (getModoActivo() === 'piar') {
         renderPiarPanel();
+    }
+}
+
+// ══════════════════════════════════════════════════════════════
+// PANEL OBSERVACIONES — Observador del Alumno + seguimiento
+// ══════════════════════════════════════════════════════════════
+// A diferencia de PIAR, no requiere conversación previa: el docente
+// describe la situación en msg-input y "Generar observación" hace UNA
+// llamada a POST /api/observaciones (síntesis de un solo turno), no
+// pasa por el streaming del chat.
+
+function toggleObservPanel(mostrar) {
+    const panel = document.getElementById('observ-panel');
+    if (!panel) return;
+    if (mostrar) {
+        panel.classList.remove('hidden');
+        renderObservPanel();
+    } else {
+        panel.classList.add('hidden');
+        document.getElementById('observ-resultado')?.classList.add('hidden');
+    }
+}
+
+function renderObservPanel() {
+    const select = document.getElementById('observ-estudiante-select');
+    if (!select) return;
+    const opts = ['<option value="">— Observación grupal (sin estudiante) —</option>']
+        .concat(todosLosEstudiantes.map(e =>
+            `<option value="${escapeHtml(e.id_estudiante)}"${e.id_estudiante === observEstudianteId ? ' selected' : ''}>` +
+            `${escapeHtml(e.codigo_estudiante)}${e.tiene_piar ? ' — PIAR' : ''}</option>`
+        ));
+    select.innerHTML = opts.join('');
+    select.value = observEstudianteId || '';
+    document.getElementById('observ-resultado')?.classList.add('hidden');
+}
+
+function onObservEstudianteChange(nuevoId) {
+    observEstudianteId = nuevoId || null;
+}
+
+async function generarObservacion() {
+    const situacion = document.getElementById('msg-input').value.trim();
+    if (!situacion) {
+        alert('Describí la situación en el cuadro de texto antes de generar la observación.');
+        return;
+    }
+    const tipo = document.getElementById('observ-tipo-select').value;
+    const btn = document.getElementById('observ-generar-btn');
+    const orig = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Generando…';
+
+    try {
+        const obs = await api.crearObservacion({
+            id_grupo: grupoId,
+            id_estudiante: observEstudianteId || null,
+            tipo,
+            situacion_descrita: situacion,
+        });
+        observacionActualId = obs.id_observacion;
+        mostrarResultadoObservacion(obs);
+        document.getElementById('msg-input').value = '';
+    } catch (err) {
+        alert('Error generando la observación: ' + (err.message || err));
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = orig;
+    }
+}
+
+function mostrarResultadoObservacion(obs) {
+    const cont = document.getElementById('observ-resultado');
+    const badge = document.getElementById('observ-nivel-badge');
+    const lista = document.getElementById('observ-acciones-list');
+    if (!cont || !badge || !lista) return;
+
+    const nivelLabels = {
+        docente: ['Tipo I — resolvés vos', 'bg-green-100 text-green-800'],
+        coordinador: ['Tipo II — informá al coordinador', 'bg-amber-100 text-amber-800'],
+        orientador: ['Tipo II — derivá a orientación', 'bg-amber-100 text-amber-800'],
+        externo: ['Tipo III — autoridad externa', 'bg-red-100 text-red-800'],
+        icbf: ['Tipo III — ALERTA: reportar a ICBF', 'bg-red-100 text-red-800'],
+    };
+    const [label, cls] = nivelLabels[obs.nivel_escalacion] || [obs.nivel_escalacion, 'bg-gray-100 text-gray-800'];
+    badge.textContent = label;
+    badge.className = 'px-2 py-0.5 rounded-full font-semibold ' + cls;
+
+    lista.innerHTML = (obs.acciones_recomendadas || []).map(a => `<li>${escapeHtml(a)}</li>`).join('')
+        || '<li class="list-none text-gray-400 italic">Sin acciones recomendadas.</li>';
+
+    cont.classList.remove('hidden');
+}
+
+async function descargarObservacionActual() {
+    if (!observacionActualId) return;
+    try {
+        await api.descargarObservacionDocx(observacionActualId);
+    } catch (err) {
+        alert('Error descargando DOCX: ' + (err.message || err));
     }
 }
 

@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import (
-    Boolean, Column, DateTime, Float, ForeignKey,
+    Boolean, Column, Date, DateTime, Float, ForeignKey,
     Integer, JSON, String, Text
 )
 from sqlalchemy.orm import relationship
@@ -452,3 +452,54 @@ class PIAR(Base):
     estado = Column(String(20), nullable=False, default="borrador", index=True)
     creado_en = Column(DateTime, default=datetime.utcnow, nullable=False)
     aprobado_en = Column(DateTime, nullable=True)
+
+
+class Observacion(Base):
+    """
+    Observación del Observador del Alumno + seguimiento (Ley 1620 de 2013,
+    Decreto 1965 de 2013, Ley 1098 de 2006).
+
+    El docente narra una situación en texto libre (`situacion_descrita`);
+    la IA redacta la versión profesional (`observacion_generada`), la
+    clasifica según la Ruta de Atención Integral de la Ley 1620
+    (`nivel_escalacion`) y sugiere pasos concretos (`acciones_recomendadas`).
+    A diferencia del PIAR, es un registro de un solo turno — no requiere
+    conversación previa en el chat.
+
+    `id_estudiante` es nullable a propósito: una observación puede ser
+    grupal (ej. "el grupo completo tuvo un conflicto en el recreo") sin
+    apuntar a un estudiante específico.
+    """
+    __tablename__ = "observaciones"
+
+    id_observacion = Column(String(36), primary_key=True, default=new_uuid)
+    id_estudiante = Column(
+        String(36),
+        ForeignKey("estudiantes.id_estudiante"),
+        nullable=True,
+        index=True,
+    )
+    id_docente = Column(
+        String(36),
+        ForeignKey("docentes.id_docente"),
+        nullable=False,
+        index=True,
+    )
+    id_grupo = Column(
+        String(36),
+        ForeignKey("grupos.id_grupo"),
+        nullable=False,
+        index=True,
+    )
+    # academica / convivencia / familiar / salud / asistencia / piar / logro
+    tipo = Column(String(20), nullable=False)
+    situacion_descrita = Column(Text, nullable=False)
+    observacion_generada = Column(Text, nullable=True)
+    # docente / coordinador / orientador / externo / icbf — Ruta de
+    # Atención Integral, Ley 1620. "icbf" implica Tipo III (Art. 44 Ley 1098).
+    nivel_escalacion = Column(String(20), nullable=False, default="docente")
+    acciones_recomendadas = Column(JSON, nullable=True, default=list)
+    requiere_seguimiento = Column(Boolean, nullable=False, default=True)
+    fecha_seguimiento = Column(Date, nullable=True)
+    estado = Column(String(20), nullable=False, default="abierta", index=True)
+    creado_en = Column(DateTime, default=datetime.utcnow, nullable=False)
