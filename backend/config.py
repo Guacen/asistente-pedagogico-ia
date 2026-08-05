@@ -43,12 +43,14 @@ class Settings(BaseSettings):
     FRONTEND_URL: str = "http://localhost:8080"
 
     # ── Envío de correo (sprint email-verification-consent) ──
-    # Adapter con fallback automático: SendGrid > SMTP > LogOnly.
+    # Adapter con fallback automático: Resend > SendGrid > SMTP > LogOnly.
     # En dev local nada está configurado y cae al LogOnly, que sólo
     # imprime el link de verificación por consola — el flujo funciona
     # igual sin necesidad de cuenta de correo.
-    # En Railway, se define UNA de las dos: SENDGRID_API_KEY o el bloque
-    # SMTP completo. FROM_EMAIL siempre debe estar (dirección del "from").
+    # En Railway, SMTP no sirve (puerto saliente bloqueado) — usar
+    # RESEND_API_KEY o SENDGRID_API_KEY. FROM_EMAIL siempre debe estar
+    # (dirección del "from").
+    RESEND_API_KEY: str = ""
     SENDGRID_API_KEY: str = ""
     SMTP_HOST: str = ""
     SMTP_PORT: int = 587

@@ -54,6 +54,19 @@ def test_email_service_con_sendgrid_prefiere_sendgrid(monkeypatch):
     assert prov.nombre == "sendgrid"
 
 
+def test_email_service_con_resend_prefiere_resend(monkeypatch):
+    """Resend tiene la prioridad máxima — gana aunque los otros tres estén configurados."""
+    from config import settings
+    import email_service
+
+    monkeypatch.setattr(settings, "RESEND_API_KEY", "re_dummy")
+    monkeypatch.setattr(settings, "SENDGRID_API_KEY", "SG.dummy")
+    monkeypatch.setattr(settings, "SMTP_HOST", "smtp.example.com")
+
+    prov = email_service._elegir_provider()
+    assert prov.nombre == "resend"
+
+
 def test_log_only_provider_no_falla_ni_conecta_nada():
     """El LogOnly debe funcionar sin red / sin credenciales."""
     from email_service import LogOnlyProvider

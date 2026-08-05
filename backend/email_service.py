@@ -2,13 +2,17 @@
 email_service.py — Envío de correo con adapter mixto (fallback automático).
 
 Provider selection (elegido en tiempo de envío, no en import):
-    1. SendGrid  — si `SENDGRID_API_KEY` está definida.
-    2. SMTP      — si `SMTP_HOST` está definido (aunque haya SendGrid roto).
-    3. LogOnly   — si nada está configurado. Imprime el link por consola;
+    1. Resend    — si `RESEND_API_KEY` está definida. Prioridad máxima:
+                   Railway bloquea SMTP saliente, y Resend es HTTP (API
+                   REST), no le afecta ese bloqueo.
+    2. SendGrid  — si `SENDGRID_API_KEY` está definida.
+    3. SMTP      — si `SMTP_HOST` está definido (aunque haya SendGrid roto).
+                   OJO: no funciona en Railway (puerto SMTP bloqueado).
+    4. LogOnly   — si nada está configurado. Imprime el link por consola;
                    en dev local esto es suficiente para probar el flujo.
 
-Los import de SendGrid y smtplib son LAZY — no cuesta nada si el provider
-no está en uso, y el módulo importa aunque sendgrid no esté instalado.
+Los import de Resend, SendGrid y smtplib son LAZY — no cuesta nada si el
+provider no está en uso, y el módulo importa aunque no estén instalados.
 
 El adapter devuelve `True` cuando el envío fue confirmado; `False` si el
 provider falló. La razón NO se propaga al caller: el flujo de registro
@@ -37,6 +41,41 @@ class EmailProvider(Protocol):
     def enviar(self, to_email: str, to_name: str, asunto: str,
                html: str, texto: str) -> bool:
         ...
+
+
+class ResendProvider:
+    """
+    Resend via su SDK oficial. Requiere `pip install resend`.
+
+    Prioridad máxima en la cascada — Railway bloquea SMTP saliente (puerto
+    25/465/587), así que `SmtpProvider` no funciona ahí. Resend es HTTP
+    (API REST por debajo), no tiene ese problema.
+    """
+    nombre = "resend"
+
+    def enviar(self, to_email: str, to_name: str, asunto: str,
+               html: str, texto: str) -> bool:
+        try:
+            # Import lazy — el paquete puede no estar instalado en dev.
+            import resend
+        except ImportError:
+            logger.warning("resend no instalado — omitiendo provider")
+            return False
+
+        try:
+            resend.api_key = settings.RESEND_API_KEY
+            resend.Emails.send({
+                "from": f"{settings.FROM_NAME} <{settings.FROM_EMAIL}>",
+                # Resend espera una lista de destinatarios, no un string suelto.
+                "to": [to_email],
+                "subject": asunto,
+                "html": html,
+            })
+            logger.info("Correo enviado vía Resend a %s", to_email)
+            return True
+        except Exception:
+            logger.exception("Error enviando correo vía Resend a %s", to_email)
+            return False
 
 
 class SendGridProvider:
@@ -132,7 +171,9 @@ class LogOnlyProvider:
 # ═══════════════════════════════════════════════════════════════
 
 def _elegir_provider() -> EmailProvider:
-    """Aplica la cascada SendGrid > SMTP > LogOnly."""
+    """Aplica la cascada Resend > SendGrid > SMTP > LogOnly."""
+    if settings.RESEND_API_KEY:
+        return ResendProvider()
     if settings.SENDGRID_API_KEY:
         return SendGridProvider()
     if settings.SMTP_HOST:
