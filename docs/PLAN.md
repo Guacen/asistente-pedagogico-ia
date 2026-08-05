@@ -1,6 +1,6 @@
 # Plan de trabajo — Maestr.ia
 
-## Estado del producto (2026-08-04)
+## Estado del producto (2026-08-05)
 
 ### Lo que ya funciona
 
@@ -19,6 +19,8 @@
 - **Identidad de marca Maestr.ia** aplicada a los 11 HTML del frontend, logo y paleta de colores (`css/brand.css`), exportación DOCX rebrandeada (planes, rúbricas, boletines, PIAR).
 - **CI**: GitHub Actions corre la suite completa de pytest en cada push/PR contra `main`.
 - **Endpoint admin de mantenimiento** (`backend/admin.py`, PR #37): `POST /api/admin/reset-limites-periodo` purga `rate_limit_counter`, protegido por `Docente.es_admin`. Pensado para llamarse a mano o desde un cron externo (no incluye scheduler propio — ver nota en el backlog).
+- **PWA instalable** (PR #42): `manifest.json` + `service-worker.js` (cache-first, `/api/*` y `/socket.io/*` siempre a red), meta tags PWA en los 14 HTML, service worker registrado en index/dashboard/chat. Descarga de DOCX arreglada en iOS Safari (que no dispara `<a download>`) en los dos lugares donde existía esa lógica (`api.js._descargarBlob` y `descargarDocx()` de chat.html) — abre el blob ya autenticado en pestaña nueva en vez de la URL cruda de la API (que perdería el header `Authorization`).
+- **Responsive móvil completo en las 8 páginas principales** (PR #36 + #42): dashboard, chat, login, precios, grupos, grupo-panel y panel-docente. `precios.html` reescrito con 4 planes en COP y paleta de marca (ya no depende de la Prioridad 1 "Landing page" para eso).
 
 ### Tests
 
@@ -29,8 +31,7 @@
 
 ### Deuda técnica conocida
 
-- **Responsive móvil parcial** (PR #36): se corrigió el caso más grave — sidebar de dashboard.html y panel de sesiones de chat.html ya no se comen 70-85% de un viewport de 375px. Verificado por lectura de código (breakpoints Tailwind vs. anchos en px), **no hay herramienta de browser/screenshot en este entorno para confirmarlo visualmente** — pendiente que alguien lo abra en un dispositivo/DevTools real. `precios.html`, `grupos.html`, `grupo-panel.html` y `panel-docente.html` (mismo patrón de sidebar `w-64`) no se tocaron — quedan con el mismo problema si tienen el mismo layout.
-- **`precios.html` desactualizado**: muestra precios placeholder en USD ($9.99 / $7.99) con color `blue-600` hardcodeado que no corresponde a la paleta de marca (`#1D9E75` / `#0B3D2E` / `#F5B731`). No refleja los 4 planes en COP.
+- **Responsive móvil sin verificación visual real** (PR #36 + #42): el trabajo de responsive (dashboard, chat, login, precios, grupos, grupo-panel, panel-docente) se hizo por lectura de código (breakpoints Tailwind vs. anchos en px, `grep` para confirmar ausencia de sidebar donde el spec asumía que había una), **no hay herramienta de browser/screenshot en este entorno para confirmarlo visualmente en ningún sprint de esta sesión**. Pendiente que alguien lo abra en un dispositivo/DevTools real antes de darlo por cerrado del todo. Lo mismo aplica a la instalación de la PWA (PR #42) — nunca se probó "Agregar a pantalla de inicio" en un dispositivo real.
 - **Sin mascota Chispa** en ningún HTML/CSS del frontend.
 - **Sin exportación a PDF** desde el chat (solo DOCX vía PIAR/documento.py).
 - **Sin programa de referidos** ni código de benchmark de modelos IA (Claude/GPT/Gemini) — ninguno tiene rastro en el código todavía, aunque el diseño experimental ya existe (ver "Contexto académico").
@@ -67,6 +68,7 @@
 20. **Landing page de marketing** (PR #40, 2026-08-04) — `index.html` reescrito desde cero: navbar sticky + menú móvil, hero, dolor→solución, cómo funciona, marco legal, 4 planes en COP con WhatsApp, para colegios, FAQ, footer. CSS puro, sin frameworks.
 21. **Módulo de Observaciones y Seguimiento Estudiantil** (PR #41, 2026-08-04) — modelo `Observacion`, modo de chat "observaciones" (sin límite de rate limiting), endpoints REST (`crear`, `listar`, `detalle`, `actualizar estado`, `seguimientos-pendientes`, `exportar DOCX`), sección en la ficha del estudiante (en `grupos.html`, no en `grupo-panel.html` — ver nota de deuda técnica), tab en `chat.html`, alerta en `dashboard.html`. 17 tests nuevos.
 22. **Versión corta para Observador físico** (commit directo a `main`, 2026-08-04) — el prompt de "observaciones" agrega siempre una versión condensada de máx. 3 líneas / 50 palabras al final de cada registro.
+23. **PWA + responsive completo** (PR #42, 2026-08-05) — `manifest.json` + `service-worker.js`, meta tags PWA en los 14 HTML, fix de descarga DOCX en iOS Safari (2 lugares). Responsive: `precios.html` reescrito (COP + marca + WhatsApp, mismo enfoque que el PR #40), `grupos.html` con header/tabs corregidos. Corrección sobre el spec: `precios.html`, `grupos.html`, `grupo-panel.html` y `panel-docente.html` no tenían sidebar `w-64` como se asumía — `grupo-panel.html` y `panel-docente.html` ya eran responsive, sin cambios.
 
 Nota sobre la numeración: #32 a #41 incluye 3 PRs solo-docs (#33, #35, #38 — actualizaciones de este mismo archivo, sin cambios de código) y 2 commits directos a `main` sin número de PR (cache-busting de assets, sprint #14; versión corta del Observador, sprint #22) — ambos autorizados explícitamente así por el usuario, sin pasar por PR.
 
@@ -86,7 +88,7 @@ Nota sobre la numeración: #32 a #41 incluye 3 PRs solo-docs (#33, #35, #38 — 
 | Pasarela de pago Stripe (código) | Checkout COP con PSE + Nequi + tarjeta vía Stripe | Media-Alta | ✅ código done — 2026-08-03, PR #39. Checkout con dos precios COP (Docente/Pro), `locale='es'`, `payment_method_types=['card','pse','nequi']`. Límites de plan movidos de `suscripciones.py` a `config.LIMITES_PLAN`. 7 tests nuevos en `test_suscripciones.py` (antes tenía cero). **🚫 No activado en producción** — Stripe no opera en Colombia como procesador local (ver "Estado del negocio"). |
 | Pasarela de pago Wompi | Cobro en COP vía procesador local (PSE + Nequi + tarjetas) | Media-Alta | ⏳ **Pendiente — decisión estratégica**, 2026-08-04. Stripe no opera en Colombia como procesador local. Decisión interim: upgrades manuales por WhatsApp hasta tener 20–30 usuarios pagando. Retomar cuando haya tracción real. Requiere: cuenta Wompi verificada + reescritura completa de `suscripciones.py` (Wompi no tiene SDK Python oficial, es API REST directa). |
 | Landing page de marketing | `index.html` con hero, features, pricing, testimonios | Media | ✅ done — 2026-08-04, PR #40 (mergeado, rama `feature/landing-page` ya no existe). Sin frameworks externos, CSS puro con variables de marca. Pendiente menor: WhatsApp con número placeholder (+57 300 000 0000) por reemplazar, y el commit separado de `main.py` (redirect a dashboard si hay JWT válido) que nunca se hizo a propósito. Sin verificación visual (sin herramienta de browser en este entorno). |
-| Responsive móvil | Adaptación real a pantallas chicas | Media | 🟡 en progreso — done parcial 2026-08-03 (PR #36: dashboard + chat + fix de login). Sin verificación visual real (sin herramienta de browser en este entorno). Pendiente: `precios.html`, `grupos.html`, `grupo-panel.html`, `panel-docente.html` (mismo patrón de sidebar `w-64`, 4 páginas sin tocar). |
+| Responsive móvil | Adaptación real a pantallas chicas | Media | ✅ done — 2026-08-05, PR #36 + #42. Las 8 páginas principales cubiertas (dashboard, chat, login, precios, grupos, grupo-panel, panel-docente). Sin verificación visual real en ningún sprint (sin herramienta de browser en este entorno) — pendiente confirmar en dispositivo/DevTools real. |
 | Reset de límites por período académico | Atar rate limit/uso a `periodo_actual` del grupo, no solo a fecha/mes calendario | Media | ✅ done — 2026-08-03, PR #37. Endpoint admin (no cron automático — ver nota abajo) que purga `rate_limit_counter` completo. No toca `UsoMensual` ni `periodo_actual` de grupos directamente. |
 
 ### Prioridad 2 — Mejoras de producto
@@ -106,7 +108,7 @@ Nota sobre la numeración: #32 a #41 incluye 3 PRs solo-docs (#33, #35, #38 — 
 |-------|-------------|-------------|--------|
 | Multi-institución con roles | Base ya construida en Prioridad 2; escalar a más instituciones simultáneas y planes diferenciados | Alta | 🟡 Base ✅, escala pendiente de validar con carga real |
 | API pública para integraciones | Endpoints documentados para terceros (más allá de Swagger interno) | Alta | ❌ No implementado |
-| App móvil (PWA o nativa) | Empaquetado móvil del frontend actual | Alta | ❌ No implementado |
+| App móvil (PWA o nativa) | Empaquetado móvil del frontend actual | Alta | ✅ PWA done — 2026-08-05, PR #42. `manifest.json` + `service-worker.js` instalable en Android/iOS ("Agregar a pantalla de inicio"). Sin verificación real de instalación en un dispositivo. App nativa sigue sin implementar (no se pidió). |
 | Integraciones con sistemas escolares colombianos (SIMAT) | Sincronización de matrícula/estudiantes con SIMAT | Muy alta | ❌ No implementado |
 
 ---
@@ -198,7 +200,7 @@ Si ninguno de `SENDGRID_API_KEY` o el bloque SMTP está configurado, `email_serv
 │   ├── markdown_parser.py, migrate.py, models.py, permisos.py
 │   ├── piar.py, prompts.py, schemas.py, sesiones.py
 │   ├── socket_events.py, suscripciones.py, main.py
-│   ├── frontend/          (11 HTML + css/ + js/ + assets/)
+│   ├── frontend/          (14 HTML + manifest.json + service-worker.js + css/ + js/ + assets/)
 │   ├── tests/              (25 archivos, 255 tests)
 │   └── requirements.txt, .env.example, Procfile
 ├── docs/
@@ -271,13 +273,14 @@ de ejecución una vez estén disponibles las API keys de OpenAI y Google.
 
 ## Próximos sprints recomendados
 
-1. **Landing page** — el sprint en sí ya está done (PR #40, mergeado 2026-08-04; la rama `feature/landing-page` ya no existe). Lo que queda es rematar pendientes menores: número de WhatsApp real en los 6 links, y el commit separado de `main.py` (redirect a dashboard si hay JWT válido) que se dejó pendiente a propósito.
-2. **Responsive móvil completo** — extender el tratamiento del PR #36 a las 4 páginas que quedaron con el mismo patrón de sidebar sin tocar: `precios.html`, `grupos.html`, `grupo-panel.html`, `panel-docente.html`. Sumar verificación visual real (DevTools o dispositivo a 375px) de todo lo hecho hasta ahora — ninguna sesión tuvo herramienta de browser disponible.
-3. **Onboarding guiado primer uso** — no hay nada implementado todavía; no estaba en el backlog original.
-4. **Wompi** — retomar cuando haya tracción real (20–30 usuarios Pro pagando manual por WhatsApp). Requiere cuenta Wompi verificada + reescritura de `suscripciones.py`.
-5. **Benchmark de modelos IA** — objetivo de la tesis doctoral (ver "Contexto académico"); pendiente de API keys de OpenAI y Google.
-6. **Mascota Chispa en estados de la UI** — sin implementar, sin assets encontrados en el repo.
+1. **Verificación visual real en un dispositivo/DevTools** — ningún sprint de frontend de esta sesión (#36, #40, #42) se probó en un browser real, sin excepción. Incluye: responsive de las 8 páginas, instalación de la PWA ("Agregar a pantalla de inicio" en Android/iOS), y el flujo de descarga de DOCX en iOS Safari.
+2. **Reemplazar el número de WhatsApp placeholder** (+57 300 000 0000) por el real — está repetido en `index.html` (PR #40) y ahora también en `precios.html` (PR #42), más de 10 links en total.
+3. **El commit separado de `main.py`** (redirect a dashboard si hay JWT válido) que se dejó pendiente a propósito desde el PR #40.
+4. **Onboarding guiado primer uso** — no hay nada implementado todavía; no estaba en el backlog original.
+5. **Wompi** — retomar cuando haya tracción real (20–30 usuarios Pro pagando manual por WhatsApp). Requiere cuenta Wompi verificada + reescritura de `suscripciones.py`.
+6. **Benchmark de modelos IA** — objetivo de la tesis doctoral (ver "Contexto académico"); pendiente de API keys de OpenAI y Google.
+7. **Mascota Chispa en estados de la UI** — sin implementar, sin assets encontrados en el repo.
 
 ---
-*Generado automáticamente por Claude Code el 2026-08-04*
+*Generado automáticamente por Claude Code el 2026-08-05*
 *Repositorio: github.com/Guacen/asistente-pedagogico-ia*
