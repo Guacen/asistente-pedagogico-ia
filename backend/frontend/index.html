@@ -9,6 +9,14 @@
 <meta property="og:description" content="Genera PIARs, planeaciones y evaluaciones socioemocionales con IA. Base legal sólida según el Decreto 1421 de 2017.">
 <meta property="og:image" content="/assets/logo.png">
 <link rel="icon" type="image/png" href="assets/icon.png">
+<!-- PWA -->
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#0B3D2E">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Maestr.ia">
+<link rel="apple-touch-icon" href="/assets/icon.png">
 
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@700;800&family=Inter:wght@400;500;600&display=swap');
@@ -688,6 +696,11 @@ const observer = new IntersectionObserver((entries) => {
     });
 }, { threshold: 0.15 });
 document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/service-worker.js');
+}
 </script>
 </body>
 </html>

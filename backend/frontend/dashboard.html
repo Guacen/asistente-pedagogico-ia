@@ -5,6 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard · Maestr.ia — Tu colega que conoce la ley</title>
     <link rel="icon" type="image/png" href="assets/icon.png">
+    <!-- PWA -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0B3D2E">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Maestr.ia">
+    <link rel="apple-touch-icon" href="/assets/icon.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="css/main.css?v=20260803">
@@ -773,6 +781,11 @@
 
     // ── Arranque ──────────────────────────────────────────────────────
     cargarDatos();
+    </script>
+    <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/service-worker.js');
+    }
     </script>
 </body>
 </html>

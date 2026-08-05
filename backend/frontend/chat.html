@@ -5,6 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chat · Maestr.ia — Tu colega que conoce la ley</title>
     <link rel="icon" type="image/png" href="assets/icon.png">
+    <!-- PWA -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0B3D2E">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Maestr.ia">
+    <link rel="apple-touch-icon" href="/assets/icon.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
@@ -736,13 +744,24 @@ async function descargarDocx(btn) {
 
         const blob = await resp.blob();
         const url  = URL.createObjectURL(blob);
-        const a    = document.createElement('a');
-        a.href     = url;
-        a.download = `${titulo.replace(/[^\w\s-]/g, '').trim()}.docx`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+
+        // iOS Safari no dispara la descarga con el truco de <a download> —
+        // abrimos el blob (ya descargado con auth) en una pestaña nueva y
+        // dejamos que el visor nativo / botón compartir de Safari lo maneje.
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+        if (isIOS) {
+            window.open(url, '_blank');
+            alert('En iPhone, usa el botón compartir (□↑) para guardar el archivo.');
+            setTimeout(() => URL.revokeObjectURL(url), 60000);
+        } else {
+            const a = document.createElement('a');
+            a.href     = url;
+            a.download = `${titulo.replace(/[^\w\s-]/g, '').trim()}.docx`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
 
         btn.innerHTML = '<i class="fas fa-check"></i> Descargado';
         btn.classList.add('done');
@@ -1554,6 +1573,11 @@ function cerrarSesion() {
 // ── Arranque ───────────────────────────────────────────────────
 colapsarPanelSesionesEnMobile();
 init();
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/service-worker.js');
+}
 </script>
 </body>
 </html>
