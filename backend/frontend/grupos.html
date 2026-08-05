@@ -5,6 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestionar Grupos · Maestr.ia — Tu colega que conoce la ley</title>
     <link rel="icon" type="image/png" href="assets/icon.png">
+    <!-- PWA -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0B3D2E">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Maestr.ia">
+    <link rel="apple-touch-icon" href="/assets/icon.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="css/main.css?v=20260803">
@@ -17,18 +25,18 @@
         <!-- Header -->
         <header class="bg-white shadow-sm sticky top-0 z-10">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center space-x-4">
-                        <a href="dashboard.html" class="text-gray-600 hover:text-gray-900">
+                <div class="flex items-center justify-between gap-3 flex-wrap">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <a href="dashboard.html" class="text-gray-600 hover:text-gray-900 flex-shrink-0">
                             <i class="fas fa-arrow-left text-xl"></i>
                         </a>
-                        <div>
-                            <h1 class="text-2xl font-bold text-gray-900">Mis Grupos</h1>
-                            <p class="text-sm text-gray-600">Gestiona tus grupos de estudiantes</p>
+                        <div class="min-w-0">
+                            <h1 class="text-2xl font-bold text-gray-900 truncate">Mis Grupos</h1>
+                            <p class="text-sm text-gray-600 truncate">Gestiona tus grupos de estudiantes</p>
                         </div>
                     </div>
                     <button onclick="abrirModalNuevoGrupo()"
-                        class="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors flex items-center shadow-lg">
+                        class="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors flex items-center shadow-lg flex-shrink-0">
                         <i class="fas fa-plus mr-2"></i>Nuevo Grupo
                     </button>
                 </div>
@@ -40,8 +48,8 @@
 
             <!-- Tabs -->
             <div class="mb-6">
-                <div class="border-b border-gray-200">
-                    <nav class="-mb-px flex space-x-8">
+                <div class="border-b border-gray-200 overflow-x-auto">
+                    <nav class="-mb-px flex space-x-8 w-max min-w-full">
                         <button onclick="cambiarTab('grupos')" id="tab-grupos"
                             class="tab-button border-b-2 border-blue-600 py-4 px-1 text-sm font-medium text-blue-600">
                             <i class="fas fa-users mr-2"></i>Grupos
@@ -708,7 +716,7 @@
                         </div>
                     </div>
                     <div class="border border-gray-200 rounded-lg overflow-hidden">
-                        <div class="max-h-72 overflow-y-auto">
+                        <div class="max-h-72 overflow-y-auto overflow-x-auto">
                             <table class="w-full text-sm">
                                 <thead class="bg-gray-50 text-left text-[11px] uppercase tracking-wider text-gray-500 sticky top-0">
                                     <tr>

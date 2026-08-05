@@ -481,13 +481,37 @@ class ApiClient {
         }
         const blob = await res.blob();
         const objUrl = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = objUrl;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        URL.revokeObjectURL(objUrl);
+
+        // iOS Safari no dispara la descarga con el truco de <a download> para
+        // .docx (el click en un <a> invisible no hace nada, o abre una
+        // pestaña con contenido binario ilegible). El endpoint requiere el
+        // Bearer token, así que NO podemos abrir la URL de la API directo
+        // con window.open — ya perdimos el header ahí. En cambio, abrimos el
+        // blob que YA descargamos (con auth) en una pestaña nueva: Safari
+        // muestra su visor nativo con el botón de compartir/guardar.
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+        if (isIOS) {
+            window.open(objUrl, '_blank');
+            const mensaje = 'En iPhone, usa el botón compartir (□↑) para guardar el archivo.';
+            if (typeof window.toast === 'function') {
+                window.toast(mensaje, 'info');
+            } else if (typeof window.mostrarAlerta === 'function') {
+                window.mostrarAlerta(mensaje, 'info');
+            } else {
+                alert(mensaje);
+            }
+            // No revocar de inmediato — Safari todavía está cargando la
+            // pestaña nueva. Se libera solo, un minuto después.
+            setTimeout(() => URL.revokeObjectURL(objUrl), 60000);
+        } else {
+            const a = document.createElement('a');
+            a.href = objUrl;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(objUrl);
+        }
         return { filename, size: blob.size };
     }
 
