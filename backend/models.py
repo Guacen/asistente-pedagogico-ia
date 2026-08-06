@@ -101,6 +101,23 @@ class Docente(Base):
     fecha_consentimiento = Column(DateTime, nullable=True)
     ip_consentimiento = Column(String(45), nullable=True)  # IPv6 max = 45 chars
 
+    # ── Prueba gratuita 7 días — sprint trial-7-dias ──
+    # `plan` acá es un eje DISTINTO de Suscripcion.plan ('free'/'pro', el
+    # tier de facturación Stripe) e Institucion.plan ('free', billing a
+    # nivel institución). Este `plan` es el estado de ACCESO self-service:
+    #   'trial'    → dentro de la ventana de 7 días desde el registro.
+    #   'activo'   → nunca se bloquea (docentes grandfathered al deploy de
+    #                este sprint, o cualquier cuenta que decidamos eximir
+    #                manualmente). trial_ends_at queda NULL para estos.
+    #   'expirado' → la ventana de 7 días venció; verify_trial_active()
+    #                devuelve 402 en los endpoints de producto.
+    # trial_ends_at es naive UTC (no tz-aware) a propósito — TODAS las
+    # demás columnas de fecha en este modelo (fecha_registro, etc.) son
+    # naive UTC comparadas con datetime.utcnow(); mezclar aware/naive acá
+    # sólo introduce un TypeError latente al comparar.
+    trial_ends_at = Column(DateTime, nullable=True)
+    plan = Column(String(20), nullable=False, default="trial")
+
     # Relaciones
     grupos = relationship("Grupo", back_populates="docente", cascade="all, delete")
     suscripcion = relationship("Suscripcion", back_populates="docente", uselist=False, cascade="all, delete")

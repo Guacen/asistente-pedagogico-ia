@@ -27,7 +27,7 @@ from typing import Iterable
 from fastapi import Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from auth import get_current_docente
+from auth import verify_trial_active
 from database import get_db
 from models import Docente, Grupo, Institucion
 
@@ -113,7 +113,7 @@ def require_rol(roles_permitidos: Iterable[str]):
     """
     permitidos = {r.lower() for r in roles_permitidos}
 
-    def _dep(docente: Docente = Depends(get_current_docente)) -> Docente:
+    def _dep(docente: Docente = Depends(verify_trial_active)) -> Docente:
         if rol_de(docente) not in permitidos:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -126,7 +126,7 @@ def require_rol(roles_permitidos: Iterable[str]):
     return _dep
 
 
-def require_admin_institucion(docente: Docente = Depends(get_current_docente)) -> Docente:
+def require_admin_institucion(docente: Docente = Depends(verify_trial_active)) -> Docente:
     """Coordinador o rector."""
     if not es_admin_institucion(docente):
         raise HTTPException(
@@ -139,7 +139,7 @@ def require_admin_institucion(docente: Docente = Depends(get_current_docente)) -
     return docente
 
 
-def require_rector(docente: Docente = Depends(get_current_docente)) -> Docente:
+def require_rector(docente: Docente = Depends(verify_trial_active)) -> Docente:
     """Solo rector — para acciones que cambian estructura de la institución."""
     if not es_rector(docente):
         raise HTTPException(
@@ -174,7 +174,7 @@ def get_institucion_o_404(
 
 
 def require_plan_institucional(
-    docente: Docente = Depends(get_current_docente),
+    docente: Docente = Depends(verify_trial_active),
     db: Session = Depends(get_db),
 ) -> Docente:
     """

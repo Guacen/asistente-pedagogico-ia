@@ -27,7 +27,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from auth import get_current_docente
+from auth import verify_trial_active
 from database import get_db
 from ia import client as anthropic_client
 from config import settings
@@ -533,7 +533,7 @@ def _construir_piar_docx(
 @router.post("/", response_model=PIAROut, status_code=201)
 async def crear_piar(
     body: PIARCreateRequest,
-    docente: Docente = Depends(get_current_docente),
+    docente: Docente = Depends(verify_trial_active),
     db: Session = Depends(get_db),
 ):
     """
@@ -619,7 +619,7 @@ async def crear_piar(
 @router.get("/estudiante/{id_estudiante}", response_model=List[PIARResumenOut])
 def listar_por_estudiante(
     id_estudiante: str,
-    docente: Docente = Depends(get_current_docente),
+    docente: Docente = Depends(verify_trial_active),
     db: Session = Depends(get_db),
 ):
     """
@@ -667,7 +667,7 @@ def listar_por_estudiante(
 @router.put("/{piar_id}/aprobar", response_model=PIAROut)
 def aprobar_piar(
     piar_id: str,
-    docente: Docente = Depends(get_current_docente),
+    docente: Docente = Depends(verify_trial_active),
     db: Session = Depends(get_db),
 ):
     """
@@ -698,7 +698,7 @@ def aprobar_piar(
 @router.get("/{piar_id}/docx")
 def descargar_docx(
     piar_id: str,
-    docente: Docente = Depends(get_current_docente),
+    docente: Docente = Depends(verify_trial_active),
     db: Session = Depends(get_db),
 ):
     """

@@ -36,12 +36,16 @@ from fastapi.testclient import TestClient
 def _mk_docente(db, email, nombre, id_institucion=None, rol="docente"):
     from models import Docente
     from auth import hash_password
+    # plan="activo" (sprint trial-7-dias): estos docentes representan
+    # cuentas ya existentes en los tests de este sprint, no altas nuevas
+    # con trial — igual criterio que conftest._make_docente.
     d = Docente(
         nombre_completo=nombre,
         email=email,
         password_hash=hash_password("test1234"),
         id_institucion=id_institucion,
         rol=rol,
+        plan="activo",
     )
     db.add(d)
     db.commit()

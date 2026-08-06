@@ -57,7 +57,7 @@ def db_session(test_engine):
 # ─── Docentes sembrados (para tests que necesitan datos base) ──────────────
 def _make_docente(
     db_session, email: str, nombre: str, password_plain: str = "test1234",
-    email_verificado: bool = True,
+    email_verificado: bool = True, plan: str = "activo",
 ):
     """
     Fabrica un docente sembrado. Por default queda con `email_verificado=True`
@@ -65,6 +65,17 @@ def _make_docente(
     antes del sprint email-verification-consent tienen la columna en TRUE
     tras el backfill de la migración). Tests del sprint que necesiten
     probar el bloqueo de /me pueden pedir `email_verificado=False`.
+
+    `plan="activo"` por default (sprint trial-7-dias) — representa un
+    docente ya existente/grandfathered, igual que hace migrate.py con
+    las cuentas reales al desplegar. Si el default fuera 'trial' (el
+    default de la columna a nivel de modelo), CADA fixture de este
+    archivo produciría un docente con trial_ends_at=NULL, que
+    verify_trial_active() trata como vencido de inmediato — habría
+    tumbado con 402 casi toda la suite existente (grupos, chat, piar,
+    malla, observaciones, sesiones, institución). Tests que necesiten
+    un docente en trial activo/vencido lo crean explícito, ver
+    test_trial.py.
     """
     from models import Docente
     from auth import hash_password
@@ -73,6 +84,7 @@ def _make_docente(
         email=email,
         password_hash=hash_password(password_plain),
         email_verificado=email_verificado,
+        plan=plan,
     )
     db_session.add(docente)
     db_session.commit()

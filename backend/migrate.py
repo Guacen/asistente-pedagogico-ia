@@ -193,6 +193,32 @@ def apply_migrations():
     from seed_dbas import seed_dbas
     seed_dbas()
 
+    # ── Sprint trial-7-dias ──
+    # 2 columnas nuevas en docentes. Grandfathered: los docentes que ya
+    # existían al momento del deploy quedan con plan='activo' y
+    # trial_ends_at=NULL (nunca se bloquean) — mismo criterio que
+    # email_verificado arriba. El ALTER TABLE con DEFAULT 'trial' backfillea
+    # 'trial' en TODAS las filas existentes automáticamente (comportamiento
+    # estándar de ADD COLUMN ... DEFAULT), así que el UPDATE a 'activo'
+    # de abajo es obligatorio, no defensivo — sin él, cada docente
+    # pre-existente quedaría con plan='trial' y trial_ends_at=NULL, que
+    # verify_trial_active() trata como vencido de inmediato.
+    cols_doc_v4 = [c["name"] for c in inspect(engine).get_columns("docentes")]
+    with engine.connect() as conn:
+        if "plan" not in cols_doc_v4:
+            conn.execute(text(
+                "ALTER TABLE docentes ADD COLUMN plan VARCHAR(20) NOT NULL DEFAULT 'trial'"
+            ))
+            conn.execute(text("UPDATE docentes SET plan = 'activo'"))
+            conn.commit()
+            print("✅ Migración: 'plan' agregada a 'docentes' + backfill grandfathered a 'activo'")
+        if "trial_ends_at" not in cols_doc_v4:
+            conn.execute(text(
+                "ALTER TABLE docentes ADD COLUMN trial_ends_at TIMESTAMP"
+            ))
+            conn.commit()
+            print("✅ Migración: 'trial_ends_at' agregada a 'docentes' (NULL para existentes)")
+
     # Backfill uni-personal: cada docente sin id_institucion recibe una
     # Institucion nueva a su nombre. Idempotente — si ya tiene, no toca.
     _backfill_instituciones_unipersonales()
