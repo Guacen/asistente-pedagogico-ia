@@ -87,7 +87,7 @@ Nota sobre la numeración: #32 a #41 incluye 3 PRs solo-docs (#33, #35, #38 — 
 | Prompts con Decreto 1421 completo | Marco legal completo en el prompt del modo PIAR | Alta | ✅ done — ya implementado, verificado de nuevo el 2026-08-03 sin cambios de código (17 tests de cumplimiento legal en `test_piar_legal_compliance.py`) |
 | Pasarela de pago Stripe (código) | Checkout COP con PSE + Nequi + tarjeta vía Stripe | Media-Alta | ✅ código done — 2026-08-03, PR #39. Checkout con dos precios COP (Docente/Pro), `locale='es'`, `payment_method_types=['card','pse','nequi']`. Límites de plan movidos de `suscripciones.py` a `config.LIMITES_PLAN`. 7 tests nuevos en `test_suscripciones.py` (antes tenía cero). **🚫 No activado en producción** — Stripe no opera en Colombia como procesador local (ver "Estado del negocio"). |
 | Pasarela de pago Wompi | Cobro en COP vía procesador local (PSE + Nequi + tarjetas) | Media-Alta | ⏳ **Pendiente — decisión estratégica**, 2026-08-04. Stripe no opera en Colombia como procesador local. Decisión interim: upgrades manuales por WhatsApp hasta tener 20–30 usuarios pagando. Retomar cuando haya tracción real. Requiere: cuenta Wompi verificada + reescritura completa de `suscripciones.py` (Wompi no tiene SDK Python oficial, es API REST directa). |
-| Landing page de marketing | `index.html` con hero, features, pricing, testimonios | Media | ✅ done — 2026-08-04, PR #40 (mergeado, rama `feature/landing-page` ya no existe). Sin frameworks externos, CSS puro con variables de marca. Pendiente menor: WhatsApp con número placeholder (+57 300 000 0000) por reemplazar, y el commit separado de `main.py` (redirect a dashboard si hay JWT válido) que nunca se hizo a propósito. Sin verificación visual (sin herramienta de browser en este entorno). |
+| Landing page de marketing | `index.html` con hero, features, pricing, testimonios | Media | ✅ done — 2026-08-04, PR #40 (mergeado, rama `feature/landing-page` ya no existe). Sin frameworks externos, CSS puro con variables de marca. Número de WhatsApp real ya cargado (+57 323 909 7629). Pendiente menor: el commit separado de `main.py` (redirect a dashboard si hay JWT válido) que nunca se hizo a propósito. Sin verificación visual (sin herramienta de browser en este entorno). |
 | Responsive móvil | Adaptación real a pantallas chicas | Media | ✅ done — 2026-08-05, PR #36 + #42. Las 8 páginas principales cubiertas (dashboard, chat, login, precios, grupos, grupo-panel, panel-docente). Sin verificación visual real en ningún sprint (sin herramienta de browser en este entorno) — pendiente confirmar en dispositivo/DevTools real. |
 | Reset de límites por período académico | Atar rate limit/uso a `periodo_actual` del grupo, no solo a fecha/mes calendario | Media | ✅ done — 2026-08-03, PR #37. Endpoint admin (no cron automático — ver nota abajo) que purga `rate_limit_counter` completo. No toca `UsoMensual` ni `periodo_actual` de grupos directamente. |
 
@@ -243,7 +243,7 @@ Si ninguno de `SENDGRID_API_KEY` o el bloque SMTP está configurado, `email_serv
 ## Estado del negocio
 
 - **Usuarios activos**: en beta cerrada.
-- **Upgrades a Pro**: manuales por WhatsApp (número de WhatsApp Business pendiente de definir/publicar).
+- **Upgrades a Pro**: manuales por WhatsApp — +57 323 909 7629 (ya publicado en los links de `index.html` y `precios.html`).
 - **Wompi**: pendiente verificación de cuenta — ver fila en el backlog de Prioridad 1.
 - **Stripe**: configurado en código (PR #39, PSE/Nequi/COP) pero sin activar — no hay cuenta Stripe Colombia.
 - **Precio Pro**: $45.000 COP/mes.
@@ -274,7 +274,7 @@ de ejecución una vez estén disponibles las API keys de OpenAI y Google.
 ## Próximos sprints recomendados
 
 1. **Verificación visual real en un dispositivo/DevTools** — ningún sprint de frontend de esta sesión (#36, #40, #42) se probó en un browser real, sin excepción. Incluye: responsive de las 8 páginas, instalación de la PWA ("Agregar a pantalla de inicio" en Android/iOS), y el flujo de descarga de DOCX en iOS Safari.
-2. **Reemplazar el número de WhatsApp placeholder** (+57 300 000 0000) por el real — está repetido en `index.html` (PR #40) y ahora también en `precios.html` (PR #42), más de 10 links en total.
+2. ~~Reemplazar el número de WhatsApp placeholder por el real~~ — hecho: +57 323 909 7629 en los 11 links de `index.html` y `precios.html`.
 3. **El commit separado de `main.py`** (redirect a dashboard si hay JWT válido) que se dejó pendiente a propósito desde el PR #40.
 4. **Onboarding guiado primer uso** — no hay nada implementado todavía; no estaba en el backlog original.
 5. **Wompi** — retomar cuando haya tracción real (20–30 usuarios Pro pagando manual por WhatsApp). Requiere cuenta Wompi verificada + reescritura de `suscripciones.py`.
