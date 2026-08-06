@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -50,7 +52,7 @@ class Settings(BaseSettings):
     # En Railway, SMTP no sirve (puerto saliente bloqueado) — usar
     # RESEND_API_KEY o SENDGRID_API_KEY. FROM_EMAIL siempre debe estar
     # (dirección del "from").
-    RESEND_API_KEY: str = ""
+    RESEND_API_KEY: Optional[str] = Field(default=None)
     SENDGRID_API_KEY: str = ""
     SMTP_HOST: str = ""
     SMTP_PORT: int = 587
