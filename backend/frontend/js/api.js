@@ -38,9 +38,16 @@ class ApiClient {
         
         try {
             const response = await fetch(`${this.baseUrl}${endpoint}`, config);
-            
+
             if (!response.ok) {
                 const error = await response.text();
+                // Prueba gratuita vencida (sprint trial-7-dias) — sin importar
+                // qué endpoint la haya devuelto, redirige a la pantalla de
+                // bloqueo. Centralizado acá (en vez de en cada página) para
+                // que "cualquier llamada" quede cubierta con un solo cambio.
+                if (response.status === 402) {
+                    this._redirigirTrialExpirado();
+                }
                 throw new Error(error || `Error ${response.status}`);
             }
 
@@ -53,7 +60,19 @@ class ApiClient {
             throw error;
         }
     }
-    
+
+    // Sprint trial-7-dias: navega a la pantalla de bloqueo. No repite el
+    // redirect si ya estamos ahí (evita loop) ni durante login/registro
+    // (esas rutas nunca deberían recibir 402, pero por si acaso).
+    _redirigirTrialExpirado() {
+        const path = window.location.pathname;
+        if (path.endsWith('/trial-expirado.html') || path.endsWith('/login.html') ||
+            path.endsWith('/registro.html') || path.endsWith('/index.html') || path === '/') {
+            return;
+        }
+        window.location.href = 'trial-expirado.html';
+    }
+
     // ==========================================
     // AUTENTICACIÓN
     // ==========================================
@@ -509,6 +528,7 @@ class ApiClient {
         });
         if (!res.ok) {
             const txt = await res.text();
+            if (res.status === 402) this._redirigirTrialExpirado();
             throw new Error(txt || `Error ${res.status}`);
         }
         // Sacar nombre del Content-Disposition si viene
@@ -601,6 +621,14 @@ class ApiClient {
             method: 'POST',
             body: JSON.stringify({ plan })
         });
+    }
+
+    // ==========================================
+    // PRUEBA GRATUITA 7 DÍAS (sprint trial-7-dias)
+    // ==========================================
+
+    async getPlanStatus() {
+        return this.request('/api/perfil/plan');
     }
 }
 

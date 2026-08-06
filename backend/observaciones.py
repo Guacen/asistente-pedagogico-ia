@@ -29,7 +29,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from auth import get_current_docente
+from auth import verify_trial_active
 from database import get_db
 from documento import _docx_bytes
 from models import Docente, Estudiante, Grupo, Observacion
@@ -208,7 +208,7 @@ CONTEXTO
 @router.post("", response_model=ObservacionOut, status_code=201)
 async def crear_observacion(
     body: ObservacionCreate,
-    docente: Docente = Depends(get_current_docente),
+    docente: Docente = Depends(verify_trial_active),
     db: Session = Depends(get_db),
 ):
     tipo = body.tipo.strip().lower()
@@ -258,7 +258,7 @@ async def crear_observacion(
 
 @router.get("/seguimientos-pendientes", response_model=List[ObservacionOut])
 def seguimientos_pendientes(
-    docente: Docente = Depends(get_current_docente),
+    docente: Docente = Depends(verify_trial_active),
     db: Session = Depends(get_db),
 ):
     """
@@ -283,7 +283,7 @@ def seguimientos_pendientes(
 def listar_observaciones(
     id_estudiante: Optional[str] = Query(default=None),
     id_grupo: Optional[str] = Query(default=None),
-    docente: Docente = Depends(get_current_docente),
+    docente: Docente = Depends(verify_trial_active),
     db: Session = Depends(get_db),
 ):
     q = db.query(Observacion).filter(Observacion.id_docente == docente.id_docente)
@@ -297,7 +297,7 @@ def listar_observaciones(
 @router.get("/{observacion_id}", response_model=ObservacionOut)
 def detalle_observacion(
     observacion_id: str,
-    docente: Docente = Depends(get_current_docente),
+    docente: Docente = Depends(verify_trial_active),
     db: Session = Depends(get_db),
 ):
     obs = db.query(Observacion).filter(
@@ -313,7 +313,7 @@ def detalle_observacion(
 def actualizar_observacion(
     observacion_id: str,
     body: ObservacionUpdate,
-    docente: Docente = Depends(get_current_docente),
+    docente: Docente = Depends(verify_trial_active),
     db: Session = Depends(get_db),
 ):
     obs = db.query(Observacion).filter(
@@ -344,7 +344,7 @@ def actualizar_observacion(
 @router.post("/{observacion_id}/exportar")
 def exportar_observacion(
     observacion_id: str,
-    docente: Docente = Depends(get_current_docente),
+    docente: Docente = Depends(verify_trial_active),
     db: Session = Depends(get_db),
 ):
     obs = db.query(Observacion).filter(

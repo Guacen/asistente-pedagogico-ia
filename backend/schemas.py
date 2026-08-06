@@ -1,7 +1,8 @@
+import math
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, computed_field
 
 
 # ============================================================
@@ -26,6 +27,18 @@ class DocenteUpdate(BaseModel):
     departamento: Optional[str] = None
 
 
+def _dias_restantes_trial(plan: str, trial_ends_at: Optional[datetime]) -> int:
+    """
+    Días enteros que faltan para que expire el trial (redondeado hacia
+    arriba — quedan "2 días" tanto si faltan 2 días 1 hora como 2 días
+    23 horas). 0 si no aplica (plan != 'trial') o si ya venció.
+    """
+    if plan != "trial" or not trial_ends_at:
+        return 0
+    restante = (trial_ends_at - datetime.utcnow()).total_seconds()
+    return max(0, math.ceil(restante / 86400))
+
+
 class DocenteOut(BaseModel):
     id_docente: str
     nombre_completo: str
@@ -36,8 +49,16 @@ class DocenteOut(BaseModel):
     fecha_registro: datetime
     email_verificado: bool = False
     consentimiento_datos: Optional[bool] = None
+    # ── Prueba gratuita 7 días — sprint trial-7-dias ──
+    plan: str = "activo"
+    trial_ends_at: Optional[datetime] = None
 
     model_config = {"from_attributes": True}
+
+    @computed_field
+    @property
+    def dias_restantes(self) -> int:
+        return _dias_restantes_trial(self.plan, self.trial_ends_at)
 
 
 class ChangePassword(BaseModel):
@@ -49,6 +70,14 @@ class Token(BaseModel):
     access_token: str
     token_type: str
     docente: DocenteOut
+
+
+# ── Sprint trial-7-dias ──
+class PlanStatusOut(BaseModel):
+    plan: str
+    trial_ends_at: Optional[datetime] = None
+    dias_restantes: int
+    expirado: bool
 
 
 # ── Sprint email-verification-consent ──

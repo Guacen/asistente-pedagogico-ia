@@ -28,7 +28,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from auth import get_current_docente
+from auth import verify_trial_active
 from database import get_db
 from grupos import _get_grupo_or_404
 from models import ChatSesion, Docente, Estudiante
@@ -130,7 +130,7 @@ def _validar_estudiante_piar(
 def crear_sesion(
     id_grupo: str,
     body: SesionCreate,
-    docente: Docente = Depends(get_current_docente),
+    docente: Docente = Depends(verify_trial_active),
     db: Session = Depends(get_db),
 ):
     """
@@ -168,7 +168,7 @@ def listar_sesiones(
     modo: Optional[str] = Query(default=None),
     incluir_archivadas: bool = Query(default=False),
     id_estudiante: Optional[str] = Query(default=None),
-    docente: Docente = Depends(get_current_docente),
+    docente: Docente = Depends(verify_trial_active),
     db: Session = Depends(get_db),
 ):
     """
@@ -202,7 +202,7 @@ def listar_sesiones(
 @router.put("/api/sesiones/{id_sesion}/archivar", response_model=SesionOut)
 def archivar_sesion(
     id_sesion: str,
-    docente: Docente = Depends(get_current_docente),
+    docente: Docente = Depends(verify_trial_active),
     db: Session = Depends(get_db),
 ):
     """Toggle archivada=True. Idempotente: archivar dos veces no rompe."""
@@ -217,7 +217,7 @@ def archivar_sesion(
 def actualizar_titulo(
     id_sesion: str,
     body: TituloUpdate,
-    docente: Docente = Depends(get_current_docente),
+    docente: Docente = Depends(verify_trial_active),
     db: Session = Depends(get_db),
 ):
     """Renombra la sesión (manual del docente o llamada interna del bot)."""

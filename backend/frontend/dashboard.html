@@ -143,6 +143,17 @@
             <!-- Contenido -->
             <main class="flex-1 overflow-y-auto p-6">
 
+                <!-- Banner de prueba gratuita — sprint trial-7-dias.
+                     Azul suave si quedan ≥3 días, naranja si quedan <3. Se
+                     completa/oculta en JS vía mostrarBannerTrialSiAplica(). -->
+                <div id="banner-trial" class="hidden mb-6 rounded-xl border-l-4 p-4">
+                    <div class="flex items-center gap-3">
+                        <i id="banner-trial-icon" class="fas text-xl"></i>
+                        <p id="banner-trial-msg" class="text-sm font-medium flex-1"></p>
+                        <a id="banner-trial-cta" href="precios.html" class="hidden text-sm font-semibold underline whitespace-nowrap">Ver planes</a>
+                    </div>
+                </div>
+
                 <!-- Banner consentimiento Ley 1581 (grandfathered) — sprint email-verification-consent.
                      Se muestra sólo si el docente tiene consentimiento_datos === null. -->
                 <div id="banner-consentimiento" class="hidden mb-6 rounded-xl border-l-4 p-4" style="background:#F9FAFB; border-left-color:#1D9E75;">
@@ -452,6 +463,7 @@
             renderStats();
             mostrarBannerConsentimientoSiAplica(u);
             mostrarBannerSeguimientosPendientes();
+            mostrarBannerTrialSiAplica();
 
         } catch (err) {
             console.error(err);
@@ -526,6 +538,53 @@
                 btn.textContent = orig;
             }
         }, { once: false });
+    }
+
+    // ── Banner prueba gratuita (sprint trial-7-dias) ───────────────────
+    // No bloquea el dashboard si falla — sólo se pierde el banner. Si
+    // `expirado` viene true, redirige (este endpoint es el único que
+    // devuelve 200 en vez de 402 cuando el trial venció, justamente para
+    // que el frontend pueda enterarse y mandar al docente a la pantalla
+    // de bloqueo en lugar de dejarlo en un dashboard medio roto).
+    async function mostrarBannerTrialSiAplica() {
+        try {
+            const estado = await api.getPlanStatus();
+            if (estado.expirado) {
+                window.location.replace('trial-expirado.html');
+                return;
+            }
+            if (estado.plan !== 'trial') return;
+
+            const banner = document.getElementById('banner-trial');
+            const icon = document.getElementById('banner-trial-icon');
+            const msg = document.getElementById('banner-trial-msg');
+            const cta = document.getElementById('banner-trial-cta');
+            const n = estado.dias_restantes;
+
+            if (n >= 3) {
+                banner.style.background = '#EFF6FF';
+                banner.style.borderLeftColor = '#3B82F6';
+                icon.className = 'fas fa-gift text-xl';
+                icon.style.color = '#3B82F6';
+                msg.className = 'text-sm font-medium flex-1 text-blue-900';
+                msg.textContent = `Estás en tu prueba gratuita. Te quedan ${n} día${n === 1 ? '' : 's'}.`;
+                cta.classList.add('hidden');
+            } else {
+                banner.style.background = '#FFF7ED';
+                banner.style.borderLeftColor = '#F97316';
+                icon.className = 'fas fa-triangle-exclamation text-xl';
+                icon.style.color = '#F97316';
+                msg.className = 'text-sm font-medium flex-1 text-orange-900';
+                msg.textContent = n > 0
+                    ? `Tu prueba termina en ${n} día${n === 1 ? '' : 's'}.`
+                    : 'Tu prueba termina hoy.';
+                cta.classList.remove('hidden');
+                cta.style.color = '#F97316';
+            }
+            banner.classList.remove('hidden');
+        } catch (err) {
+            console.warn('[dashboard] no pude cargar el estado del plan:', err);
+        }
     }
 
     // ── Header ────────────────────────────────────────────────────────

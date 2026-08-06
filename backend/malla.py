@@ -21,7 +21,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from auth import get_current_docente
+from auth import verify_trial_active
 from database import get_db
 from models import DBA, Docente, Grupo, MallaCurricular, MallaItem, SeguimientoDBA
 
@@ -123,7 +123,7 @@ async def _distribuir_dbas_con_ia(dbas: List[DBA], asignatura: str, grado: str, 
 @router.get("/asignaturas")
 def get_asignaturas(
     db: Session = Depends(get_db),
-    docente: Docente = Depends(get_current_docente),
+    docente: Docente = Depends(verify_trial_active),
 ):
     """Asignaturas y grados disponibles en el catálogo de DBA."""
     filas = db.query(DBA.asignatura, DBA.grado).distinct().order_by(DBA.asignatura, DBA.grado).all()
@@ -138,7 +138,7 @@ def get_dbas(
     asignatura: str,
     grado: str,
     db: Session = Depends(get_db),
-    docente: Docente = Depends(get_current_docente),
+    docente: Docente = Depends(verify_trial_active),
 ):
     dbas = db.query(DBA).filter_by(asignatura=asignatura, grado=grado).order_by(DBA.numero).all()
     return [
@@ -152,7 +152,7 @@ def get_malla_grupo(
     id_grupo: str,
     asignatura: str,
     db: Session = Depends(get_db),
-    docente: Docente = Depends(get_current_docente),
+    docente: Docente = Depends(verify_trial_active),
 ):
     _grupo_del_docente(db, id_grupo, docente)
 
@@ -185,7 +185,7 @@ def get_malla_grupo(
 async def generar_malla(
     body: GenerarMallaRequest,
     db: Session = Depends(get_db),
-    docente: Docente = Depends(get_current_docente),
+    docente: Docente = Depends(verify_trial_active),
 ):
     """Ruta A: la IA propone la distribución de los DBA entre períodos."""
     grupo = _grupo_del_docente(db, body.id_grupo, docente)
@@ -232,7 +232,7 @@ async def generar_malla(
 def marcar_dba(
     body: SeguimientoRequest,
     db: Session = Depends(get_db),
-    docente: Docente = Depends(get_current_docente),
+    docente: Docente = Depends(verify_trial_active),
 ):
     _grupo_del_docente(db, body.id_grupo, docente)
 
@@ -261,7 +261,7 @@ def get_progreso(
     asignatura: str,
     periodo: Optional[int] = None,
     db: Session = Depends(get_db),
-    docente: Docente = Depends(get_current_docente),
+    docente: Docente = Depends(verify_trial_active),
 ):
     _grupo_del_docente(db, id_grupo, docente)
 

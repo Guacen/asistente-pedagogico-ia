@@ -15,6 +15,9 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 10080  # 7 días
 
+    # Prueba gratuita self-service — sprint trial-7-dias.
+    TRIAL_DIAS: int = 7
+
     # Claude AI — acepta CLAUDE_API_KEY (nombre histórico del proyecto) y
     # ANTHROPIC_API_KEY (nombre estándar del SDK oficial). Cualquiera de
     # los dos configurada en el entorno es válida; si están ambas, gana

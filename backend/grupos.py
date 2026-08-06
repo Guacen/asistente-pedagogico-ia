@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from auth import get_current_docente
+from auth import verify_trial_active
 from config import settings
 from database import get_db
 from models import Archivo, Calificacion, EvaluacionColumna, Estudiante, Grupo, Mensaje, Nota
@@ -34,7 +34,7 @@ router = APIRouter(prefix="/api", tags=["grupos"])
 
 @router.get("/grupos", response_model=List[GrupoOut])
 def list_grupos(
-    docente=Depends(get_current_docente),
+    docente=Depends(verify_trial_active),
     db: Session = Depends(get_db),
 ):
     return db.query(Grupo).filter(Grupo.id_docente == docente.id_docente).all()
@@ -43,7 +43,7 @@ def list_grupos(
 @router.get("/grupos/{grupo_id}", response_model=GrupoOut)
 def get_grupo(
     grupo_id: str,
-    docente=Depends(get_current_docente),
+    docente=Depends(verify_trial_active),
     db: Session = Depends(get_db),
 ):
     # Read: docente dueño o admin de su institución. El helper resuelve
@@ -54,7 +54,7 @@ def get_grupo(
 @router.post("/grupos", response_model=GrupoOut, status_code=status.HTTP_201_CREATED)
 def create_grupo(
     data: GrupoCreate,
-    docente=Depends(get_current_docente),
+    docente=Depends(verify_trial_active),
     db: Session = Depends(get_db),
 ):
     # Regla multi-institución: coordinador/rector NO crean grupos —
@@ -109,7 +109,7 @@ def create_grupo(
 def update_grupo(
     grupo_id: str,
     data: GrupoUpdate,
-    docente=Depends(get_current_docente),
+    docente=Depends(verify_trial_active),
     db: Session = Depends(get_db),
 ):
     grupo = db.query(Grupo).filter(
@@ -129,7 +129,7 @@ def update_grupo(
 @router.delete("/grupos/{grupo_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_grupo(
     grupo_id: str,
-    docente=Depends(get_current_docente),
+    docente=Depends(verify_trial_active),
     db: Session = Depends(get_db),
 ):
     grupo = db.query(Grupo).filter(
@@ -188,7 +188,7 @@ def _get_grupo_or_404(
 @router.get("/grupos/{grupo_id}/estudiantes", response_model=List[EstudianteOut])
 def list_estudiantes(
     grupo_id: str,
-    docente=Depends(get_current_docente),
+    docente=Depends(verify_trial_active),
     db: Session = Depends(get_db),
 ):
     _get_grupo_or_404(grupo_id, docente, db)
@@ -199,7 +199,7 @@ def list_estudiantes(
 def create_estudiante(
     grupo_id: str,
     data: EstudianteCreate,
-    docente=Depends(get_current_docente),
+    docente=Depends(verify_trial_active),
     db: Session = Depends(get_db),
 ):
     _get_grupo_or_404(grupo_id, docente, db, permitir_admin_institucion=False)
@@ -215,7 +215,7 @@ def update_estudiante(
     grupo_id: str,
     estudiante_id: str,
     data: EstudianteUpdate,
-    docente=Depends(get_current_docente),
+    docente=Depends(verify_trial_active),
     db: Session = Depends(get_db),
 ):
     _get_grupo_or_404(grupo_id, docente, db, permitir_admin_institucion=False)
@@ -237,7 +237,7 @@ def update_estudiante(
 def delete_estudiante(
     grupo_id: str,
     estudiante_id: str,
-    docente=Depends(get_current_docente),
+    docente=Depends(verify_trial_active),
     db: Session = Depends(get_db),
 ):
     _get_grupo_or_404(grupo_id, docente, db, permitir_admin_institucion=False)
@@ -292,7 +292,7 @@ def _norm_bool(raw: str) -> bool:  # compat con eventuales llamadores externos
 async def importar_estudiantes_csv(
     grupo_id: str,
     file: UploadFile = File(...),
-    docente=Depends(get_current_docente),
+    docente=Depends(verify_trial_active),
     db: Session = Depends(get_db),
 ):
     """
@@ -392,7 +392,7 @@ async def importar_estudiantes_csv(
 @router.get("/grupos/{grupo_id}/notas", response_model=List[NotaOut])
 def list_notas(
     grupo_id: str,
-    docente=Depends(get_current_docente),
+    docente=Depends(verify_trial_active),
     db: Session = Depends(get_db),
 ):
     _get_grupo_or_404(grupo_id, docente, db)
@@ -403,7 +403,7 @@ def list_notas(
 def create_nota(
     grupo_id: str,
     data: NotaCreate,
-    docente=Depends(get_current_docente),
+    docente=Depends(verify_trial_active),
     db: Session = Depends(get_db),
 ):
     _get_grupo_or_404(grupo_id, docente, db, permitir_admin_institucion=False)
@@ -418,7 +418,7 @@ def create_nota(
 def delete_nota(
     grupo_id: str,
     nota_id: str,
-    docente=Depends(get_current_docente),
+    docente=Depends(verify_trial_active),
     db: Session = Depends(get_db),
 ):
     _get_grupo_or_404(grupo_id, docente, db, permitir_admin_institucion=False)
@@ -436,7 +436,7 @@ def delete_nota(
 @router.post("/grupos/{grupo_id}/inicializar-ia")
 async def inicializar_ia(
     grupo_id: str,
-    docente=Depends(get_current_docente),
+    docente=Depends(verify_trial_active),
     db: Session = Depends(get_db),
 ):
     """
@@ -469,7 +469,7 @@ async def inicializar_ia(
 @router.get("/grupos/{grupo_id}/calificaciones", response_model=List[CalificacionOut])
 def list_calificaciones(
     grupo_id: str,
-    docente=Depends(get_current_docente),
+    docente=Depends(verify_trial_active),
     db: Session = Depends(get_db),
 ):
     _get_grupo_or_404(grupo_id, docente, db)
@@ -480,7 +480,7 @@ def list_calificaciones(
 def create_calificacion(
     grupo_id: str,
     data: CalificacionCreate,
-    docente=Depends(get_current_docente),
+    docente=Depends(verify_trial_active),
     db: Session = Depends(get_db),
 ):
     _get_grupo_or_404(grupo_id, docente, db, permitir_admin_institucion=False)
@@ -504,7 +504,7 @@ def update_calificacion(
     grupo_id: str,
     cal_id: str,
     data: CalificacionUpdate,
-    docente=Depends(get_current_docente),
+    docente=Depends(verify_trial_active),
     db: Session = Depends(get_db),
 ):
     _get_grupo_or_404(grupo_id, docente, db, permitir_admin_institucion=False)
@@ -526,7 +526,7 @@ def update_calificacion(
 def delete_calificacion(
     grupo_id: str,
     cal_id: str,
-    docente=Depends(get_current_docente),
+    docente=Depends(verify_trial_active),
     db: Session = Depends(get_db),
 ):
     _get_grupo_or_404(grupo_id, docente, db, permitir_admin_institucion=False)
@@ -544,7 +544,7 @@ def delete_calificacion(
 def upsert_calificacion(
     grupo_id: str,
     data: CalificacionUpsert,
-    docente=Depends(get_current_docente),
+    docente=Depends(verify_trial_active),
     db: Session = Depends(get_db),
 ):
     """Crea o actualiza la nota de un estudiante en una columna de evaluación."""
@@ -601,7 +601,7 @@ def upsert_calificacion(
 def list_columnas(
     grupo_id: str,
     periodo: int = None,
-    docente=Depends(get_current_docente),
+    docente=Depends(verify_trial_active),
     db: Session = Depends(get_db),
 ):
     _get_grupo_or_404(grupo_id, docente, db)
@@ -615,7 +615,7 @@ def list_columnas(
 def create_columna(
     grupo_id: str,
     data: EvaluacionColumnaCreate,
-    docente=Depends(get_current_docente),
+    docente=Depends(verify_trial_active),
     db: Session = Depends(get_db),
 ):
     _get_grupo_or_404(grupo_id, docente, db, permitir_admin_institucion=False)
@@ -631,7 +631,7 @@ def update_columna(
     grupo_id: str,
     col_id: str,
     data: EvaluacionColumnaUpdate,
-    docente=Depends(get_current_docente),
+    docente=Depends(verify_trial_active),
     db: Session = Depends(get_db),
 ):
     _get_grupo_or_404(grupo_id, docente, db, permitir_admin_institucion=False)
@@ -652,7 +652,7 @@ def update_columna(
 def delete_columna(
     grupo_id: str,
     col_id: str,
-    docente=Depends(get_current_docente),
+    docente=Depends(verify_trial_active),
     db: Session = Depends(get_db),
 ):
     _get_grupo_or_404(grupo_id, docente, db, permitir_admin_institucion=False)
@@ -673,7 +673,7 @@ def delete_columna(
 @router.get("/grupos/{grupo_id}/archivos", response_model=List[ArchivoOut])
 def list_archivos(
     grupo_id: str,
-    docente=Depends(get_current_docente),
+    docente=Depends(verify_trial_active),
     db: Session = Depends(get_db),
 ):
     _get_grupo_or_404(grupo_id, docente, db)
@@ -684,7 +684,7 @@ def list_archivos(
 async def upload_archivo(
     grupo_id: str,
     file: UploadFile = File(...),
-    docente=Depends(get_current_docente),
+    docente=Depends(verify_trial_active),
     db: Session = Depends(get_db),
 ):
     _get_grupo_or_404(grupo_id, docente, db)
@@ -725,7 +725,7 @@ async def upload_archivo(
 def delete_archivo(
     grupo_id: str,
     archivo_id: str,
-    docente=Depends(get_current_docente),
+    docente=Depends(verify_trial_active),
     db: Session = Depends(get_db),
 ):
     _get_grupo_or_404(grupo_id, docente, db, permitir_admin_institucion=False)

@@ -19,7 +19,7 @@ from datetime import datetime
 
 import socketio
 
-from auth import verify_token_for_socket
+from auth import trial_vencido, verify_token_for_socket
 from database import SessionLocal
 from ia import generar_respuesta
 from models import (
@@ -383,6 +383,19 @@ async def send_message(sid, data):
     db = SessionLocal()
 
     try:
+        # 0. Prueba gratuita vencida — sprint trial-7-dias.
+        # El chat en tiempo real NO pasa por Depends(verify_trial_active)
+        # (eso sólo cubre REST); es la única vía real de uso del producto,
+        # así que se gatea acá con la misma trial_vencido() que usa el
+        # REST, ANTES de gastar cuota de rate limit.
+        docente_actual = db.query(Docente).filter(Docente.id_docente == docente_id).first()
+        if docente_actual and trial_vencido(docente_actual, db):
+            await sio.emit("ia_error", {
+                "message": "Tu prueba gratuita de 7 días terminó. Elige un plan para seguir usando Maestr.ia.",
+                "code": "trial_expirado",
+            }, to=sid)
+            return
+
         # 1. Verificar que el grupo pertenece al docente
         grupo = db.query(Grupo).filter(
             Grupo.id_grupo == grupo_id,

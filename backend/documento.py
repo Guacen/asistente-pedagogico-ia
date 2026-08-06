@@ -23,7 +23,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from auth import get_current_docente
+from auth import verify_trial_active
 from database import get_db
 from models import Calificacion, Docente, Estudiante, EvaluacionColumna, Grupo
 
@@ -553,7 +553,7 @@ def _inline_runs(paragraph, text: str):
 async def generar_documento(
     grupo_id: str,
     body: GenerarDocumentoRequest,
-    docente: Docente = Depends(get_current_docente),
+    docente: Docente = Depends(verify_trial_active),
     db: Session = Depends(get_db),
 ):
     """
@@ -989,7 +989,7 @@ def boletin_estudiante(
     grupo_id: str,
     estudiante_id: str,
     periodo: int = Query(..., ge=1, le=4),
-    docente: Docente = Depends(get_current_docente),
+    docente: Docente = Depends(verify_trial_active),
     db: Session = Depends(get_db),
 ):
     """Boletín individual DOCX de un estudiante en un periodo."""
@@ -1032,7 +1032,7 @@ def boletin_estudiante(
 def boletin_grupo(
     grupo_id: str,
     periodo: int = Query(..., ge=1, le=4),
-    docente: Docente = Depends(get_current_docente),
+    docente: Docente = Depends(verify_trial_active),
     db: Session = Depends(get_db),
 ):
     """

@@ -3,7 +3,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from auth import get_current_docente
+from auth import verify_trial_active
 from database import get_db
 from models import Grupo, Mensaje
 from prompts import MODOS_ACTIVOS
@@ -46,7 +46,7 @@ def get_historial(
             "en el panel 'Historial anterior'."
         ),
     ),
-    docente=Depends(get_current_docente),
+    docente=Depends(verify_trial_active),
     db: Session = Depends(get_db),
 ):
     # Verificar que el grupo pertenece al docente

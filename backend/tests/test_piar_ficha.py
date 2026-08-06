@@ -33,10 +33,12 @@ def escenario_piar_multi_inst(db_session):
     from auth import hash_password
 
     def _doc(email, nombre, inst, rol="docente"):
+        # plan="activo" (sprint trial-7-dias) — ver nota en test_multi_institucion.py.
         d = Docente(
             nombre_completo=nombre, email=email,
             password_hash=hash_password("t"),
             id_institucion=inst.id_institucion, rol=rol,
+            plan="activo",
         )
         db_session.add(d); db_session.commit(); db_session.refresh(d)
         return d

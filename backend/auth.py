@@ -2,7 +2,7 @@ import secrets
 from datetime import datetime, timedelta
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -106,6 +106,58 @@ def get_current_docente_verificado(
     return docente
 
 
+def trial_vencido(docente: Docente, db: Session) -> bool:
+    """
+    True si el docente NO puede usar funciones de producto ahora mismo.
+
+    Efecto lateral: si el trial venció recién en esta llamada (plan
+    todavía en 'trial' pero trial_ends_at ya pasó), lo pasa a 'expirado'
+    y commitea — mismo patrón self-healing que el resto de esta base de
+    código usa para estados derivados (ver rate limits diarios). Los
+    llamadores comparten esta función para no duplicar la lógica:
+    verify_trial_active() (REST, vía Depends) y send_message() en
+    socket_events.py (el chat en tiempo real, que NO pasa por Depends).
+    """
+    if docente.plan == "activo":
+        return False
+    if docente.plan == "trial":
+        if docente.trial_ends_at and docente.trial_ends_at > datetime.utcnow():
+            return False
+        docente.plan = "expirado"
+        db.commit()
+        return True
+    # plan == "expirado" (o cualquier valor inesperado) → bloqueado.
+    return True
+
+
+def verify_trial_active(
+    response: Response,
+    docente: Docente = Depends(get_current_docente),
+    db: Session = Depends(get_db),
+) -> Docente:
+    """
+    Dependencia para endpoints de producto (grupos, chat, piar, malla,
+    observaciones, sesiones, institución). NO se aplica a /api/auth/*
+    (gestión de cuenta debe seguir funcionando con trial vencido) ni a
+    /api/suscripciones/* (si no, un docente con trial vencido jamás
+    podría pagar para reactivarse — sería un callejón sin salida).
+
+    Con trial activo agrega el header X-Trial-Days-Left para que el
+    frontend pueda mostrar el banner sin una llamada aparte.
+    """
+    if trial_vencido(docente, db):
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail="trial_expirado",
+        )
+    if docente.plan == "trial":
+        from schemas import _dias_restantes_trial
+        response.headers["X-Trial-Days-Left"] = str(
+            _dias_restantes_trial(docente.plan, docente.trial_ends_at)
+        )
+    return docente
+
+
 def verify_token_for_socket(token: str, db: Session) -> Optional[Docente]:
     """Verifica token JWT para conexiones WebSocket."""
     try:
@@ -199,6 +251,8 @@ def register(data: DocenteCreate, request: Request, db: Session = Depends(get_db
     ahora = datetime.utcnow()
     # Crear docente — email_verificado=False (default); el docente no
     # puede acceder a /api/auth/me hasta clicar el link del correo.
+    # Prueba gratuita: arranca en 'trial' con 7 días desde el registro,
+    # sin pedir tarjeta ni aprobación manual (sprint trial-7-dias).
     docente = Docente(
         nombre_completo=data.nombre_completo,
         email=data.email,
@@ -206,6 +260,8 @@ def register(data: DocenteCreate, request: Request, db: Session = Depends(get_db
         consentimiento_datos=True,
         fecha_consentimiento=ahora,
         ip_consentimiento=_obtener_ip_cliente(request),
+        plan="trial",
+        trial_ends_at=ahora + timedelta(days=settings.TRIAL_DIAS),
     )
     db.add(docente)
     db.flush()

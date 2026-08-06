@@ -27,7 +27,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.orm import Session
 
-from auth import get_current_docente
+from auth import verify_trial_active
 from database import get_db
 from models import Docente, Institucion
 from permisos import (
@@ -139,7 +139,7 @@ def _validar_plan_para_rol_admin(inst: Institucion) -> None:
 
 @router.get("/", response_model=InstitucionOut)
 def obtener_mi_institucion(
-    docente: Docente = Depends(get_current_docente),
+    docente: Docente = Depends(verify_trial_active),
     db: Session = Depends(get_db),
 ):
     """Datos básicos de mi institución. Cualquier rol autenticado puede leerla."""

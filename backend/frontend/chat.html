@@ -823,6 +823,11 @@ function connectSocket() {
 
     socket.on('ia_error', (data) => {
         ocultarTyping();
+        // Prueba gratuita vencida (sprint trial-7-dias) → pantalla de bloqueo.
+        if (data && data.code === 'trial_expirado') {
+            window.location.href = 'trial-expirado.html';
+            return;
+        }
         // Rate limit diario por modo → banner rojo específico
         if (data && data.code === 'rate_limit_diario') {
             mostrarRateLimit(data.message || 'Alcanzaste el límite diario.');
