@@ -240,6 +240,7 @@ class Grupo(Base):
     archivos = relationship("Archivo", back_populates="grupo", cascade="all, delete")
     calificaciones = relationship("Calificacion", back_populates="grupo", cascade="all, delete")
     columnas = relationship("EvaluacionColumna", back_populates="grupo", cascade="all, delete")
+    mallas = relationship("MallaCurricular", back_populates="grupo", cascade="all, delete")
 
 
 class Estudiante(Base):
@@ -503,3 +504,104 @@ class Observacion(Base):
     fecha_seguimiento = Column(Date, nullable=True)
     estado = Column(String(20), nullable=False, default="abierta", index=True)
     creado_en = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class DBA(Base):
+    """
+    Derecho Básico de Aprendizaje (MEN Colombia) — sprint malla-curricular.
+    Catálogo de referencia, sembrado una vez desde backend/data/dba_seed_data.json
+    (252 DBAs: Lenguaje, Ciencias Naturales, Ciencias Sociales, Inglés, Transición
+    — grados 1-11 según la asignatura, ver seed_dbas.py).
+
+    Los DBA son metas ANUALES del MEN sin orden prescrito por período — este
+    catálogo no impone distribución alguna; eso lo decide MallaCurricular.
+    """
+    __tablename__ = "dbas"
+    __table_args__ = (
+        __import__("sqlalchemy").UniqueConstraint(
+            "asignatura", "grado", "numero", name="uq_dba_asignatura_grado_numero",
+        ),
+    )
+
+    id_dba = Column(String(36), primary_key=True, default=new_uuid)
+    asignatura = Column(String(50), nullable=False, index=True)
+    grado = Column(String(20), nullable=False, index=True)  # "1".."11" o "Transición"
+    numero = Column(Integer, nullable=False)
+    enunciado = Column(Text, nullable=False)
+    evidencias = Column(JSON, nullable=False, default=list)
+
+
+class MallaCurricular(Base):
+    """
+    Distribución de los DBA de una (grupo, asignatura) entre los períodos
+    académicos del año. `tipo` distingue si la generó la IA ("generada") o
+    si el docente la armó a mano ("personalizada" — Ruta B, sprint futuro,
+    no implementada todavía).
+    """
+    __tablename__ = "mallas_curriculares"
+    __table_args__ = (
+        __import__("sqlalchemy").UniqueConstraint(
+            "id_grupo", "asignatura", name="uq_malla_grupo_asignatura",
+        ),
+    )
+
+    id_malla = Column(String(36), primary_key=True, default=new_uuid)
+    id_grupo = Column(
+        String(36), ForeignKey("grupos.id_grupo"), nullable=False, index=True,
+    )
+    asignatura = Column(String(50), nullable=False)
+    grado = Column(String(20), nullable=False)
+    periodos = Column(Integer, nullable=False, default=4)
+    tipo = Column(String(20), nullable=False, default="generada")
+    creado_en = Column(DateTime, default=datetime.utcnow, nullable=False)
+    actualizado_en = Column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False,
+    )
+
+    grupo = relationship("Grupo", back_populates="mallas")
+    items = relationship(
+        "MallaItem", back_populates="malla", cascade="all, delete-orphan",
+    )
+
+
+class MallaItem(Base):
+    """Un DBA asignado a un período específico dentro de una MallaCurricular."""
+    __tablename__ = "malla_items"
+
+    id_item = Column(String(36), primary_key=True, default=new_uuid)
+    id_malla = Column(
+        String(36), ForeignKey("mallas_curriculares.id_malla"),
+        nullable=False, index=True,
+    )
+    id_dba = Column(String(36), ForeignKey("dbas.id_dba"), nullable=False, index=True)
+    periodo = Column(Integer, nullable=False)
+
+    malla = relationship("MallaCurricular", back_populates="items")
+    dba = relationship("DBA")
+
+
+class SeguimientoDBA(Base):
+    """
+    Registro de si un DBA quedó cubierto en un período dado, para un grupo.
+    Independiente de MallaItem a propósito: un docente puede marcar un DBA
+    como cubierto aunque no esté en la malla generada (ajuste manual).
+    """
+    __tablename__ = "seguimiento_dbas"
+    __table_args__ = (
+        __import__("sqlalchemy").UniqueConstraint(
+            "id_grupo", "id_dba", "periodo", name="uq_seguimiento_grupo_dba_periodo",
+        ),
+    )
+
+    id_seguimiento = Column(String(36), primary_key=True, default=new_uuid)
+    id_grupo = Column(
+        String(36), ForeignKey("grupos.id_grupo"), nullable=False, index=True,
+    )
+    id_dba = Column(String(36), ForeignKey("dbas.id_dba"), nullable=False, index=True)
+    periodo = Column(Integer, nullable=False)
+    cubierto = Column(Boolean, nullable=False, default=False)
+    fecha_cubierto = Column(DateTime, nullable=True)
+    plan_clase_referencia = Column(Text, nullable=True)
+
+    grupo = relationship("Grupo")
+    dba = relationship("DBA")
