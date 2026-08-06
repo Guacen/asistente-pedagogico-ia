@@ -181,6 +181,18 @@ def apply_migrations():
     from models import Observacion  # noqa: F401
     Base.metadata.create_all(bind=engine, tables=[Observacion.__table__])
 
+    # ── Sprint malla-curricular ──
+    # 4 tablas nuevas, sin ALTER TABLE necesario — create_all idempotente.
+    # Se pasan juntas para que SQLAlchemy resuelva el orden de FKs
+    # (DBA / MallaCurricular deben existir antes que MallaItem/SeguimientoDBA).
+    from models import DBA, MallaCurricular, MallaItem, SeguimientoDBA  # noqa: F401
+    Base.metadata.create_all(bind=engine, tables=[
+        DBA.__table__, MallaCurricular.__table__,
+        MallaItem.__table__, SeguimientoDBA.__table__,
+    ])
+    from seed_dbas import seed_dbas
+    seed_dbas()
+
     # Backfill uni-personal: cada docente sin id_institucion recibe una
     # Institucion nueva a su nombre. Idempotente — si ya tiene, no toca.
     _backfill_instituciones_unipersonales()
@@ -201,6 +213,10 @@ def apply_migrations():
         print("✅ Migración: tabla 'password_reset_tokens' verificada/creada")
     if "observaciones" in inspector.get_table_names():
         print("✅ Migración: tabla 'observaciones' verificada/creada")
+    if "dbas" in inspector.get_table_names():
+        print("✅ Migración: tabla 'dbas' verificada/creada")
+    if "mallas_curriculares" in inspector.get_table_names():
+        print("✅ Migración: tabla 'mallas_curriculares' verificada/creada")
 
     print("✅ Migraciones aplicadas")
 

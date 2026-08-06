@@ -275,6 +275,45 @@ class ApiClient {
     }
 
     // ==========================================
+    // MALLA CURRICULAR (Derechos Básicos de Aprendizaje — MEN)
+    // ==========================================
+
+    async getAsignaturasMalla() {
+        return this.request('/api/malla/asignaturas');
+    }
+
+    async getDbas(asignatura, grado) {
+        const qs = new URLSearchParams({ asignatura, grado }).toString();
+        return this.request(`/api/malla/dbas?${qs}`);
+    }
+
+    async getMallaGrupo(idGrupo, asignatura) {
+        const qs = new URLSearchParams({ asignatura }).toString();
+        return this.request(`/api/malla/grupo/${encodeURIComponent(idGrupo)}?${qs}`);
+    }
+
+    async generarMalla(idGrupo, asignatura, periodos = 4) {
+        return this.request('/api/malla/generar', {
+            method: 'POST',
+            body: JSON.stringify({ id_grupo: idGrupo, asignatura, periodos }),
+        });
+    }
+
+    async marcarSeguimientoDba(idGrupo, idDba, periodo, cubierto, referencia = '') {
+        return this.request('/api/malla/seguimiento', {
+            method: 'POST',
+            body: JSON.stringify({ id_grupo: idGrupo, id_dba: idDba, periodo, cubierto, referencia }),
+        });
+    }
+
+    async getProgresoMalla(idGrupo, asignatura, periodo = null) {
+        const params = { asignatura };
+        if (periodo != null) params.periodo = periodo;
+        const qs = new URLSearchParams(params).toString();
+        return this.request(`/api/malla/progreso/${encodeURIComponent(idGrupo)}?${qs}`);
+    }
+
+    // ==========================================
     // OBSERVACIONES (Observador del Alumno + seguimiento)
     // ==========================================
 

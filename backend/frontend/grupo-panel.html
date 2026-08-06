@@ -143,6 +143,46 @@
       </div>
     </section>
 
+    <!-- ─── Malla curricular (DBA) ──────────────────────────── -->
+    <section class="bg-white rounded-xl shadow-sm border border-gray-100">
+      <div class="p-4 border-b border-gray-100">
+        <h2 class="text-sm font-bold text-gray-700 uppercase tracking-wide">
+          Malla curricular · Derechos Básicos de Aprendizaje (MEN)
+        </h2>
+        <p class="text-xs text-gray-500 mt-0.5">
+          Los DBA son metas anuales del MEN sin orden prescrito — la distribución por período es una sugerencia, ajustala libremente.
+        </p>
+      </div>
+      <div class="p-4">
+        <div class="flex flex-wrap items-center gap-3 mb-4">
+          <select id="malla-asignatura" onchange="cargarMalla()"
+            class="text-sm px-3 py-2 border border-gray-300 rounded-lg bg-white flex-1 min-w-[200px]">
+            <option value="">Selecciona asignatura…</option>
+          </select>
+          <button type="button" id="btn-generar-malla" onclick="generarMallaIA()"
+            class="text-sm px-4 py-2 rounded-lg text-white font-semibold hover:opacity-90 disabled:bg-gray-300 disabled:cursor-not-allowed"
+            style="background:#1D9E75" disabled>
+            <i class="fas fa-wand-magic-sparkles mr-1"></i>Generar malla con IA
+          </button>
+        </div>
+
+        <div id="malla-periodos-selector" class="hidden flex flex-wrap items-center gap-2 mb-4">
+          <span class="text-xs font-semibold text-gray-600">Período:</span>
+          <button type="button" class="malla-periodo-btn text-xs font-semibold px-3 py-1.5 rounded-full border" onclick="verPeriodoMalla(1)" data-periodo="1">P1</button>
+          <button type="button" class="malla-periodo-btn text-xs font-semibold px-3 py-1.5 rounded-full border" onclick="verPeriodoMalla(2)" data-periodo="2">P2</button>
+          <button type="button" class="malla-periodo-btn text-xs font-semibold px-3 py-1.5 rounded-full border" onclick="verPeriodoMalla(3)" data-periodo="3">P3</button>
+          <button type="button" class="malla-periodo-btn text-xs font-semibold px-3 py-1.5 rounded-full border" onclick="verPeriodoMalla(4)" data-periodo="4">P4</button>
+          <span id="malla-progreso-badge" class="ml-auto text-xs font-bold px-3 py-1 rounded-full" style="background:#F5B731;color:#0B3D2E"></span>
+        </div>
+
+        <div id="malla-dbas-list" class="space-y-2"></div>
+
+        <p id="malla-empty" class="text-sm text-gray-400 italic text-center py-6">
+          Elegí una asignatura para ver o generar la malla curricular de este grupo.
+        </p>
+      </div>
+    </section>
+
   </main>
 </div>
 
@@ -228,6 +268,7 @@ async function cargar() {
 
         renderHeader();
         renderPorPeriodo();
+        inicializarMalla();
     } catch (err) {
         console.error('[grupo-panel] cargar:', err);
         if (err.message?.includes('401') || err.message?.toLowerCase().includes('token')) {
@@ -513,6 +554,128 @@ function renderAlertas() {
            <span class="flex-1">${a.msg}</span>
          </div>`
     ).join('');
+}
+
+// ─── Malla curricular (DBA) ─────────────────────────────────────
+let MallaState = { asignatura: '', periodoActivo: 1, items: [] };
+
+async function inicializarMalla() {
+    try {
+        const asignaturas = await api.getAsignaturasMalla();
+        const sel = document.getElementById('malla-asignatura');
+        sel.innerHTML = '<option value="">Selecciona asignatura…</option>' +
+            Object.keys(asignaturas).sort().map(a => `<option value="${a}">${a}</option>`).join('');
+    } catch (err) {
+        console.warn('[malla] no pude cargar asignaturas:', err);
+    }
+}
+
+async function cargarMalla() {
+    MallaState.asignatura = document.getElementById('malla-asignatura').value;
+    const btnGenerar = document.getElementById('btn-generar-malla');
+    if (!MallaState.asignatura) {
+        btnGenerar.disabled = true;
+        mostrarMallaEmpty();
+        return;
+    }
+    btnGenerar.disabled = false;
+
+    try {
+        const data = await api.getMallaGrupo(GP.grupoId, MallaState.asignatura);
+        if (!data.malla) {
+            mostrarMallaEmpty('Esta asignatura todavía no tiene malla — generá una con IA.');
+            return;
+        }
+        MallaState.items = data.items;
+        document.getElementById('malla-periodos-selector').classList.remove('hidden');
+        document.getElementById('malla-empty').classList.add('hidden');
+        verPeriodoMalla(1);
+    } catch (err) {
+        console.error('[malla] error cargando malla:', err);
+        toast('Error al cargar la malla curricular', 'error');
+    }
+}
+
+function verPeriodoMalla(p) {
+    MallaState.periodoActivo = p;
+    document.querySelectorAll('.malla-periodo-btn').forEach(btn => {
+        const activo = parseInt(btn.dataset.periodo, 10) === p;
+        btn.style.background = activo ? '#0B3D2E' : 'transparent';
+        btn.style.color = activo ? '#FFFFFF' : '#374151';
+        btn.style.borderColor = activo ? '#0B3D2E' : '#D1D5DB';
+    });
+
+    const itemsPeriodo = MallaState.items.filter(i => i.periodo === p);
+    const cubiertos = itemsPeriodo.filter(i => i.cubierto).length;
+    const pct = itemsPeriodo.length ? Math.round(cubiertos / itemsPeriodo.length * 100) : 0;
+    document.getElementById('malla-progreso-badge').textContent = `${pct}% del período ${p}`;
+
+    const lista = document.getElementById('malla-dbas-list');
+    if (!itemsPeriodo.length) {
+        lista.innerHTML = '<p class="text-sm text-gray-400 italic text-center py-6">No hay DBAs asignados a este período.</p>';
+        return;
+    }
+    lista.innerHTML = itemsPeriodo.map(item => `
+        <div class="flex items-start gap-3 px-3 py-2.5 rounded-lg border ${item.cubierto ? 'border-green-200' : 'border-gray-200'}"
+             style="${item.cubierto ? 'background:#E1F5EE' : ''}">
+            <button type="button"
+                onclick="toggleDBA('${escapeAttrMalla(item.dba.id_dba)}', ${item.periodo}, ${item.cubierto})"
+                class="w-6 h-6 rounded-full border-2 flex-shrink-0 flex items-center justify-center mt-0.5"
+                style="${item.cubierto ? 'background:#1D9E75;border-color:#1D9E75;color:#fff' : 'border-color:#D1D5DB'}"
+                title="${item.cubierto ? 'Marcar como no cubierto' : 'Marcar como cubierto'}">
+                ${item.cubierto ? '<i class="fas fa-check text-xs"></i>' : ''}
+            </button>
+            <span class="text-[11px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full flex-shrink-0 mt-0.5">DBA ${item.dba.numero}</span>
+            <span class="text-sm text-gray-800 flex-1">${escapeHtmlMalla(item.dba.enunciado)}</span>
+        </div>
+    `).join('');
+}
+
+async function toggleDBA(idDba, periodo, cubiertoActual) {
+    const nuevo = !cubiertoActual;
+    try {
+        await api.marcarSeguimientoDba(GP.grupoId, idDba, periodo, nuevo);
+        const item = MallaState.items.find(i => i.dba.id_dba === idDba && i.periodo === periodo);
+        if (item) item.cubierto = nuevo;
+        verPeriodoMalla(periodo);
+    } catch (err) {
+        toast('No se pudo actualizar el seguimiento del DBA', 'error');
+    }
+}
+
+async function generarMallaIA() {
+    if (!MallaState.asignatura) return;
+    const btn = document.getElementById('btn-generar-malla');
+    btn.disabled = true;
+    const original = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Generando…';
+    try {
+        await api.generarMalla(GP.grupoId, MallaState.asignatura, 4);
+        await cargarMalla();
+        toast('Malla curricular generada', 'success');
+    } catch (err) {
+        console.error('[malla] error generando:', err);
+        toast('No se pudo generar la malla — intentá de nuevo', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = original;
+    }
+}
+
+function mostrarMallaEmpty(mensaje) {
+    document.getElementById('malla-periodos-selector').classList.add('hidden');
+    document.getElementById('malla-dbas-list').innerHTML = '';
+    const empty = document.getElementById('malla-empty');
+    if (mensaje) empty.textContent = mensaje;
+    empty.classList.remove('hidden');
+}
+
+function escapeHtmlMalla(s) {
+    return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function escapeAttrMalla(s) {
+    return String(s == null ? '' : s).replace(/'/g, '&#39;').replace(/"/g, '&quot;');
 }
 
 cargar();
