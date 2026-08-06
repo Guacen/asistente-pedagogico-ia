@@ -53,6 +53,31 @@
         .politica-container li::marker { color: #1D9E75; }
         .politica-container a { color: #1D9E75; text-decoration: underline; }
         .politica-container strong { color: #1F2937; }
+        .politica-container table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 1rem;
+            font-size: 0.92rem;
+        }
+        .politica-container th, .politica-container td {
+            border: 1px solid #E5E7EB;
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+            vertical-align: top;
+        }
+        .politica-container th {
+            background: #F3F4F6;
+            font-weight: 700;
+            color: #1F2937;
+        }
+        .table-wrap { overflow-x: auto; margin-bottom: 1rem; }
+        .pendiente {
+            background: #FEF9E7;
+            color: #92400E;
+            padding: 0.05rem 0.35rem;
+            border-radius: 4px;
+            font-size: 0.85em;
+        }
     </style>
 </head>
 <body>
@@ -70,126 +95,234 @@
     </nav>
 
     <main class="max-w-4xl mx-auto px-4 py-8 politica-container">
-        <div class="bg-white rounded-2xl shadow-sm p-8 md:p-12">
+        <div class="bg-white rounded-2xl shadow-sm p-6 md:p-12">
 
             <div class="mb-6 pb-6 border-b border-gray-200">
                 <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
                     Política de Tratamiento de Datos Personales
                 </h1>
                 <p class="text-sm text-gray-500">
-                    Última actualización: 31 de julio de 2026 · Conforme a la Ley 1581 de 2012 y el Decreto 1377 de 2013 de la República de Colombia.
+                    Maestr.ia — usemaestria.co · Versión 1.0 ·
+                    Fecha de entrada en vigencia: <span class="pendiente">pendiente de publicación</span> ·
+                    Última actualización: <span class="pendiente">pendiente de publicación</span>
                 </p>
             </div>
 
-            <h2>1. Identificación del responsable del tratamiento</h2>
+            <h2>1. Identificación del Responsable del Tratamiento</h2>
             <p>
-                <strong>Maestr.ia</strong> (en adelante, "Maestr.ia", "nosotros" o "la Plataforma"), plataforma
-                educativa dirigida a docentes en Colombia, es el responsable del tratamiento de los datos personales
-                que recolecta a través de esta aplicación. Para cualquier consulta relacionada con esta política
-                puedes escribirnos a
-                <a href="mailto:privacidad@maestria.co">privacidad@maestria.co</a>.
+                <strong>Razón social:</strong> <span class="pendiente">nombre de la SAS — pendiente de constitución</span><br>
+                <strong>NIT:</strong> <span class="pendiente">pendiente de asignación</span><br>
+                <strong>Nombre comercial:</strong> Maestr.ia<br>
+                <strong>Domicilio:</strong> Colombia<br>
+                <strong>Correo electrónico de contacto:</strong> <a href="mailto:hola@usemaestria.co">hola@usemaestria.co</a><br>
+                <strong>Sitio web:</strong> <a href="https://usemaestria.co" target="_blank" rel="noopener">https://usemaestria.co</a>
+            </p>
+            <p>
+                En los términos de la Ley 1581 de 2012 y el Decreto 1377 de 2013, Maestr.ia actúa como
+                <strong>Responsable del Tratamiento</strong> de los datos personales recolectados a través de
+                la plataforma usemaestria.co.
             </p>
 
-            <h2>2. Datos personales que recolectamos</h2>
-            <p>
-                Al crear una cuenta y usar la Plataforma, tratamos las siguientes categorías de datos personales:
-            </p>
+            <h2>2. Marco Legal Aplicable</h2>
+            <p>El tratamiento de datos personales en Maestr.ia se rige por:</p>
             <ul>
-                <li><strong>Datos de identificación del docente:</strong> nombre completo, correo electrónico institucional o personal, contraseña (almacenada de forma cifrada).</li>
-                <li><strong>Datos profesionales:</strong> institución educativa, ciudad, departamento, rol (docente, coordinador o rector), grados y asignaturas asignadas.</li>
-                <li><strong>Datos de los estudiantes a cargo del docente:</strong> nombre, identificación asignada por la institución, grado, calificaciones y observaciones pedagógicas ingresadas por el docente.</li>
-                <li><strong>Datos sensibles de estudiantes (PIAR):</strong> cuando el docente elabora un Plan Individual de Ajustes Razonables (PIAR), la Plataforma trata información relacionada con condiciones o diagnósticos, barreras para el aprendizaje y ajustes razonables. Estos datos son considerados <strong>sensibles</strong> en los términos del artículo 5 de la Ley 1581 de 2012.</li>
-                <li><strong>Datos de uso:</strong> registros técnicos de acceso a la plataforma (fecha y hora, dirección IP), interacciones con el asistente pedagógico IA y documentos generados.</li>
-                <li><strong>Evidencia de consentimiento:</strong> fecha y dirección IP en el momento en que aceptaste esta política.</li>
+                <li><strong>Ley 1581 de 2012</strong> — Régimen General de Protección de Datos Personales</li>
+                <li><strong>Decreto 1377 de 2013</strong> — Reglamentación parcial de la Ley 1581</li>
+                <li><strong>Decreto 1074 de 2015</strong> — Decreto Único Reglamentario del Sector Comercio</li>
+                <li><strong>Ley 1266 de 2008</strong> — Habeas Data financiero (aplicable supletoriamente)</li>
+                <li><strong>Ley 1098 de 2006</strong> — Código de Infancia y Adolescencia (Art. 44 — datos de menores)</li>
+                <li><strong>Ley 1618 de 2013</strong> — Derechos de personas con discapacidad</li>
+                <li><strong>Decreto 1421 de 2017</strong> — Educación inclusiva (PIAR)</li>
             </ul>
 
-            <h2>3. Finalidades del tratamiento</h2>
-            <p>Los datos anteriores son tratados con las siguientes finalidades:</p>
+            <h2>3. Definiciones</h2>
+            <p>Para efectos de esta política se entenderá por:</p>
+            <ul>
+                <li><strong>Dato personal:</strong> cualquier información vinculada o que pueda asociarse a una persona natural determinada o determinable.</li>
+                <li><strong>Dato sensible:</strong> aquellos que afectan la intimidad del titular o cuyo uso indebido puede generar discriminación. En Maestr.ia esto incluye: diagnósticos de condiciones de salud o discapacidad de estudiantes, información contenida en los PIAR, registros de observaciones de conducta y seguimientos de rutas de atención.</li>
+                <li><strong>Titular:</strong> la persona natural cuyos datos personales son objeto de tratamiento. Incluye docentes (usuarios directos) y estudiantes (cuyos datos son procesados por los docentes).</li>
+                <li><strong>Tratamiento:</strong> cualquier operación sobre datos personales: recolección, almacenamiento, uso, circulación o supresión.</li>
+                <li><strong>Encargado:</strong> persona natural o jurídica que realiza el tratamiento por cuenta del Responsable.</li>
+                <li><strong>Autorización:</strong> consentimiento previo, expreso e informado del Titular.</li>
+            </ul>
+
+            <h2>4. Datos Personales que Recolectamos</h2>
+            <h3>4.1 Datos de Docentes (Titulares directos)</h3>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr><th>Categoría</th><th>Datos</th><th>Finalidad</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Identificación</td><td>Nombre completo, correo electrónico</td><td>Creación y gestión de cuenta</td></tr>
+                        <tr><td>Técnicos</td><td>Dirección IP, fecha y hora de acceso</td><td>Seguridad y auditoría</td></tr>
+                        <tr><td>Consentimiento</td><td>Fecha, hora e IP de aceptación de esta política</td><td>Cumplimiento Ley 1581</td></tr>
+                        <tr><td>Uso de la plataforma</td><td>Conversaciones con la IA, documentos generados</td><td>Prestación del servicio</td></tr>
+                        <tr><td>Facturación</td><td>Historial de plan y suscripción</td><td>Gestión comercial</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3>4.2 Datos de Estudiantes (Tratados por los docentes)</h3>
+            <p>
+                Los docentes pueden ingresar a la plataforma información de sus estudiantes para generar
+                documentos pedagógicos. Maestr.ia procesa estos datos como <strong>Encargado</strong> bajo
+                instrucción del docente (Responsable frente a sus estudiantes).
+            </p>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr><th>Categoría</th><th>Datos</th><th>Base legal</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Identificación</td><td>Nombre del estudiante</td><td>Ley 1581/2012</td></tr>
+                        <tr><td>Educativos</td><td>Grupo, grado, período académico, calificaciones</td><td>Ley 1581/2012</td></tr>
+                        <tr>
+                            <td><strong>Datos sensibles</strong></td>
+                            <td>Diagnósticos de discapacidad o condición de salud, Planes Individuales de Ajustes Razonables (PIAR), observaciones de conducta, situaciones de riesgo reportadas</td>
+                            <td>Ley 1581/2012 Art. 6 y 7; Ley 1098/2006 Art. 44</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <p>
+                <strong>Importante:</strong> los datos de estudiantes son ingresados directamente por el
+                docente. Maestr.ia no recolecta estos datos de fuentes distintas al docente usuario y no los
+                comparte con terceros.
+            </p>
+
+            <h2>5. Finalidades del Tratamiento</h2>
+            <p>Los datos personales son tratados para las siguientes finalidades:</p>
             <ol>
-                <li>Crear y administrar tu cuenta de docente, autenticarte y comunicarnos contigo sobre el servicio.</li>
-                <li>Permitir la planeación pedagógica, elaboración de rúbricas, boletines y PIAR mediante el asistente de inteligencia artificial.</li>
-                <li>Registrar, calcular y reportar calificaciones de los estudiantes a tu cargo.</li>
-                <li>Cumplir obligaciones legales aplicables al sector educativo colombiano, incluyendo el Decreto 1421 de 2017 (educación inclusiva) y la Ley 1618 de 2013.</li>
-                <li>Mantener la seguridad de la Plataforma, prevenir fraude y auditar el acceso a los datos.</li>
-                <li>Enviarte comunicaciones estrictamente relacionadas con el servicio (verificación de correo, cambios de política, avisos operativos). No enviamos publicidad de terceros.</li>
+                <li><strong>Prestación del servicio:</strong> generar planeaciones de clase, documentos PIAR, registros de observación estudiantil, rúbricas y boletines mediante inteligencia artificial.</li>
+                <li><strong>Autenticación y seguridad:</strong> verificar la identidad del usuario, prevenir accesos no autorizados y proteger la integridad de la plataforma.</li>
+                <li><strong>Comunicaciones del servicio:</strong> enviar correos de verificación de cuenta, recuperación de contraseña, notificaciones de seguimiento pedagógico y actualizaciones relevantes del servicio.</li>
+                <li><strong>Mejora del servicio:</strong> analizar el uso agregado y anónimo de la plataforma para mejorar su funcionamiento. No se usa información personal identificable para este fin.</li>
+                <li><strong>Cumplimiento legal:</strong> atender requerimientos de autoridades judiciales o administrativas competentes conforme a la ley colombiana.</li>
+                <li><strong>Investigación académica (doctoral):</strong> el proyecto hace parte de una investigación doctoral. Los datos utilizados con fines académicos son anonimizados y agregados; nunca se publican datos personales identificables.</li>
+                <li><strong>Gestión comercial:</strong> administrar suscripciones, facturación y atención al cliente.</li>
             </ol>
 
-            <h2>4. Autorización del titular</h2>
+            <h2>6. Datos Sensibles — Tratamiento Especial</h2>
             <p>
-                Al marcar la casilla de consentimiento durante el registro, otorgas a Maestr.ia autorización previa,
-                expresa e informada para el tratamiento de tus datos personales con las finalidades descritas en
-                esta política, en los términos del artículo 9 de la Ley 1581 de 2012.
-            </p>
-            <p>
-                Para el tratamiento de <strong>datos sensibles de estudiantes</strong> (información PIAR),
-                el docente declara que cuenta con la autorización de los padres, madres o representantes legales
-                del menor, en los términos del artículo 7 de la misma ley y del Decreto 1377 de 2013. Maestr.ia
-                actúa como <strong>encargado del tratamiento</strong> respecto de estos datos, siguiendo las
-                instrucciones del docente y de la institución educativa que actúan como responsables.
-            </p>
-
-            <h2>5. Derechos del titular</h2>
-            <p>Como titular de los datos personales, tienes derecho a:</p>
-            <ul>
-                <li><strong>Conocer, actualizar y rectificar</strong> tus datos personales frente a Maestr.ia.</li>
-                <li><strong>Solicitar prueba</strong> de la autorización otorgada, salvo en los casos exceptuados por la ley.</li>
-                <li><strong>Ser informado</strong>, previa solicitud, respecto del uso que le hemos dado a tus datos.</li>
-                <li><strong>Presentar quejas</strong> ante la Superintendencia de Industria y Comercio (SIC) por infracciones a la Ley 1581 de 2012.</li>
-                <li><strong>Revocar la autorización</strong> y/o solicitar la supresión de los datos cuando no se respeten los principios, derechos y garantías legales.</li>
-                <li><strong>Acceder de forma gratuita</strong> a tus datos personales objeto de tratamiento.</li>
-            </ul>
-
-            <h2>6. Procedimiento para ejercer tus derechos</h2>
-            <p>
-                Puedes ejercer los derechos anteriores enviando una comunicación a
-                <a href="mailto:privacidad@maestria.co">privacidad@maestria.co</a> con la siguiente información:
+                Maestr.ia trata datos sensibles de conformidad con el <strong>Artículo 6 de la Ley 1581 de
+                2012.</strong> Para el tratamiento de datos sensibles de estudiantes:
             </p>
             <ul>
-                <li>Nombre completo y correo con el que te registraste.</li>
-                <li>Descripción clara del derecho que deseas ejercer y de los hechos que la sustentan.</li>
-                <li>Dirección física o electrónica para notificaciones y documentos que consideres necesarios.</li>
+                <li>Se requiere autorización <strong>expresa</strong> del docente como responsable pedagógico.</li>
+                <li>Los datos de diagnósticos y condiciones de salud se usan <strong>exclusivamente</strong> para generar el PIAR y documentos de apoyo pedagógico.</li>
+                <li>Maestr.ia <strong>no</strong> comparte, vende ni cede datos sensibles de estudiantes a terceros.</li>
+                <li>Los datos sensibles se almacenan con cifrado en reposo en servidores ubicados en Estados Unidos (Railway/PostgreSQL). El docente, como responsable frente a los padres y la institución, es quien debe obtener la autorización correspondiente de los acudientes.</li>
+            </ul>
+
+            <h3>Datos de Menores de Edad</h3>
+            <p>
+                Los estudiantes son menores de edad. En cumplimiento de los <strong>Artículos 7 y 12 de la Ley
+                1581 de 2012</strong> y el <strong>Artículo 44 de la Ley 1098 de 2006</strong>:
+            </p>
+            <ul>
+                <li>Maestr.ia no recolecta datos de menores directamente — los recibe del docente en ejercicio de su función pedagógica.</li>
+                <li>El docente es responsable de contar con las autorizaciones institucionales y de los acudientes que exija la normatividad aplicable.</li>
+                <li>Cualquier situación que configure una amenaza a los derechos de un menor (clasificada como Tipo III en el módulo de Observaciones según Ley 1620 de 2013) genera una alerta explícita al docente citando su obligación de reporte ante el ICBF según el Art. 44 de la Ley 1098.</li>
+            </ul>
+
+            <h2>7. Derechos de los Titulares</h2>
+            <p>De conformidad con el <strong>Artículo 8 de la Ley 1581 de 2012</strong>, los titulares tienen derecho a:</p>
+            <ul>
+                <li><strong>Conocer</strong> los datos personales que Maestr.ia tiene sobre ellos.</li>
+                <li><strong>Actualizar</strong> sus datos cuando sean inexactos, incompletos o desactualizados.</li>
+                <li><strong>Rectificar</strong> datos que hayan sido objeto de tratamiento indebido.</li>
+                <li><strong>Suprimir</strong> sus datos cuando no sean necesarios para la finalidad del tratamiento o cuando el titular retire su consentimiento, salvo que exista obligación legal de conservarlos.</li>
+                <li><strong>Revocar</strong> la autorización de tratamiento en cualquier momento.</li>
+                <li><strong>Acceder gratuitamente</strong> a sus datos personales al menos una vez al mes.</li>
+                <li><strong>Presentar quejas</strong> ante la Superintendencia de Industria y Comercio (SIC) por infracciones a la normativa de protección de datos.</li>
+            </ul>
+            <h3>Procedimiento para ejercer derechos</h3>
+            <p>
+                El titular puede ejercer sus derechos enviando un correo a
+                <a href="mailto:hola@usemaestria.co">hola@usemaestria.co</a> con:
+            </p>
+            <ul>
+                <li>Nombre completo e identificación</li>
+                <li>Descripción clara de la solicitud</li>
+                <li>Documentos que soporten la solicitud (si aplica)</li>
             </ul>
             <p>
-                Responderemos las consultas en un plazo máximo de <strong>diez (10) días hábiles</strong> y los
-                reclamos en un plazo máximo de <strong>quince (15) días hábiles</strong>, contados a partir del día
-                siguiente a su recepción, conforme a los artículos 14 y 15 de la Ley 1581 de 2012.
+                <strong>Tiempo de respuesta:</strong> 10 días hábiles para consultas; 15 días hábiles para
+                reclamos, prorrogables por 8 días hábiles adicionales con notificación previa al titular.
             </p>
 
-            <h2>7. Seguridad y conservación de los datos</h2>
+            <h2>8. Seguridad de los Datos</h2>
+            <p>Maestr.ia implementa las siguientes medidas técnicas y organizativas:</p>
+            <ul>
+                <li><strong>Cifrado en tránsito:</strong> todas las comunicaciones entre el usuario y la plataforma usan HTTPS/TLS mediante Cloudflare.</li>
+                <li><strong>Cifrado en reposo:</strong> la base de datos PostgreSQL está alojada en Railway (infraestructura en la nube con cifrado de disco).</li>
+                <li><strong>Autenticación:</strong> contraseñas almacenadas con hash bcrypt. Tokens JWT con expiración de 7 días.</li>
+                <li><strong>Control de acceso:</strong> arquitectura multi-tenant — cada docente solo puede acceder a sus propios datos y los de sus estudiantes.</li>
+                <li><strong>Verificación de identidad:</strong> correo electrónico verificado antes del acceso completo a la plataforma.</li>
+                <li><strong>Auditoría:</strong> registro de actividad de acceso y modificaciones.</li>
+            </ul>
+
+            <h2>9. Transferencia Internacional de Datos</h2>
             <p>
-                Adoptamos medidas técnicas y administrativas razonables para proteger los datos personales contra
-                pérdida, acceso no autorizado, alteración o divulgación. Las contraseñas se almacenan cifradas con
-                algoritmos estándar de la industria (bcrypt), la comunicación con la Plataforma se realiza sobre
-                HTTPS y los datos residen en infraestructura de proveedores que cumplen con estándares internacionales
-                de seguridad.
+                Los datos son almacenados en servidores de <strong>Railway</strong> (Estados Unidos) y
+                procesados por <strong>Anthropic</strong> (Estados Unidos) para la generación de contenido
+                mediante inteligencia artificial.
             </p>
             <p>
-                Los datos se conservarán mientras la cuenta permanezca activa. Al eliminar tu cuenta o solicitar la
-                supresión, procederemos a borrar tus datos y los de los estudiantes bajo tu cuenta, salvo obligaciones
-                legales que exijan conservarlos por un tiempo adicional.
+                Estas transferencias se realizan bajo garantías contractuales de confidencialidad. Los
+                proveedores cuentan con certificaciones de seguridad internacionales (SOC 2). El usuario
+                autoriza esta transferencia al aceptar la presente política y los Términos de Uso.
             </p>
 
-            <h2>8. Transferencia y transmisión de datos</h2>
+            <h2>10. Conservación de los Datos</h2>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr><th>Tipo de dato</th><th>Período de conservación</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Datos de cuenta (docente)</td><td>Mientras la cuenta esté activa + 5 años</td></tr>
+                        <tr><td>Conversaciones de chat</td><td>Mientras la cuenta esté activa</td></tr>
+                        <tr><td>Documentos generados (PIAR, boletines)</td><td>Mientras la cuenta esté activa</td></tr>
+                        <tr><td>Datos de facturación</td><td>10 años (obligación tributaria colombiana)</td></tr>
+                        <tr><td>Logs de seguridad</td><td>1 año</td></tr>
+                    </tbody>
+                </table>
+            </div>
             <p>
-                Maestr.ia utiliza proveedores tecnológicos externos (por ejemplo, servicios de infraestructura en la
-                nube y proveedores de modelos de inteligencia artificial) para operar la Plataforma. Estos proveedores
-                actúan como <strong>encargados</strong> del tratamiento bajo instrucciones de Maestr.ia y están sujetos
-                a acuerdos que exigen niveles de protección equivalentes a los que ofrecemos nosotros mismos. No
-                vendemos, alquilamos ni cedemos datos personales a terceros con fines comerciales.
+                Tras la eliminación de la cuenta, los datos se suprimen en un plazo máximo de 30 días, salvo
+                obligación legal de conservación.
             </p>
 
-            <h2>9. Cambios a esta política</h2>
+            <h2>11. Cambios a esta Política</h2>
+            <p>Maestr.ia podrá modificar esta política en cualquier momento. Los cambios sustanciales serán comunicados mediante:</p>
+            <ul>
+                <li>Correo electrónico al titular con al menos 10 días de anticipación.</li>
+                <li>Aviso visible en la plataforma al iniciar sesión.</li>
+            </ul>
             <p>
-                Podemos actualizar esta política para reflejar cambios en la Plataforma o en la normativa aplicable.
-                Cuando el cambio sea sustancial, te notificaremos a través de la Plataforma o por correo electrónico
-                y solicitaremos, cuando corresponda, un nuevo consentimiento antes de continuar tratando tus datos
-                conforme a los nuevos términos.
+                El uso continuado de la plataforma tras la notificación constituye aceptación de la nueva política.
+            </p>
+
+            <h2>12. Contacto y Reclamaciones</h2>
+            <p>Para consultas, reclamos o ejercicio de derechos:</p>
+            <ul>
+                <li><strong>Correo:</strong> <a href="mailto:hola@usemaestria.co">hola@usemaestria.co</a></li>
+                <li><strong>Asunto sugerido:</strong> "Habeas Data — [tipo de solicitud]"</li>
+                <li><strong>Tiempo de respuesta:</strong> máximo 15 días hábiles</li>
+            </ul>
+            <p>
+                Si la respuesta no es satisfactoria, el titular puede acudir a la
+                <strong>Superintendencia de Industria y Comercio (SIC):</strong>
+                sitio web <a href="https://www.sic.gov.co" target="_blank" rel="noopener">www.sic.gov.co</a>
+                · línea 01 8000 910165
             </p>
 
             <div class="mt-8 pt-6 border-t border-gray-200 text-sm text-gray-500">
                 <p>
-                    Si tienes preguntas sobre esta política escríbenos a
-                    <a href="mailto:privacidad@maestria.co">privacidad@maestria.co</a>.
+                    Esta política fue elaborada con base en la normativa colombiana vigente. Se recomienda
+                    revisión por abogado especializado antes del registro formal ante la SIC.
                 </p>
             </div>
         </div>
