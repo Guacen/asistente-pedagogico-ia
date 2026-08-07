@@ -10,6 +10,7 @@ No se testea contra la API real de Stripe ni se necesitan credenciales.
 """
 from __future__ import annotations
 
+from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
 from config import settings
@@ -114,6 +115,45 @@ def test_webhook_checkout_completado_activa_plan_pro(client, seed_docente, db_se
     assert suscripcion.plan == "pro"
     assert suscripcion.estado == "activa"
     assert suscripcion.stripe_subscription_id == "sub_activa_123"
+
+
+def test_webhook_checkout_completado_desbloquea_trial_vencido(client, seed_docente, db_session, monkeypatch):
+    """
+    Bonus fix (bundleado con el sprint wompi-pagos): un docente con
+    trial vencido que paga por Stripe debe quedar desbloqueado igual
+    que si hubiera pagado por Wompi — antes de este fix, el webhook de
+    Stripe sólo tocaba Suscripcion.plan y dejaba Docente.plan intacto,
+    así que verify_trial_active seguía devolviendo 402 aunque el pago
+    hubiera pasado.
+    """
+    import suscripciones
+
+    monkeypatch.setattr(settings, "STRIPE_WEBHOOK_SECRET", "whsec_dummy")
+
+    docente = seed_docente["docente"]
+    docente.plan = "expirado"
+    docente.trial_ends_at = datetime.utcnow() - timedelta(days=1)
+    db_session.commit()
+
+    fake_event = {
+        "type": "checkout.session.completed",
+        "data": {"object": {
+            "metadata": {"docente_id": docente.id_docente},
+            "subscription": "sub_reactivacion_789",
+        }},
+    }
+
+    with patch.object(suscripciones.stripe.Webhook, "construct_event", return_value=fake_event):
+        r = client.post(
+            "/webhook/stripe",
+            content=b"{}",
+            headers={"stripe-signature": "t=1,v1=fake"},
+        )
+
+    assert r.status_code == 200
+    db_session.refresh(docente)
+    assert docente.plan == "activo"
+    assert docente.trial_ends_at is None
 
 
 def test_webhook_subscription_deleted_revierte_a_free(client, seed_docente, db_session, monkeypatch):
