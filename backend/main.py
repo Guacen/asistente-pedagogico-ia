@@ -18,7 +18,7 @@ import os
 from pathlib import Path
 
 import socketio
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
@@ -78,6 +78,25 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ============================================================
+# CACHE-CONTROL — assets/ y css/ (logo, icon, brand.css, main.css)
+# Cloudflare cachea estáticos por extensión con su propio Edge Cache TTL
+# (vimos un logo.png viejo servido desde caché 30min después de un
+# deploy que ya tenía el archivo nuevo). "no-cache" (no "no-store") a
+# propósito: Cloudflare/el navegador SIGUEN pudiendo cachear el byte,
+# pero deben revalidar con el origen (ETag/Last-Modified, que
+# StaticFiles ya calcula) antes de servir la copia cacheada — no
+# implica re-descargar el archivo entero en cada request.
+# ============================================================
+
+@app.middleware("http")
+async def no_cache_para_assets_estaticos(request: Request, call_next):
+    response = await call_next(request)
+    path = request.url.path
+    if path.startswith("/assets/") or path.startswith("/css/"):
+        response.headers["Cache-Control"] = "no-cache"
+    return response
 
 # ============================================================
 # ROUTERS API  (/api/...)
