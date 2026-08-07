@@ -34,7 +34,7 @@
             <!-- Logo -->
             <div class="p-4 border-b flex-shrink-0 flex items-center justify-between">
                 <a href="dashboard.html" class="flex items-center" title="Ir al dashboard">
-                    <img src="assets/logo.png" alt="Maestr.ia" style="height:36px;object-fit:contain;max-width:160px">
+                    <img src="assets/logo-blanco.svg" alt="Maestr.ia" style="width:140px;height:auto">
                 </a>
                 <button onclick="toggleSidebar(false)" class="md:hidden text-gray-400 hover:text-gray-600 p-1" aria-label="Cerrar menú">
                     <i class="fas fa-times"></i>
@@ -625,7 +625,7 @@
         const box  = document.getElementById('plan-usage');
         const upg  = document.getElementById('upgrade-link');
         if (esPro) {
-            lbl.textContent = '⭐ Plan Pro';
+            lbl.innerHTML   = '<i class="fas fa-star" style="color:#F5B731"></i> Plan Pro';
             lbl.className   = 'font-semibold text-purple-800 text-xs';
             box.className   = box.className.replace('bg-blue-50','bg-purple-50');
             upg.classList.add('hidden');

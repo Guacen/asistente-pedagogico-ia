@@ -31,9 +31,14 @@ h1, h2, h3, h4, .brand-display {
 
 /* ─── Utilitarias ─────────────────────────────────────────────── */
 
-.brand-logo    { height: 36px; width: auto; display: block; }
-.brand-logo-sm { height: 28px; width: auto; display: block; }
-.brand-logo-lg { height: 56px; width: auto; display: block; }
+/* Ancho fijo, no alto: los PNG/SVG del brand kit vienen exportados
+   sobre un artboard de Illustrator con mucho margen transparente
+   arriba/abajo del isotipo+wordmark real (~87% ancho / ~15% alto del
+   canvas) — fijar por alto hacía que el logo visible rindiera a un
+   tamaño ínfimo (~30-60px) sin importar el valor declarado. */
+.brand-logo    { width: 160px; height: auto; display: block; }
+.brand-logo-sm { width: 140px; height: auto; display: block; }
+.brand-logo-lg { width: 220px; height: auto; display: block; }
 
 .btn-primary {
     background: var(--brand-primary);
@@ -85,7 +90,8 @@ h1, h2, h3, h4, .brand-display {
 
 .brand-sidebar .bg-white,
 .brand-sidebar .bg-gray-50, .brand-sidebar .bg-gray-100,
-.brand-sidebar .bg-blue-50, .brand-sidebar .bg-blue-100 {
+.brand-sidebar .bg-blue-50, .brand-sidebar .bg-blue-100,
+.brand-sidebar .bg-purple-50, .brand-sidebar .bg-purple-100 {
     background-color: rgba(255, 255, 255, 0.08) !important;
     border-color:     rgba(255, 255, 255, 0.15) !important;
 }
