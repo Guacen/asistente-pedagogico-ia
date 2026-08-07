@@ -63,7 +63,11 @@ a { color: inherit; text-decoration: none; }
 }
 .navbar.scrolled { box-shadow: 0 2px 12px rgba(11,61,46,0.08); border-color: #EEF2F1; }
 .navbar .wrap { display: flex; align-items: center; justify-content: space-between; height: 68px; }
-.nav-logo { height: 34px; width: auto; }
+/* Ancho fijo, no alto: el PNG del logo viene con margen transparente
+   arriba/abajo (el isotipo+wordmark real ocupa ~15% del alto del
+   canvas) — fijar por alto rendía un logo ínfimo sin importar el
+   valor declarado. */
+.nav-logo { width: 140px; height: auto; }
 .nav-links { display: flex; gap: 2rem; font-weight: 600; font-size: 0.95rem; color: #374151; }
 .nav-links a:hover { color: var(--brand-primary); }
 .nav-actions { display: flex; align-items: center; gap: 0.75rem; }
@@ -124,7 +128,7 @@ table.compare .featured-col { background: var(--brand-mint); }
 footer { background: #FFFFFF; border-top: 1px solid #EEF2F1; padding: 3rem 0 2rem; }
 .footer-inner { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1.5rem; margin-bottom: 1.5rem; }
 .footer-brand { display: flex; align-items: center; gap: 0.75rem; }
-.footer-brand img { height: 30px; }
+.footer-brand img { width: 140px; height: auto; }
 .footer-brand span { color: #6B7280; font-size: 0.9rem; }
 .footer-links { display: flex; gap: 1.5rem; font-size: 0.9rem; color: #6B7280; }
 .footer-links a:hover { color: var(--brand-primary); }
@@ -306,7 +310,7 @@ footer { background: #FFFFFF; border-top: 1px solid #EEF2F1; padding: 3rem 0 2re
     <div class="wrap">
         <div class="footer-inner">
             <div class="footer-brand">
-                <img src="assets/logo.png" alt="Maestr.ia">
+                <img src="assets/logo.png" alt="Maestr.ia" class="nav-logo">
                 <span>Tu colega que conoce la ley</span>
             </div>
             <div class="footer-links">
