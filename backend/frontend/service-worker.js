@@ -1,7 +1,10 @@
 // Service worker de Maestr.ia — estrategia cache-first para assets estáticos.
 // Las peticiones a /api/* NUNCA se cachean: siempre van a red.
 
-const CACHE_NAME = 'maestria-v1';
+// v2: bump forzado por el reemplazo de logo.png/icon.png (brand kit oficial)
+// — el precache es por URL, así que el contenido viejo se habría quedado
+// servido desde caché para visitantes recurrentes sin este bump.
+const CACHE_NAME = 'maestria-v2';
 
 // Páginas principales + CSS/JS/assets locales. El resto de los HTML
 // (verificar-email, recuperar-password, nueva-password, politica-datos,
