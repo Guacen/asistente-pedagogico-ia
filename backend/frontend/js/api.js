@@ -630,6 +630,21 @@ class ApiClient {
     async getPlanStatus() {
         return this.request('/api/perfil/plan');
     }
+
+    // ==========================================
+    // PAGOS — WOMPI (sprint wompi-pagos)
+    // ==========================================
+
+    async iniciarPagoWompi(plan) {
+        return this.request('/api/pagos/iniciar', {
+            method: 'POST',
+            body: JSON.stringify({ plan }),
+        });
+    }
+
+    async getEstadoPago(referencia) {
+        return this.request(`/api/pagos/estado/${encodeURIComponent(referencia)}`);
+    }
 }
 
 // Crear instancia global

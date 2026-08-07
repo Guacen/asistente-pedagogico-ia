@@ -322,6 +322,33 @@ class CheckoutCreate(BaseModel):
     cancel_url: str
 
 
+# ============================================================
+# PAGOS — WOMPI (sprint wompi-pagos)
+# ============================================================
+
+class IniciarPagoRequest(BaseModel):
+    plan: str  # 'docente' | 'pro'
+
+
+class IniciarPagoOut(BaseModel):
+    public_key: str
+    referencia: str
+    monto_centavos: int
+    moneda: str = "COP"
+    firma_integridad: str
+    redirect_url: str
+
+
+class EstadoPagoOut(BaseModel):
+    referencia: str
+    plan: str
+    estado: str
+    monto_centavos: int
+    creado_en: datetime
+
+    model_config = {"from_attributes": True}
+
+
 # Forward reference resolution — GrupoCreate.estudiantes: List["EstudianteCreate"]
 # necesita rebuild ahora que EstudianteCreate ya fue definido arriba.
 GrupoCreate.model_rebuild()

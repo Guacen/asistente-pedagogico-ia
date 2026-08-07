@@ -197,7 +197,7 @@ footer { background: #FFFFFF; border-top: 1px solid #EEF2F1; padding: 3rem 0 2re
                     <li>Descarga en Word</li>
                     <li>Observaciones ilimitadas (sin paywall)</li>
                 </ul>
-                <a href="https://wa.me/573239097629?text=Hola%2C%20quiero%20informaci%C3%B3n%20sobre%20el%20plan%20Docente" target="_blank" rel="noopener" class="btn btn-primary">Contratar</a>
+                <a href="#" onclick="iniciarPago('docente'); return false;" class="btn btn-primary" id="btn-plan-docente">Contratar</a>
             </div>
 
             <div class="price-card featured">
@@ -211,7 +211,7 @@ footer { background: #FFFFFF; border-top: 1px solid #EEF2F1; padding: 3rem 0 2re
                     <li>Soporte prioritario</li>
                     <li>Observaciones ilimitadas (sin paywall)</li>
                 </ul>
-                <a href="https://wa.me/573239097629?text=Hola%2C%20quiero%20informaci%C3%B3n%20sobre%20el%20plan%20Pro" target="_blank" rel="noopener" class="btn btn-primary">Contratar</a>
+                <a href="#" onclick="iniciarPago('pro'); return false;" class="btn btn-primary" id="btn-plan-pro">Contratar</a>
             </div>
 
             <div class="price-card">
@@ -333,6 +333,44 @@ navToggle.addEventListener('click', () => {
 navPanel.querySelectorAll('a').forEach(a => {
     a.addEventListener('click', () => navPanel.classList.remove('open'));
 });
+
+// ── Pago Wompi (sprint wompi-pagos) — planes Docente y Pro ─────────
+// El plan Institución sigue siendo venta manual por WhatsApp (no se toca).
+async function iniciarPago(plan) {
+    const token = localStorage.getItem('token');
+    if (!token) {
+        window.location.href = 'registro.html';
+        return;
+    }
+
+    const boton = document.getElementById(`btn-plan-${plan}`);
+    const textoOriginal = boton ? boton.textContent : null;
+    if (boton) { boton.textContent = 'Redirigiendo…'; boton.style.pointerEvents = 'none'; }
+
+    try {
+        const data = await api.iniciarPagoWompi(plan);
+        const params = new URLSearchParams({
+            'public-key': data.public_key,
+            'currency': data.moneda,
+            'amount-in-cents': String(data.monto_centavos),
+            'reference': data.referencia,
+            'signature:integrity': data.firma_integridad,
+            'redirect-url': data.redirect_url,
+        });
+        // Referencia guardada localmente porque Wompi NO la devuelve en el
+        // redirect de vuelta (sólo devuelve ?id=<transaction_id>) — la usa
+        // pago-resultado.html para hacer polling de /api/pagos/estado/.
+        localStorage.setItem('wompi_referencia_pendiente', data.referencia);
+        window.location.href = `https://checkout.wompi.co/p/?${params.toString()}`;
+    } catch (err) {
+        console.error('Error iniciando pago Wompi:', err);
+        if (boton) { boton.textContent = textoOriginal; boton.style.pointerEvents = ''; }
+        alert('No pudimos iniciar el pago. Intenta de nuevo o escríbenos por WhatsApp.');
+    }
+}
 </script>
+<script src="js/config.js?v=20260807"></script>
+<script src="js/api.js?v=20260807"></script>
+<script src="js/auth.js?v=20260807"></script>
 </body>
 </html>

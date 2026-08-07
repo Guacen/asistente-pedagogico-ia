@@ -219,6 +219,11 @@ def apply_migrations():
             conn.commit()
             print("✅ Migración: 'trial_ends_at' agregada a 'docentes' (NULL para existentes)")
 
+    # ── Sprint wompi-pagos ──
+    # Tabla nueva, sin ALTER TABLE necesario — create_all idempotente.
+    from models import TransaccionPago  # noqa: F401
+    Base.metadata.create_all(bind=engine, tables=[TransaccionPago.__table__])
+
     # Backfill uni-personal: cada docente sin id_institucion recibe una
     # Institucion nueva a su nombre. Idempotente — si ya tiene, no toca.
     _backfill_instituciones_unipersonales()

@@ -35,6 +35,7 @@ import grupos
 import institucion
 import malla
 import observaciones
+import pagos
 import perfil
 import piar
 import sesiones
@@ -91,6 +92,7 @@ app.include_router(piar.router)
 app.include_router(institucion.router)
 app.include_router(malla.router)
 app.include_router(observaciones.router)
+app.include_router(pagos.router)
 app.include_router(perfil.router)
 app.include_router(sesiones.router)
 app.include_router(suscripciones.router)

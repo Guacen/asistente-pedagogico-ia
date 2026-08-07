@@ -44,6 +44,13 @@ class Settings(BaseSettings):
     STRIPE_PRICE_ID_DOCENTE_COP: str = ""
     STRIPE_PRICE_ID_PRO_COP: str = ""
 
+    # Wompi — checkout PSE/Nequi/tarjeta en COP (sprint wompi-pagos).
+    # Ya configuradas en Railway; vacías en dev local (sandbox).
+    WOMPI_PUBLIC_KEY: str = ""
+    WOMPI_PRIVATE_KEY: str = ""
+    WOMPI_EVENTS_SECRET: str = ""       # firma de webhooks (X-Event-Checksum)
+    WOMPI_INTEGRITY_SECRET: str = ""    # firma del widget/checkout (signature:integrity)
+
     # CORS
     FRONTEND_URL: str = "http://localhost:8080"
 
@@ -90,4 +97,21 @@ settings = Settings()
 LIMITES_PLAN: dict = {
     "free": {"mensajes": 10, "grupos": 1},
     "pro": {"mensajes": 999999, "grupos": 999999},
+}
+
+
+# ============================================================
+# PRECIOS WOMPI (sprint wompi-pagos)
+# En centavos COP. Tomados de frontend/precios.html (fuente real de lo
+# que el sitio muestra al usuario) — el spec del sprint traía $29.900/
+# $49.900 hardcodeados, que NO coinciden con lo publicado en el sitio
+# ($25.000 Docente / $45.000 Pro). Cobrar el número del spec habría
+# sido cobrar de más frente a lo anunciado, así que se usan los reales.
+# Igual que el checkout de Stripe (ver LIMITES_PLAN arriba): "docente"
+# y "pro" son dos precios distintos pero ambos activan el mismo plan
+# interno "pro" a nivel de Suscripcion — no se inventa un tercer tier.
+# ============================================================
+PRECIOS_WOMPI_COP: dict = {
+    "docente": 2_500_000,   # $25.000 COP
+    "pro": 4_500_000,       # $45.000 COP
 }

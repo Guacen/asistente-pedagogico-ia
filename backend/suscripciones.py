@@ -173,7 +173,18 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
                 suscripcion.plan = "pro"
                 suscripcion.estado = "activa"
                 suscripcion.stripe_subscription_id = session.get("subscription")
-                db.commit()
+            # Fix bundleado con el sprint wompi-pagos: hasta acá, pagar por
+            # Stripe activaba Suscripcion.plan pero NO tocaba Docente.plan
+            # (el eje que usa verify_trial_active) — un docente con trial
+            # vencido que pagara por Stripe quedaba igual de bloqueado en
+            # TODA la app. El webhook de Wompi (pagos.py) sí lo hace desde
+            # el día uno; se replica acá para que ambos proveedores de
+            # pago desbloqueen por igual.
+            docente = db.query(Docente).filter(Docente.id_docente == docente_id).first()
+            if docente:
+                docente.plan = "activo"
+                docente.trial_ends_at = None
+            db.commit()
 
     # Suscripción eliminada o vencida
     elif event["type"] in ("customer.subscription.deleted", "customer.subscription.updated"):

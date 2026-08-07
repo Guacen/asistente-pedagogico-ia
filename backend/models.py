@@ -122,6 +122,7 @@ class Docente(Base):
     grupos = relationship("Grupo", back_populates="docente", cascade="all, delete")
     suscripcion = relationship("Suscripcion", back_populates="docente", uselist=False, cascade="all, delete")
     uso_mensual = relationship("UsoMensual", back_populates="docente", cascade="all, delete")
+    transacciones_pago = relationship("TransaccionPago", back_populates="docente", cascade="all, delete")
     # Relationship al objeto Institucion. Se llama `institucion_obj` para
     # NO colisionar con la columna legacy `institucion` (string libre) que
     # documento.py y piar.py leen como texto para el encabezado DOCX.
@@ -141,6 +142,32 @@ class Suscripcion(Base):
     fecha_fin = Column(DateTime)
 
     docente = relationship("Docente", back_populates="suscripcion")
+
+
+class TransaccionPago(Base):
+    """
+    Historial de transacciones de pago con Wompi. Sprint wompi-pagos.
+
+    Eje DISTINTO de Suscripcion (billing Stripe) y de Docente.plan
+    (trial/activo/expirado) — esta tabla es sólo el registro/auditoría
+    de cada intento de cobro Wompi (uno por click en "Contratar"), no
+    la fuente de verdad del estado actual del docente. El webhook usa
+    `referencia` (generada acá, enviada a Wompi) para encontrar la fila
+    y decidir qué actualizar en Docente/Suscripcion cuando Wompi confirma.
+    """
+    __tablename__ = "transacciones_pago"
+
+    id_transaccion = Column(String(36), primary_key=True, default=new_uuid)
+    id_docente = Column(String(36), ForeignKey("docentes.id_docente"), nullable=False, index=True)
+    referencia = Column(String(64), unique=True, nullable=False, index=True)
+    wompi_id = Column(String(64), nullable=True)
+    plan = Column(String(20), nullable=False)  # 'docente' | 'pro'
+    monto_centavos = Column(Integer, nullable=False)
+    estado = Column(String(20), nullable=False, default="pendiente")  # pendiente/aprobado/declinado/error
+    creado_en = Column(DateTime, default=datetime.utcnow, nullable=False)
+    actualizado_en = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    docente = relationship("Docente", back_populates="transacciones_pago")
 
 
 class UsoMensual(Base):

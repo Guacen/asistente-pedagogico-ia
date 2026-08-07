@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resultado de tu pago · Maestr.ia</title>
+    <link rel="icon" type="image/png" href="assets/icon.png">
+    <!-- PWA -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0B3D2E">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Maestr.ia">
+    <link rel="apple-touch-icon" href="/assets/icon.png">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/main.css?v=20260807">
+    <link rel="stylesheet" href="css/brand.css?v=20260807">
+
+    <style>
+        body { background: #F9FAFB; min-height: 100vh; }
+        .spinner {
+            width: 3rem; height: 3rem; border-radius: 9999px;
+            border: 4px solid #E5E7EB; border-top-color: #1D9E75;
+            animation: girar 0.8s linear infinite;
+        }
+        @keyframes girar { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+    <nav class="bg-white border-b border-gray-200 shadow-sm">
+        <div class="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
+            <a href="index.html" class="flex items-center gap-3">
+                <img src="assets/logo.png" alt="Maestr.ia" class="brand-logo-sm">
+            </a>
+        </div>
+    </nav>
+
+    <main class="max-w-lg mx-auto px-4 py-16 flex flex-col items-center text-center">
+
+        <!-- Estado: confirmando (default) -->
+        <div id="estado-confirmando">
+            <div class="spinner mx-auto mb-6"></div>
+            <h1 class="text-2xl font-bold text-gray-900 mb-2">Confirmando tu pago…</h1>
+            <p class="text-gray-500">Esto puede tardar unos segundos.</p>
+        </div>
+
+        <!-- Estado: aprobado -->
+        <div id="estado-aprobado" class="hidden">
+            <div class="w-20 h-20 rounded-full flex items-center justify-center mb-6 mx-auto" style="background:#E1F5EE;">
+                <i class="fas fa-check text-3xl" style="color:#1D9E75;"></i>
+            </div>
+            <h1 class="text-2xl md:text-3xl font-bold text-gray-900 mb-3">¡Pago exitoso! Bienvenido a Maestr.ia.</h1>
+            <p class="text-gray-600 mb-8">Tu cuenta ya está activa — sin límite de días.</p>
+            <a href="dashboard.html" class="w-full py-3 rounded-lg text-white font-semibold inline-flex items-center justify-center gap-2 transition-opacity hover:opacity-90" style="background:#1D9E75;">
+                Ir al panel <i class="fas fa-arrow-right"></i>
+            </a>
+        </div>
+
+        <!-- Estado: declinado / error -->
+        <div id="estado-fallido" class="hidden">
+            <div class="w-20 h-20 rounded-full flex items-center justify-center mb-6 mx-auto" style="background:#FEF2F2;">
+                <i class="fas fa-xmark text-3xl" style="color:#DC2626;"></i>
+            </div>
+            <h1 class="text-2xl md:text-3xl font-bold text-gray-900 mb-3">Hubo un problema con tu pago.</h1>
+            <p class="text-gray-600 mb-8">Intenta de nuevo — no te cobramos si la transacción no se completó.</p>
+            <a href="precios.html" class="w-full py-3 rounded-lg text-white font-semibold inline-flex items-center justify-center gap-2 transition-opacity hover:opacity-90" style="background:#1D9E75;">
+                Volver a planes
+            </a>
+        </div>
+
+        <!-- Estado: sin confirmar tras el polling (webhook demorado, o llegamos sin referencia) -->
+        <div id="estado-desconocido" class="hidden">
+            <div class="w-20 h-20 rounded-full flex items-center justify-center mb-6 mx-auto" style="background:#FFF7ED;">
+                <i class="fas fa-clock text-3xl" style="color:#F97316;"></i>
+            </div>
+            <h1 class="text-2xl md:text-3xl font-bold text-gray-900 mb-3">Tu pago está siendo procesado.</h1>
+            <p class="text-gray-600 mb-8">Te confirmamos apenas termine — normalmente toma pocos minutos. Puedes revisar tu cuenta más tarde.</p>
+            <div class="w-full flex flex-col gap-3">
+                <a href="dashboard.html" class="w-full py-3 rounded-lg text-white font-semibold inline-flex items-center justify-center gap-2 transition-opacity hover:opacity-90" style="background:#1D9E75;">
+                    Ir al panel
+                </a>
+                <a href="https://wa.me/573239097629?text=Hola%2C%20hice%20un%20pago%20y%20quiero%20confirmar%20el%20estado"
+                   target="_blank" rel="noopener"
+                   class="w-full py-3 rounded-lg font-semibold inline-flex items-center justify-center gap-2 border border-gray-300 text-gray-700 hover:bg-gray-100 transition-colors">
+                    <i class="fab fa-whatsapp text-lg" style="color:#25D366;"></i>Hablar con el equipo
+                </a>
+            </div>
+        </div>
+
+    </main>
+
+    <script src="js/config.js?v=20260807"></script>
+    <script src="js/api.js?v=20260807"></script>
+    <script src="js/auth.js?v=20260807"></script>
+    <script>
+        requireAuth();
+
+        const MAX_INTENTOS = 5;
+        const INTERVALO_MS = 3000;
+
+        function mostrarEstado(id) {
+            ['estado-confirmando', 'estado-aprobado', 'estado-fallido', 'estado-desconocido']
+                .forEach(el => document.getElementById(el).classList.toggle('hidden', el !== id));
+        }
+
+        async function verificarPago() {
+            // Wompi NO devuelve `reference` ni `status` en el redirect (sólo
+            // `id`, el id de transacción de Wompi — documentado como "sólo
+            // informativo, no usar para validar"). La referencia real la
+            // guardamos en localStorage justo antes de salir a Wompi.
+            const referencia = localStorage.getItem('wompi_referencia_pendiente');
+            if (!referencia) {
+                mostrarEstado('estado-desconocido');
+                return;
+            }
+
+            for (let intento = 0; intento < MAX_INTENTOS; intento++) {
+                try {
+                    const estado = await api.getEstadoPago(referencia);
+                    if (estado.estado === 'aprobado') {
+                        localStorage.removeItem('wompi_referencia_pendiente');
+                        mostrarEstado('estado-aprobado');
+                        return;
+                    }
+                    if (estado.estado === 'declinado' || estado.estado === 'error') {
+                        localStorage.removeItem('wompi_referencia_pendiente');
+                        mostrarEstado('estado-fallido');
+                        return;
+                    }
+                    // 'pendiente' — el webhook todavía no llegó, reintentar.
+                } catch (err) {
+                    console.warn('[pago-resultado] error consultando estado:', err);
+                }
+                if (intento < MAX_INTENTOS - 1) {
+                    await new Promise(r => setTimeout(r, INTERVALO_MS));
+                }
+            }
+            mostrarEstado('estado-desconocido');
+        }
+
+        verificarPago();
+    </script>
+</body>
+</html>
