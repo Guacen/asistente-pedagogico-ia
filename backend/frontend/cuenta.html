@@ -149,12 +149,13 @@
                                     <p class="text-sm text-gray-600 mb-3">
                                         Actualiza a Pro y obtén mensajes ilimitados, grupos ilimitados y funciones avanzadas.
                                     </p>
-                                    <button 
+                                    <button
+                                        id="btn-upgrade-pro"
                                         onclick="upgradePro()"
                                         class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 font-semibold"
                                     >
                                         <i class="fas fa-arrow-up mr-2"></i>
-                                        Upgrade a Pro - $9.99/mes
+                                        Upgrade a Pro - $45.000 COP/mes
                                     </button>
                                 </div>
                             </div>
@@ -605,7 +606,7 @@
             const esPro = subscription.plan === 'pro';
 
             document.getElementById('plan-nombre').textContent = esPro ? '⭐ Plan Pro' : 'Plan Free';
-            document.getElementById('plan-precio').textContent = esPro ? '$9.99' : '$0';
+            document.getElementById('plan-precio').textContent = esPro ? '$45.000 COP/mes' : '$0';
             document.getElementById('plan-descripcion').textContent = esPro
                 ? 'Acceso ilimitado a todas las funciones'
                 : 'Perfecto para empezar';
@@ -762,12 +763,36 @@
             }
         });
 
-        // ── Upgrade Pro ───────────────────────────────────────────────
+        // ── Upgrade Pro (sprint wompi-pagos) ────────────────────────────
+        // Antes llamaba a api.createCheckoutSession('pro') → POST
+        // /api/suscripciones/checkout (Stripe), cuyo schema CheckoutCreate
+        // exige success_url/cancel_url que este botón nunca mandaba — 422
+        // "son requeridos" en cada click. El checkout real hoy es Wompi
+        // (api.iniciarPagoWompi → POST /api/pagos/iniciar), que sólo pide
+        // `plan` — no success_url/cancel_url en el body, Wompi los recibe
+        // como `redirect-url` en la URL del checkout, no en el POST.
         async function upgradePro() {
+            const boton = document.getElementById('btn-upgrade-pro');
+            const textoOriginal = boton ? boton.innerHTML : null;
+            if (boton) { boton.disabled = true; boton.textContent = 'Redirigiendo…'; }
+
             try {
-                const { checkout_url } = await api.createCheckoutSession('pro');
-                window.location.href = checkout_url;
+                const data = await api.iniciarPagoWompi('pro');
+                const params = new URLSearchParams({
+                    'public-key': data.public_key,
+                    'currency': data.moneda,
+                    'amount-in-cents': String(data.monto_centavos),
+                    'reference': data.referencia,
+                    'signature:integrity': data.firma_integridad,
+                    'redirect-url': data.redirect_url,
+                });
+                // Referencia guardada localmente porque Wompi NO la devuelve
+                // en el redirect de vuelta (sólo ?id=<transaction_id>) — la
+                // usa pago-resultado.html para el polling de /api/pagos/estado/.
+                localStorage.setItem('wompi_referencia_pendiente', data.referencia);
+                window.location.href = `https://checkout.wompi.co/p/?${params.toString()}`;
             } catch (error) {
+                if (boton) { boton.disabled = false; boton.innerHTML = textoOriginal; }
                 toast('Error al procesar el pago: ' + error.message, 'error');
             }
         }
