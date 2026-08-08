@@ -1,7 +1,7 @@
 {
-  "version": "1.2",
+  "version": "1.3",
   "fuente": "MEN Colombia — Derechos Básicos de Aprendizaje",
-  "nota": "Los DBA no definen un orden de trabajo en el aula. Son aprendizajes anuales. Lenguaje re-extraído verbatim de dba_lenguaje-min.pdf (MEN, V.2 2016) el 2026-08-08 — reemplaza datos truncados/desalineados de versiones anteriores.",
+  "nota": "Los DBA no definen un orden de trabajo en el aula. Son aprendizajes anuales. Lenguaje re-extraído verbatim de dba_lenguaje-min.pdf (MEN, V.2 2016) el 2026-08-08 — reemplaza datos truncados/desalineados de versiones anteriores. Matemáticas re-extraída verbatim de dba_matematicas-min.pdf (MEN V.2, 2016) en sprint dba-matematicas-reextraido.",
   "asignaturas": {
     "Lenguaje": {
       "1": [
@@ -1848,68 +1848,102 @@
     "Matemáticas": {
       "1": [
         {
-          "numero": 2,
-          "enunciado": "Utiliza diferentes estrategias para contar, realizar operaciones (suma y resta ) y resolver problemas aditivos.",
+          "numero": 1,
+          "enunciado": "Identifica los usos de los números (como código, cardinal, medida, ordinal) y las operaciones (suma y resta) en contextos de juego, familiares, económicos, entre otros.",
           "evidencias": [
-            "Describe y resue"
+            "Construye e interpreta representaciones pictóricas y diagramas para representar relaciones entre cantidades que se presentan en situaciones o fenómenos.",
+            "Explica cómo y por qué es posible hacer una operación (suma o resta) en relación con los usos de los números y el contexto en el cual se presentan.",
+            "Reconoce en sus actuaciones cotidianas posibilidades de uso de los números y las operaciones.",
+            "Interpreta y resuelve problemas de juntar, quitar y completar, que involucren la cantidad de elementos de una colección o la medida de magnitudes como longitud, peso, capacidad y duración.",
+            "Utiliza las operaciones (suma y resta) para representar el cambio en una cantidad."
+          ]
+        },
+        {
+          "numero": 2,
+          "enunciado": "Utiliza diferentes estrategias para contar, realizar operaciones (suma y resta) y resolver problemas aditivos.",
+          "evidencias": [
+            "Realiza conteos (de uno en uno, de dos en dos, etc.) iniciando en cualquier número.",
+            "Determina la cantidad de elementos de una colección agrupándolos de 1 en 1, de 2 en 2, de 5 en 5.",
+            "Describe y resuelve situaciones variadas con las operaciones de suma y resta en problemas cuya estructura puede ser a + b = ?, a + ? = c, o ? + b = c.",
+            "Establece y argumenta conjeturas de los posibles resultados en una secuencia numérica.",
+            "Utiliza las características del sistema decimal de numeración para crear estrategias de cálculo y estimación de sumas y restas."
           ]
         },
         {
           "numero": 3,
           "enunciado": "Utiliza las características posicionales del Sistema de Numeración Decimal (SND) para establecer relaciones entre cantidades y comparar números.",
           "evidencias": [
-            "Encuentra parejas de nú"
+            "Realiza composiciones y descomposiciones de números de dos dígitos en términos de la cantidad de \"dieces\" y de \"unos\" que los conforman.",
+            "Encuentra parejas de números que al adicionarse dan como resultado otro número dado.",
+            "Halla los números correspondientes a tener \"diez más\" o \"diez menos\" que una cantidad determinada.",
+            "Emplea estrategias de cálculo como \"el paso por el diez\" para realizar adiciones o sustracciones."
           ]
         },
         {
           "numero": 4,
           "enunciado": "Reconoce y compara atributos que pueden ser medidos en objetos y eventos (longitud, duración, rapidez, masa, peso, capacidad, cantidad de elementos de una colección, entre otros).",
           "evidencias": [
-            "Identifica atributos",
-            "Diferencia atributos"
+            "Identifica atributos que se pueden medir en los objetos.",
+            "Diferencia atributos medibles (longitud, masa, capacidad, duración, cantidad de elementos de una colección), en términos de los instrumentos y las unidades utilizadas para medirlos.",
+            "Compara y ordena objetos de acuerdo con atributos como altura, peso, intensidades de color, entre otros y recorridos según la distancia de cada trayecto.",
+            "Compara y ordena colecciones según la cantidad de elementos."
           ]
         },
         {
           "numero": 5,
           "enunciado": "Realiza medición de longitudes, capacidades, peso, masa, entre otros, para ello utiliza instrumentos y unidades no estandarizadas y estandarizadas.",
           "evidencias": [
-            "m Mide longitudes con diferentes instrumentos y expresa el resultado en unidades estandarizadas o no estandarizadas comunes. m Compara objetos a partir de su longitud, masa, capacidad y duración de ev"
+            "Mide longitudes con diferentes instrumentos y expresa el resultado en unidades estandarizadas o no estandarizadas comunes.",
+            "Compara objetos a partir de su longitud, masa, capacidad y duración de eventos.",
+            "Toma decisiones a partir de las mediciones realizadas y de acuerdo con los requerimientos del problema."
           ]
         },
         {
           "numero": 6,
           "enunciado": "Compara objetos del entorno y establece semejanzas y diferencias empleando características geométricas de las formas bidimensionales y tridimensionales (Curvo o recto, abierto o cerrado, plano o sólido, número de lados, número de caras, entre otros).",
           "evidencias": [
-            "Agrupa objetos de su entorno de acuerdo con",
-            "Identifica objetos a partir de"
+            "Crea, compone y descompone formas bidimensionales y tridimensionales, para ello utiliza plastilina, papel, palitos, cajas, etc.",
+            "Describe de forma verbal las cualidades y propiedades de un objeto relativas a su forma.",
+            "Agrupa objetos de su entorno de acuerdo con las semejanzas y las diferencias en la forma y en el tamaño y explica el criterio que utiliza. Por ejemplo, si el objeto es redondo, si tiene puntas, entre otras características.",
+            "Identifica objetos a partir de las descripciones verbales que hacen de sus características geométricas."
           ]
         },
         {
           "numero": 7,
           "enunciado": "Describe y representa trayectorias y posiciones de objetos y personas para orientar a otros o a sí mismo en el espacio circundante.",
           "evidencias": [
-            "Dibuja recorridos, para e"
+            "Utiliza representaciones como planos para ubicarse en el espacio.",
+            "Toma decisiones a partir de la ubicación espacial.",
+            "Dibuja recorridos, para ello considera los ángulos y la lateralidad.",
+            "Compara distancias a partir de la observación del plano al estimar con pasos, baldosas, etc."
           ]
         },
         {
           "numero": 8,
           "enunciado": "Describe cualitativamente situaciones para identificar el cambio y la variación usando gestos, dibujos, diagramas, medios gráficos y simbólicos.",
           "evidencias": [
-            "m Identifica y nombra diferencias entre objetos o grupos de objetos. m Comunica las características identificadas y justifica las diferencias que encuentra. m Establece relaciones de dependencia entre"
+            "Identifica y nombra diferencias entre objetos o grupos de objetos.",
+            "Comunica las características identificadas y justifica las diferencias que encuentra.",
+            "Establece relaciones de dependencia entre magnitudes."
           ]
         },
         {
           "numero": 9,
           "enunciado": "Reconoce el signo igual como una equivalencia entre expresiones con sumas y restas.",
           "evidencias": [
-            "m Propone números que satisfacen una igualdad con sumas y restas. m Describe las características de los números que deben ubicarse en una ecuación de tal manera que satisfaga la igualdad. m Argumenta"
+            "Propone números que satisfacen una igualdad con sumas y restas.",
+            "Describe las características de los números que deben ubicarse en una ecuación de tal manera que satisfaga la igualdad.",
+            "Argumenta sobre el uso de la propiedad transitiva en un conjunto de igualdades."
           ]
         },
         {
           "numero": 10,
           "enunciado": "Clasifica y organiza datos, los representa utilizando tablas de conteo y pictogramas sin escalas, y comunica los resultados obtenidos para responder preguntas sencillas.",
           "evidencias": [
-            "Identifica en fichas u objetos rea"
+            "Identifica en fichas u objetos reales los valores de la variable en estudio.",
+            "Organiza los datos en tablas de conteo y/o en pictogramas sin escala.",
+            "Lee la información presentada en tablas de conteo y/o pictogramas sin escala (1 a 1).",
+            "Comunica los resultados respondiendo preguntas tales como: ¿cuántos hay en total?, ¿cuántos hay de cada dato?, ¿cuál es el dato que más se repite?, ¿cuál es el dato que menos aparece?"
           ]
         }
       ],
@@ -1918,781 +1952,1070 @@
           "numero": 1,
           "enunciado": "Interpreta, propone y resuelve problemas aditivos (de composición, transformación y relación) que involucren la cantidad en una colección, la medida de magnitudes (longitud, peso, capacidad y duración de eventos) y problemas multiplicativos sencillos.",
           "evidencias": [
-            "Interpreta y construye diagra",
-            "Describe y resue",
-            "Reconoce en diferentes situaciones re"
+            "Interpreta y construye diagramas para representar relaciones aditivas y multiplicativas entre cantidades que se presentan en situaciones o fenómenos.",
+            "Describe y resuelve situaciones variadas con las operaciones de suma y resta en problemas cuya estructura puede ser a + b = ?, a + ? = c, o ? + b = c.",
+            "Reconoce en diferentes situaciones relaciones aditivas y multiplicativas y formula problemas a partir de ellas."
           ]
         },
         {
           "numero": 2,
           "enunciado": "Utiliza diferentes estrategias para calcular (agrupar, representar elementos en colecciones, etc.) o estimar el resultado de una suma y resta, multiplicación o reparto equitativo.",
           "evidencias": [
-            "Construye representaciones pictóricas y estab"
+            "Construye representaciones pictóricas y establece relaciones entre las cantidades involucradas en diferentes fenómenos o situaciones.",
+            "Usa algoritmos no convencionales para calcular o estimar el resultado de sumas, restas, multiplicaciones y divisiones entre números naturales, los describe y los justifica.",
+            "Reconoce y establece relaciones entre expresiones numéricas (hay más, hay menos, hay la misma cantidad) y describe el tipo de operaciones que debe realizarse para que a pesar de cambiar los valores numéricos, la relación se conserve."
           ]
         },
         {
           "numero": 3,
           "enunciado": "Utiliza el Sistema de Numeración Decimal para comparar, ordenar y establecer diferentes relaciones entre dos o más secuencias de números con ayuda de diferentes recursos.",
           "evidencias": [
-            "Reconoce y estab"
+            "Compara y ordena números de menor a mayor y viceversa a través de recursos como la calculadora, aplicación, material gráfico que represente billetes, diagramas de colecciones, etc.",
+            "Propone ejemplos y comunica de forma oral y escrita las condiciones que puede establecer para conservar una relación (mayor que, menor que) cuando se aplican algunas operaciones a ellos."
           ]
         },
         {
           "numero": 4,
           "enunciado": "Compara y explica características que se pueden medir, en el proceso de resolución de problemas relativos a longitud, superficie, velocidad, peso o duración de los eventos, entre otros.",
           "evidencias": [
-            "m Utiliza instrumentos y unidades de medición apropiados para medir magnitudes diferentes. m Describe los procedimientos necesarios para medir longitudes, superficies, capacidades, pesos de los objeto"
+            "Utiliza instrumentos y unidades de medición apropiados para medir magnitudes diferentes.",
+            "Describe los procedimientos necesarios para medir longitudes, superficies, capacidades, pesos de los objetos y la duración de los eventos.",
+            "Mide magnitudes con unidades arbitrarias y estandarizadas.",
+            "Estima la medida de diferentes magnitudes en situaciones prácticas."
           ]
         },
         {
           "numero": 5,
           "enunciado": "Utiliza patrones, unidades e instrumentos convencionales y no convencionales en procesos de medición, cálculo y estimación de magnitudes como longitud, peso, capacidad y tiempo.",
           "evidencias": [
-            "Describe objetos y eventos de acuerdo con atributos"
+            "Describe objetos y eventos de acuerdo con atributos medibles: superficie, tiempo, longitud, peso, ángulos.",
+            "Realiza mediciones con instrumentos y unidades no convencionales, como pasos, cuadrados o rectángulos, cuartas, metros, entre otros.",
+            "Compara eventos según su duración, para ello utiliza relojes convencionales."
           ]
         },
         {
           "numero": 6,
           "enunciado": "Clasifica, describe y representa objetos del entorno a partir de sus propiedades geométricas para establecer relaciones entre las formas bidimensionales y tridimensionales.",
           "evidencias": [
-            "m Reconoce las figuras geométricas según el número de lados. m Diferencia los cuerpos geométricos. m Compara figuras y cuerpos geométricos y establece relaciones y diferencias entre ambos."
+            "Reconoce las figuras geométricas según el número de lados.",
+            "Diferencia los cuerpos geométricos.",
+            "Compara figuras y cuerpos geométricos y establece relaciones y diferencias entre ambos."
           ]
         },
         {
           "numero": 7,
           "enunciado": "Describe desplazamientos y referencia la posición de un objeto mediante nociones de horizontalidad, verticalidad, paralelismo y perpendicularidad en la solución de problemas.",
           "evidencias": [
-            "En dibujos, objetos o espacios rea"
+            "Describe desplazamientos a partir de las posiciones de las líneas.",
+            "Representa líneas y reconoce las diferentes posiciones y la relación entre ellas.",
+            "En dibujos, objetos o espacios reales, identifica posiciones de objetos, de aristas o líneas que son paralelas, verticales o perpendiculares.",
+            "Argumenta las diferencias entre las posiciones de las líneas."
           ]
         },
         {
           "numero": 8,
           "enunciado": "Propone e identifica patrones y utiliza propiedades de los números y de las operaciones para calcular valores desconocidos en expresiones aritméticas.",
           "evidencias": [
-            "m Establece relaciones de reversibilidad entre la suma y la resta. m Utiliza diferentes procedimientos para calcular un valor desconocido."
+            "Establece relaciones de reversibilidad entre la suma y la resta.",
+            "Utiliza diferentes procedimientos para calcular un valor desconocido."
           ]
         },
         {
           "numero": 9,
           "enunciado": "Opera sobre secuencias numéricas para encontrar números u operaciones faltantes y utiliza las propiedades de las operaciones en contextos escolares o extraescolares.",
           "evidencias": [
-            "m Utiliza las propiedades de las operaciones para encontrar números desconocidos en igualdades numéricas. m Utiliza las propiedades de las operaciones para encontrar operaciones faltantes en un proces"
+            "Utiliza las propiedades de las operaciones para encontrar números desconocidos en igualdades numéricas.",
+            "Utiliza las propiedades de las operaciones para encontrar operaciones faltantes en un proceso de cálculo numérico.",
+            "Reconoce que un número puede escribirse de varias maneras equivalentes.",
+            "Utiliza ensayo y error para encontrar valores u operaciones desconocidas."
           ]
         },
         {
           "numero": 10,
           "enunciado": "Clasifica y organiza datos, los representa utilizando tablas de conteo, pictogramas con escalas y gráficos de puntos, comunica los resultados obtenidos para responder preguntas sencillas.",
           "evidencias": [
-            "m Identifica la equivalencia de fichas u objetos con el valor de la variable. m Organiza los datos en tablas de conteo y en pictogramas con escala (uno a muchos). m Lee la información presentada en ta"
+            "Identifica la equivalencia de fichas u objetos con el valor de la variable.",
+            "Organiza los datos en tablas de conteo y en pictogramas con escala (uno a muchos).",
+            "Lee la información presentada en tablas de conteo, pictogramas con escala y gráficos de puntos.",
+            "Comunica los resultados respondiendo preguntas tales como: ¿cuántos hay en total?, ¿cuántos hay de cada dato?, ¿cuál es el dato que más se repite?, ¿cuál es el dato que menos se repite?"
           ]
         },
         {
           "numero": 11,
           "enunciado": "Explica, a partir de la experiencia, la posibilidad de ocurrencia o no de un evento cotidiano y el resultado lo utiliza para predecir la ocurrencia de otros eventos.",
           "evidencias": [
-            "Diferencia situaciones cotidianas cuyo resu"
+            "Diferencia situaciones cotidianas cuyo resultado puede ser incierto de aquellas cuyo resultado es conocido o seguro.",
+            "Identifica resultados posibles o imposibles, según corresponda, en una situación cotidiana.",
+            "Predice la ocurrencia o no de eventos cotidianos basado en sus observaciones."
           ]
         }
       ],
       "3": [
         {
           "numero": 1,
-          "enunciado": "Interpreta las fracciones como razón, relación parte todo, cociente y operador en diferentes contextos.",
+          "enunciado": "Interpreta, formula y resuelve problemas aditivos de composición, transformación y comparación en diferentes contextos; y multiplicativos, directos e inversos, en diferentes contextos.",
           "evidencias": [
-            "Describe situaciones en",
-            "Reconoce situaciones en"
+            "Construye diagramas para representar las relaciones observadas entre las cantidades presentes en una situación.",
+            "Resuelve problemas aditivos (suma o resta) y multiplicativos (multiplicación o división) de composición de medida y de conteo.",
+            "Propone estrategias para calcular el número de combinaciones posibles de un conjunto de atributos.",
+            "Analiza los resultados ofrecidos por el cálculo matemático e identifica las condiciones bajo las cuales ese resultado es o no plausible."
           ]
         },
         {
           "numero": 2,
-          "enunciado": "Describe y justifica diferentes estrategias para representar, operar y hacer estimaciones con números naturales y números racionales (fraccionarios)1, expresados como fracción o como decimal",
+          "enunciado": "Propone, desarrolla y justifica estrategias para hacer estimaciones y cálculos con operaciones básicas en la solución de problemas.",
           "evidencias": [
-            "Describe y desarro"
+            "Utiliza las propiedades de las operaciones y del Sistema de Numeración Decimal para justificar acciones como: descomposición de números, completar hasta la decena más cercana, duplicar, cambiar la posición, multiplicar abreviadamente por múltiplos de 10, entre otros.",
+            "Reconoce el uso de las operaciones para calcular la medida (compuesta) de diferentes objetos de su entorno.",
+            "Argumenta cuáles atributos de los objetos pueden ser medidos mediante la comparación directa con una unidad y cuáles pueden ser calculados con algunas operaciones entre números."
           ]
         },
         {
           "numero": 3,
           "enunciado": "Establece comparaciones entre cantidades y expresiones que involucran operaciones y relaciones aditivas y multiplicativas y sus representaciones numéricas.",
           "evidencias": [
-            "m Realiza mediciones de un mismo objeto con otros de diferente tamaño y establece equivalencias entre ellas. m Utiliza las razones y fracciones como una manera de establecer comparaciones entre dos ca"
+            "Realiza mediciones de un mismo objeto con otros de diferente tamaño y establece equivalencias entre ellas.",
+            "Utiliza las razones y fracciones como una manera de establecer comparaciones entre dos cantidades.",
+            "Propone ejemplos de cantidades que se relacionen entre sí según correspondan a una fracción dada.",
+            "Utiliza fracciones para expresar la relación de \"el todo\" con algunas de sus \"partes\", asimismo diferencia este tipo de relación de otras como las relaciones de equivalencia (igualdad) y de orden (mayor que y menor que)."
           ]
         },
         {
           "numero": 4,
           "enunciado": "Describe y argumenta posibles relaciones entre los valores del área y el perímetro de figuras planas (especialmente cuadriláteros).",
           "evidencias": [
-            "m Toma decisiones sobre la magnitud a medir (área o longitud) según la necesidad de una situación. m Realiza recubrimientos de superficies con diferentes figuras planas. m Mide y calcula el área y el"
+            "Toma decisiones sobre la magnitud a medir (área o longitud) según la necesidad de una situación.",
+            "Realiza recubrimientos de superficies con diferentes figuras planas.",
+            "Mide y calcula el área y el perímetro de un rectángulo y expresa el resultado en unidades apropiadas según el caso.",
+            "Explica cómo figuras de igual perímetro pueden tener diferente área."
           ]
         },
         {
           "numero": 5,
           "enunciado": "Realiza estimaciones y mediciones de volumen, capacidad, longitud, área, peso de objetos o la duración de eventos como parte del proceso para resolver diferentes problemas.",
           "evidencias": [
-            "m Compara objetos según su longitud, área, capacidad, volumen, etc. m Hace estimaciones de longitud, área, volumen, peso y tiempo según su necesidad en la situación. m Hace estimaciones de volumen, ár"
+            "Compara objetos según su longitud, área, capacidad, volumen, etc.",
+            "Hace estimaciones de longitud, área, volumen, peso y tiempo según su necesidad en la situación.",
+            "Hace estimaciones de volumen, área o longitud en presencia de los objetos y los instrumentos de medida y en ausencia de ellos.",
+            "Empaca objetos en cajas y recipientes variados y calcula la cantidad que podría caber; para ello tiene en cuenta la forma y volumen de los objetos a empacar y la capacidad del recipiente en el que se empaca."
           ]
         },
         {
           "numero": 6,
           "enunciado": "Describe y representa formas bidimensionales y tridimensionales de acuerdo con las propiedades geométricas.",
           "evidencias": [
-            "m Relaciona objetos de su entorno con formas bidimensionales y tridimensionales, nombra y describe sus elementos. m Clasifica y representa formas bidimensionales y tridimensionales tomando en cuenta s"
+            "Relaciona objetos de su entorno con formas bidimensionales y tridimensionales, nombra y describe sus elementos.",
+            "Clasifica y representa formas bidimensionales y tridimensionales tomando en cuenta sus características geométricas comunes y describe el criterio utilizado.",
+            "Interpreta, compara y justifica propiedades de formas bidimensionales y tridimensionales."
           ]
         },
         {
           "numero": 7,
           "enunciado": "Formula y resuelve problemas que se relacionan con la posición, la dirección y el movimiento de objetos en el entorno.",
           "evidencias": [
-            "Identifica y describe patrones de"
+            "Localiza objetos o personas a partir de la descripción o representación de una trayectoria y construye representaciones pictóricas para describir sus relaciones.",
+            "Identifica y describe patrones de movimiento de figuras bidimensionales que se asocian con transformaciones como: reflexiones, traslaciones y rotaciones de figuras.",
+            "Identifica las propiedades de los objetos que se conservan y las que varían cuando se realizan este tipo de transformaciones.",
+            "Plantea y resuelve situaciones en las que se requiere analizar las transformaciones de diferentes figuras en el plano."
           ]
         },
         {
           "numero": 8,
           "enunciado": "Describe y representa los aspectos que cambian y permanecen constantes en secuencias y en otras situaciones de variación.",
           "evidencias": [
-            "Construye secuencias nu",
-            "Encuentra y representa genera"
+            "Describe de manera cualitativa situaciones de cambio y variación utilizando lenguaje natural, gestos, dibujos y gráficas.",
+            "Construye secuencias numéricas y geométricas utilizando propiedades de los números y de las figuras geométricas.",
+            "Encuentra y representa generalidades y valida sus hallazgos de acuerdo al contexto."
           ]
         },
         {
           "numero": 9,
           "enunciado": "Argumenta sobre situaciones numéricas, geométricas y enunciados verbales en los que aparecen datos desconocidos para definir sus posibles valores según el contexto.",
           "evidencias": [
-            "Trabaja sobre nú",
-            "Grado 3º 1 3 6 10 15 28 ... PGBRK Derechos Básicos de Aprendizaje"
+            "Propone soluciones con base en los datos a pesar de no conocer el número.",
+            "Toma decisiones sobre cantidades aunque no conozca exactamente los valores.",
+            "Trabaja sobre números desconocidos y con esos números para dar respuestas a los problemas."
           ]
         },
         {
           "numero": 10,
           "enunciado": "Lee e interpreta información contenida en tablas de frecuencia, gráficos de barras y/o pictogramas con escala, para formular y resolver preguntas de situaciones de su entorno.",
           "evidencias": [
-            "m Identifica las características de la población y halla su tamaño a partir de diferentes representaciones estadísticas. m Construye tablas y gráficos que representan los datos a partir de la informac"
+            "Identifica las características de la población y halla su tamaño a partir de diferentes representaciones estadísticas.",
+            "Construye tablas y gráficos que representan los datos a partir de la información dada.",
+            "Analiza e interpreta información que ofrecen las tablas y los gráficos de acuerdo con el contexto.",
+            "Identifica la moda a partir de datos que se presentan en gráficos y tablas.",
+            "Compara la información representada en diferentes tablas y gráficos para formular y responder preguntas."
           ]
         },
         {
           "numero": 11,
-          "enunciado": "Plantea y resuelve preguntas sobre la posibilidad de ocurrencia de situaciones aleatorias cotidianas y cuantifica la posibilidad de ocurrencia de eventos simples en una escala cualitativa (mayor, menor e igual).",
+          "enunciado": "Plantea y resuelve preguntas sobre la posibilidad de ocurrencia de situaciones aleatorias cotidianas y cuantifica la posibilidad de ocurrencia de eventos simples en una escala cualitativa (mayor, menor o igual).",
           "evidencias": [
-            "m Formula y resuelve preguntas que involucran expresiones que jerarquizan la posibilidad de ocurrencia de un evento, por ejemplo: imposible, menos posible, igualmente posible, más posible, seguro. m R"
+            "Formula y resuelve preguntas que involucran expresiones que jerarquizan la posibilidad de ocurrencia de un evento, por ejemplo: imposible, menos posible, igualmente posible, más posible, seguro.",
+            "Representa los posibles resultados de una situación aleatoria simple por enumeración o usando diagramas.",
+            "Asigna la posibilidad de ocurrencia de un evento de acuerdo con la escala definida.",
+            "Predice la posibilidad de ocurrencia de un evento al utilizar los resultados de una situación aleatoria."
           ]
         }
       ],
       "4": [
         {
           "numero": 1,
-          "enunciado": "Interpreta y utiliza los números naturales y racionales en su representación fraccionaria para formular y resolver problemas aditivos, multiplicativos y que involucren operaciones de potenciación.",
+          "enunciado": "Interpreta las fracciones como razón, relación parte todo, cociente y operador en diferentes contextos.",
           "evidencias": [
-            "Interpreta y uti"
+            "Describe situaciones en las cuales puede usar fracciones y decimales.",
+            "Reconoce situaciones en las que dos cantidades covarían y cuantifica el efecto que los cambios en una de ellas tienen en los cambios de la otra y a partir de este comportamiento determina la razón entre ellas."
+          ]
+        },
+        {
+          "numero": 2,
+          "enunciado": "Describe y justifica diferentes estrategias para representar, operar y hacer estimaciones con números naturales y números racionales (fraccionarios), expresados como fracción o como decimal.",
+          "evidencias": [
+            "Utiliza el sistema de numeración decimal para representar, comparar y operar con números mayores o iguales a 10.000.",
+            "Describe y desarrolla estrategias para calcular sumas y restas basadas en descomposiciones aditivas y multiplicativas.",
+            "Utiliza y justifica algoritmos estandarizados y no estandarizados para realizar operaciones aditivas con representaciones decimales provenientes de fraccionarios cuyas expresiones tengan denominador 10, 100, etc.",
+            "Identifica y construye fracciones equivalentes a una fracción dada.",
+            "Propone estrategias para calcular sumas y restas de algunos fraccionarios."
           ]
         },
         {
           "numero": 3,
           "enunciado": "Establece relaciones mayor que, menor que, igual que y relaciones multiplicativas entre números racionales en sus formas de fracción o decimal.",
           "evidencias": [
-            "m Construye y utiliza representaciones pictóricas para comparar números racionales (como fracción o decimales). m Establece, justifica y utiliza criterios para comparar fracciones y decimales. m Const"
+            "Construye y utiliza representaciones pictóricas para comparar números racionales (como fracción o decimales).",
+            "Establece, justifica y utiliza criterios para comparar fracciones y decimales.",
+            "Construye y compara expresiones numéricas que contienen decimales y fracciones."
           ]
         },
         {
           "numero": 4,
           "enunciado": "Caracteriza y compara atributos medibles de los objetos (densidad, dureza, viscosidad, masa, capacidad de los recipientes, temperatura) con respecto a procedimientos, instrumentos y unidades de medición; y con respecto a las necesidades a las que responden.",
           "evidencias": [
-            "Identifica unidades y",
-            "Describe procesos para",
-            "Grado 4º PGBRK Derechos Básicos de Aprendizaje"
+            "Reconoce que para medir la capacidad y la masa se hacen comparaciones con la capacidad de recipientes de diferentes tamaños y con paquetes de diferentes masas, respectivamente (litros, centilitros galón, botella, etc., para capacidad, gramos, kilogramos, libras, arrobas, etc., para masa.)",
+            "Diferencia los atributos medibles como capacidad, masa, volumen, entre otros, a partir de los procedimientos e instrumentos empleados para medirlos y los usos de cada uno en la solución de problemas.",
+            "Identifica unidades y los instrumentos para medir masa y capacidad, y establece relaciones entre ellos.",
+            "Describe procesos para medir capacidades de un recipiente o el peso de un objeto o producto.",
+            "Argumenta sobre la importancia y necesidad de medir algunas magnitudes como densidad, dureza, viscosidad, masa, capacidad, etc."
           ]
         },
         {
           "numero": 5,
           "enunciado": "Elige instrumentos y unidades estandarizadas y no estandarizadas para estimar y medir longitud, área, volumen, capacidad, peso y masa, duración, rapidez, temperatura, y a partir de ellos hace los cálculos necesarios para resolver problemas.",
           "evidencias": [
-            "Propone diferentes procedi"
+            "Expresa una misma medida en diferentes unidades, establece equivalencias entre ellas y toma decisiones de la unidad más conveniente según las necesidades de la situación.",
+            "Propone diferentes procedimientos para realizar cálculos (suma y resta de medidas, multiplicación y división de una medida y un número) que aparecen al resolver problemas en diferentes contextos.",
+            "Emplea las relaciones de proporcionalidad directa e inversa para resolver diversas situaciones.",
+            "Propone y explica procedimientos para lograr mayor precisión en la medición de cantidades de líquidos, masa, etc."
           ]
         },
         {
           "numero": 6,
           "enunciado": "Identifica, describe y representa figuras bidimensionales y tridimensionales, y establece relaciones entre ellas.",
           "evidencias": [
-            "Reconoce entre un conjunto de desarro"
+            "Arma, desarma y crea formas bidimensionales y tridimensionales.",
+            "Reconoce entre un conjunto de desarrollos planos, los que corresponden a determinados sólidos atendiendo a las relaciones entre la posición de las diferentes caras y aristas."
           ]
         },
         {
           "numero": 7,
-          "enunciado": "Identifica los movimientos realizados a una figura en el plano respecto a una posición o eje (rotación, traslación y simetría) y las modificaciones que pueden sufrir las formas (ampliación- reducción).",
+          "enunciado": "Identifica los movimientos realizados a una figura en el plano respecto a una posición o eje (rotación, traslación y simetría) y las modificaciones que pueden sufrir las formas (ampliación-reducción).",
           "evidencias": [
-            "m Aplica movimientos a figuras en el plano. m Diferencia los efectos de la ampliación y la reducción. m Elabora argumentos referente a las modificaciones que sufre una imagen al ampliarla o reducirla."
+            "Aplica movimientos a figuras en el plano.",
+            "Diferencia los efectos de la ampliación y la reducción.",
+            "Elabora argumentos referente a las modificaciones que sufre una imagen al ampliarla o reducirla.",
+            "Representa elementos del entorno que sufren modificaciones en su forma."
           ]
         },
         {
           "numero": 8,
           "enunciado": "Identifica, documenta e interpreta variaciones de dependencia entre cantidades en diferentes fenómenos (en las matemáticas y en otras ciencias) y los representa por medio de gráficas.",
           "evidencias": [
-            "Propone patrones de co",
-            "Trabaja sobre nú"
+            "Realiza cálculos numéricos, organiza la información en tablas, elabora representaciones gráficas y las interpreta.",
+            "Propone patrones de comportamiento numérico.",
+            "Trabaja sobre números desconocidos y con esos números para dar respuestas a los problemas."
           ]
         },
         {
           "numero": 9,
           "enunciado": "Identifica patrones en secuencias (aditivas o multiplicativas) y los utiliza para establecer generalizaciones aritméticas o algebraicas.",
           "evidencias": [
-            "Conjetura y argu"
+            "Comunica en forma verbal y pictórica las regularidades observadas en una secuencia.",
+            "Establece diferentes estrategias para calcular los siguientes elementos en una secuencia.",
+            "Conjetura y argumenta un valor futuro en una secuencia aritmética o geométrica (por ejemplo, en una secuencia de figuras predecir la posición 10, 20 o 100)."
           ]
         },
         {
           "numero": 10,
           "enunciado": "Recopila y organiza datos en tablas de doble entrada y los representa en gráficos de barras agrupadas o gráficos de líneas, para dar respuesta a una pregunta planteada. Interpreta la información y comunica sus conclusiones.",
           "evidencias": [
-            "Lee e interpreta",
-            "Encuentra e interpreta"
+            "Elabora encuestas sencillas para obtener la información pertinente para responder la pregunta.",
+            "Construye tablas de doble entrada y gráficos de barras agrupadas, gráficos de líneas o pictogramas con escala.",
+            "Lee e interpreta los datos representados en tablas de doble entrada, gráficos de barras agrupados, gráficos de línea o pictogramas con escala.",
+            "Encuentra e interpreta la moda y el rango del conjunto de datos y describe el comportamiento de los datos para responder las preguntas planteadas."
           ]
         },
         {
           "numero": 11,
-          "enunciado": "Comprende y explica, usando vocabulario adecuado, la diferencia entre una situación aleatoria y una determinística y predice, en una situación de la vida cotidiana, la presencia o no del azar",
+          "enunciado": "Comprende y explica, usando vocabulario adecuado, la diferencia entre una situación aleatoria y una determinística y predice, en una situación de la vida cotidiana, la presencia o no del azar.",
           "evidencias": [
-            "Reconoce situaciones a",
-            "Enuncia diferencias entre situaciones a"
+            "Reconoce situaciones aleatorias en contextos cotidianos.",
+            "Enuncia diferencias entre situaciones aleatorias y deterministas.",
+            "Usa adecuadamente expresiones como azar o posibilidad, aleatoriedad, determinístico.",
+            "Anticipa los posibles resultados de una situación aleatoria."
           ]
         }
       ],
       "5": [
         {
           "numero": 1,
-          "enunciado": "Interpreta los números enteros y racionales (en sus representaciones de fracción y de decimal) con sus operaciones, en diferentes contextos, al resolver problemas de variación, repartos, particiones, estimaciones, etc. Reconoce y establece diferentes relaciones (de orden y equivalencia y las utiliza",
+          "enunciado": "Interpreta y utiliza los números naturales y racionales en su representación fraccionaria para formular y resolver problemas aditivos, multiplicativos y que involucren operaciones de potenciación.",
           "evidencias": [
-            "Propone y justifica diferentes estrategias para reso",
-            "Interpreta y justifica cá"
+            "Interpreta la relación parte - todo y la representa por medio de fracciones, razones o cocientes.",
+            "Interpreta y utiliza números naturales y racionales (fraccionarios) asociados con un contexto para solucionar problemas.",
+            "Determina las operaciones suficientes y necesarias para solucionar diferentes tipos de problemas.",
+            "Resuelve problemas que requieran reconocer un patrón de medida asociado a un número natural o a un racional (fraccionario)."
           ]
         },
         {
           "numero": 2,
           "enunciado": "Describe y desarrolla estrategias (algoritmos, propiedades de las operaciones básicas y sus relaciones) para hacer estimaciones y cálculos al solucionar problemas de potenciación.",
           "evidencias": [
-            "Identifica y uti"
+            "Utiliza las propiedades de las operaciones con números naturales y racionales (fraccionarios) para justificar algunas estrategias de cálculo o estimación relacionados con áreas de cuadrados y volúmenes de cubos.",
+            "Descompone un número en sus factores primos.",
+            "Identifica y utiliza las propiedades de la potenciación para resolver problemas aritméticos.",
+            "Determina y argumenta acerca de la validez o no de estrategias para calcular potencias."
           ]
         },
         {
           "numero": 3,
           "enunciado": "Compara y ordena números fraccionarios a través de diversas interpretaciones, recursos y representaciones.",
           "evidencias": [
-            "Representa fracciones con"
+            "Representa fracciones con la ayuda de la recta numérica.",
+            "Determina criterios para ordenar fracciones y expresiones decimales de mayor a menor o viceversa."
           ]
         },
         {
           "numero": 4,
           "enunciado": "Justifica relaciones entre superficie y volumen, respecto a dimensiones de figuras y sólidos, y elige las unidades apropiadas según el tipo de medición (directa e indirecta), los instrumentos y los procedimientos.",
           "evidencias": [
-            "Mide superficies y",
-            "Construye y desco"
+            "Determina las medidas reales de una figura a partir de un registro gráfico (un plano).",
+            "Mide superficies y longitudes utilizando diferentes estrategias (composición, recubrimiento, bordeado, cálculo).",
+            "Construye y descompone figuras planas y sólidos a partir de medidas establecidas.",
+            "Realiza estimaciones y mediciones con unidades apropiadas según sea longitud, área o volumen."
           ]
         },
         {
           "numero": 5,
           "enunciado": "Explica las relaciones entre el perímetro y el área de diferentes figuras (variaciones en el perímetro no implican variaciones en el área y viceversa) a partir de mediciones, superposición de figuras, cálculo, entre otras.",
           "evidencias": [
-            "Dibuja figuras p",
-            "Propone estrategias para",
-            "Mide superficies y"
+            "Compara diferentes figuras a partir de las medidas de sus lados.",
+            "Calcula las medidas de los lados de una figura a partir de su área.",
+            "Dibuja figuras planas cuando se dan las medidas de los lados.",
+            "Propone estrategias para la solución de problemas relativos a la medida de la superficie de figuras planas.",
+            "Reconoce que figuras con áreas diferentes pueden tener el mismo perímetro.",
+            "Mide superficies y longitudes utilizando diferentes estrategias (composición, recubrimiento, bordeado, cálculo)."
           ]
         },
         {
           "numero": 6,
           "enunciado": "Identifica y describe propiedades que caracterizan un cuerpo en términos de la bidimensionalidad y la tridimensionalidad y resuelve problemas en relación con la composición y descomposición de las formas.",
           "evidencias": [
-            "Construye y desco",
-            "Grado 5º PGBRK Derechos Básicos de Aprendizaje"
+            "Relaciona objetos tridimensionales y sus propiedades con sus respectivos desarrollos planos.",
+            "Reconoce relaciones intra e interfigurales.",
+            "Determina las mediciones reales de una figura a partir de un registro gráfico (un plano).",
+            "Construye y descompone figuras planas y sólidos a partir de medidas establecidas.",
+            "Utiliza transformaciones a figuras en el plano para describirlas y calcular sus medidas."
           ]
         },
         {
           "numero": 7,
           "enunciado": "Resuelve y propone situaciones en las que es necesario describir y localizar la posición y la trayectoria de un objeto con referencia al plano cartesiano.",
           "evidencias": [
-            "Representa en for"
+            "Localiza puntos en un mapa a partir de coordenadas cartesianas.",
+            "Interpreta los elementos de un sistema de referencia (ejes, cuadrantes, coordenadas).",
+            "Grafica en el plano cartesiano la posición de un objeto usando direcciones cardinales (norte, sur, oriente y occidente).",
+            "Emplea el plano cartesiano al plantear y resolver situaciones de localización.",
+            "Representa en forma gráfica y simbólica la localización y trayectoria de un objeto.",
+            "Da instrucciones para seguir una trayectoria que permita ir de un sitio a otro. Propone otras trayectorias posibles."
           ]
         },
         {
           "numero": 8,
           "enunciado": "Describe e interpreta variaciones de dependencia entre cantidades y las representa por medio de gráficas.",
           "evidencias": [
-            "Propone patrones de co",
-            "Trabaja sobre nú"
+            "Propone patrones de comportamiento numéricos y patrones de comportamiento gráficos.",
+            "Realiza cálculos numéricos, organiza la información en tablas, elabora representaciones gráficas y las interpreta.",
+            "Trabaja sobre números desconocidos para dar respuestas a los problemas."
           ]
         },
         {
           "numero": 9,
           "enunciado": "Utiliza operaciones no convencionales, encuentra propiedades y resuelve ecuaciones en donde están involucradas.",
           "evidencias": [
-            "Interpreta y opera con operaciones no convenciona"
+            "Interpreta y opera con operaciones no convencionales.",
+            "Explora y busca propiedades de tales operaciones.",
+            "Compara las propiedades de las operaciones convencionales de suma, resta, producto y división con las propiedades de las operaciones no convencionales.",
+            "Resuelve ecuaciones numéricas cuando se involucran operaciones no convencionales."
           ]
         },
         {
           "numero": 10,
           "enunciado": "Formula preguntas que requieren comparar dos grupos de datos, para lo cual recolecta, organiza y usa tablas de frecuencia, gráficos de barras, circulares, de línea, entre otros. Analiza la información presentada y comunica los resultados.",
           "evidencias": [
-            "Registra, organiza y presenta"
+            "Formula preguntas y elabora encuestas para obtener los datos requeridos e identifica quiénes deben responder.",
+            "Registra, organiza y presenta la información recolectada usando tablas, gráficos de barras, gráficos de línea, y gráficos circulares.",
+            "Selecciona los gráficos teniendo en cuenta el tipo de datos que se va a representar.",
+            "Interpreta la información obtenida y produce conclusiones que le permiten comparar dos grupos de datos de una misma población.",
+            "Escribe informes sencillos en los que compara la distribución de dos grupos de datos."
           ]
         },
         {
           "numero": 11,
           "enunciado": "Utiliza la media y la mediana para resolver problemas en los que se requiere presentar o resumir el comportamiento de un conjunto de datos.",
           "evidencias": [
-            "Interpreta y encuentra"
+            "Interpreta y encuentra la media y la mediana en un conjunto de datos usando estrategias gráficas y numéricas.",
+            "Explica la información que brinda cada medida en relación con el conjunto de datos.",
+            "Selecciona una de las medidas como la más representativa del comportamiento del conjunto de datos estudiado.",
+            "Argumenta la selección realizada empleando semejanzas y diferencias entre lo que cada una de las medidas indica."
           ]
         },
         {
           "numero": 12,
           "enunciado": "Predice la posibilidad de ocurrencia de un evento simple a partir de la relación entre los elementos del espacio muestral y los elementos del evento definido.",
           "evidencias": [
-            "Reconoce situaciones a",
-            "Identifica y enu"
+            "Reconoce situaciones aleatorias en contextos cotidianos.",
+            "Enumera todos los posibles resultados de un experimento aleatorio simple.",
+            "Identifica y enumera los resultados favorables de ocurrencia de un evento simple.",
+            "Anticipa la ocurrencia de un evento simple."
           ]
         }
       ],
       "6": [
         {
           "numero": 1,
-          "enunciado": "Comprende y resuelve problemas, que involucran los números racionales con las operaciones (suma, resta, multiplicación, división, potenciación, radicación) en contextos escolares y extraescolares.",
+          "enunciado": "Interpreta los números enteros y racionales (en sus representaciones de fracción y de decimal) con sus operaciones, en diferentes contextos, al resolver problemas de variación, repartos, particiones, estimaciones, etc. Reconoce y establece diferentes relaciones (de orden y equivalencia) y las utiliza para argumentar procedimientos.",
           "evidencias": [
-            "Describe situaciones en"
+            "Resuelve problemas en los que intervienen cantidades positivas y negativas en procesos de comparación, transformación y representación.",
+            "Propone y justifica diferentes estrategias para resolver problemas con números enteros, racionales (en sus representaciones de fracción y de decimal) en contextos escolares y extraescolares.",
+            "Representa en la recta numérica la posición de un número utilizando diferentes estrategias.",
+            "Interpreta y justifica cálculos numéricos al solucionar problemas."
           ]
         },
         {
           "numero": 2,
           "enunciado": "Utiliza las propiedades de los números enteros y racionales y las propiedades de sus operaciones para proponer estrategias y procedimientos de cálculo en la solución de problemas.",
           "evidencias": [
-            "m Propone y utiliza diferentes procedimientos para realizar operaciones con números enteros y racionales. m Argumenta de diversas maneras la necesidad de establecer relaciones y características en con"
+            "Propone y utiliza diferentes procedimientos para realizar operaciones con números enteros y racionales.",
+            "Argumenta de diversas maneras la necesidad de establecer relaciones y características en conjuntos de números (ser par, ser impar, ser primo, ser el doble de, el triple de, la mitad de, etc)."
           ]
         },
         {
           "numero": 3,
           "enunciado": "Reconoce y establece diferentes relaciones (orden y equivalencia) entre elementos de diversos dominios numéricos y los utiliza para argumentar procedimientos sencillos.",
           "evidencias": [
-            "Describe procedi"
+            "Determina criterios de comparación para establecer relaciones de orden entre dos o más números.",
+            "Representa en la recta numérica la posición de un número utilizando diferentes estrategias.",
+            "Describe procedimientos para resolver ecuaciones lineales."
           ]
         },
         {
           "numero": 4,
           "enunciado": "Utiliza y explica diferentes estrategias (desarrollo de la forma o plantillas) e instrumentos (regla, compás o software) para la construcción de figuras planas y cuerpos.",
           "evidencias": [
-            "m Construye plantillas para cuerpos geométricos dadas sus medidas. m Selecciona las plantillas que genera cada cuerpo a partir del análisis de su forma, sus caras y sus vértices."
+            "Construye plantillas para cuerpos geométricos dadas sus medidas.",
+            "Selecciona las plantillas que genera cada cuerpo a partir del análisis de su forma, sus caras y sus vértices.",
+            "Utiliza la regla no graduada y el compás para dibujar las plantillas de cuerpos geométricos cuando se tienen sus medidas."
+          ]
+        },
+        {
+          "numero": 5,
+          "enunciado": "Propone y desarrolla estrategias de estimación, medición y cálculo de diferentes cantidades (ángulos, longitudes, áreas, volúmenes, etc.) para resolver problemas.",
+          "evidencias": [
+            "Decide acerca de las estrategias para determinar qué tan pertinente es la estimación y analiza las causas de error en procesos de medición y estimación.",
+            "Estima el resultado de una medición sin realizarla, de acuerdo con un referente previo y aplica el proceso de estimación elegido y valora el resultado de acuerdo con los datos y contexto de un problema.",
+            "Estima la medida de longitudes, áreas, volúmenes, masas, pesos y ángulos en presencia o no de los objetos y decide sobre la conveniencia de los instrumentos a utilizar, según las necesidades de la situación."
           ]
         },
         {
           "numero": 6,
           "enunciado": "Representa y construye formas bidimensionales y tridimensionales con el apoyo en instrumentos de medida apropiados.",
           "evidencias": [
-            "Construye cuerpos geo"
+            "Diferencia las propiedades geométricas de las figuras y cuerpos geométricos.",
+            "Identifica los elementos que componen las figuras y cuerpos geométricos.",
+            "Describe las congruencias y semejanzas en figuras bidimensionales y tridimensionales.",
+            "Estima áreas y volúmenes de figuras y cuerpos geométricos.",
+            "Construye cuerpos geométricos con el apoyo de instrumentos de medida adecuados."
           ]
         },
         {
           "numero": 7,
           "enunciado": "Reconoce el plano cartesiano como un sistema bidimensional que permite ubicar puntos como sistema de referencia gráfico o geográfico.",
           "evidencias": [
-            "Identifica e interpreta"
+            "Localiza, describe y representa la posición y la trayectoria de un objeto en un plano cartesiano.",
+            "Identifica e interpreta la semejanza de dos figuras al realizar rotaciones, ampliaciones y reducciones de formas bidimensionales en el plano cartesiano."
           ]
         },
         {
           "numero": 8,
           "enunciado": "Identifica y analiza propiedades de covariación directa e inversa entre variables, en contextos numéricos, geométricos y cotidianos y las representa mediante gráficas (cartesianas de puntos, continuas, formadas por segmentos, etc.).",
           "evidencias": [
-            "Propone patrones de co",
-            "Trabaja sobre nú"
+            "Propone patrones de comportamiento numéricos y expresa verbalmente o por escrito los procedimientos matemáticos.",
+            "Realiza cálculos numéricos, organiza la información en tablas, elabora representaciones gráficas y las interpreta.",
+            "Trabaja sobre números desconocidos y con esos números para dar respuestas a los problemas."
           ]
         },
         {
           "numero": 9,
           "enunciado": "Opera sobre números desconocidos y encuentra las operaciones apropiadas al contexto para resolver problemas.",
           "evidencias": [
-            "m Utiliza las operaciones y sus inversas en problemas de cálculo numérico. m Realiza cálculos numéricos, organiza la información en tablas, elabora representaciones gráficas y las interpreta. m Realiz"
+            "Utiliza las operaciones y sus inversas en problemas de cálculo numérico.",
+            "Realiza cálculos numéricos, organiza la información en tablas, elabora representaciones gráficas y las interpreta.",
+            "Realiza combinaciones de operaciones, encuentra propiedades y resuelve ecuaciones en donde están involucradas."
           ]
         },
         {
           "numero": 10,
           "enunciado": "Interpreta información estadística presentada en diversas fuentes de información, la analiza y la usa para plantear y resolver preguntas que sean de su interés.",
           "evidencias": [
-            "Escribe un infor"
+            "Lee y extrae la información estadística publicada en diversas fuentes.",
+            "Plantea una pregunta que le facilite recolectar información que le permita contrastar la información estadística publicada.",
+            "Organiza la información recolectada en tablas y la representa mediante gráficas adecuadas.",
+            "Calcula las medidas requeridas de acuerdo a los datos recolectados y usa, cuando sea posible, calculadoras o software adecuado.",
+            "Escribe un informe en el que analiza la información presentada en el medio de comunicación y la contrasta con la obtenida en su estudio."
           ]
         },
         {
           "numero": 11,
-          "enunciado": "Compara características compartidas por dos o más poblaciones o características diferentes dentro de una misma población para lo cual seleccionan muestras, utiliza representaciones gráficas adecuadas y analiza los resultados obtenidos usando conjuntamente las medidas de tendencia central y el rango.",
+          "enunciado": "Compara características compartidas por dos o más poblaciones o características diferentes dentro de una misma población para lo cual selecciona muestras, utiliza representaciones gráficas adecuadas y analiza los resultados obtenidos usando conjuntamente las medidas de tendencia central y el rango.",
           "evidencias": [
-            "m Comprende la diferencia entre la muestra y la población. m Selecciona y produce representaciones gráficas apropiadas al conjunto de datos, usando, cuando sea posible, calculadoras o software adecuad"
+            "Comprende la diferencia entre la muestra y la población.",
+            "Selecciona y produce representaciones gráficas apropiadas al conjunto de datos, usando, cuando sea posible, calculadoras o software adecuado.",
+            "Interpreta la información que se presenta en los gráficos usando las medidas de tendencia central y el rango.",
+            "Compara las características de dos o más poblaciones o de dos o más grupos, haciendo uso conjunto de las respectivas medidas de tendencia central y el rango.",
+            "Describe el comportamiento de las características de dos o más poblaciones o de dos o más grupos de una población, a partir de las respectivas medidas de tendencia central y el rango."
           ]
         },
         {
           "numero": 12,
           "enunciado": "A partir de la información previamente obtenida en repeticiones de experimentos aleatorios sencillos, compara las frecuencias esperadas con las frecuencias observadas.",
           "evidencias": [
-            "Interpreta y asigna",
-            "Grado 6º PGBRK Derechos Básicos de Aprendizaje"
+            "Enumera los posibles resultados de un experimento aleatorio sencillo.",
+            "Realiza repeticiones del experimento aleatorio sencillo y registra los resultados en tablas y gráficos de frecuencia.",
+            "Interpreta y asigna la probabilidad de ocurrencia de un evento dado, teniendo en cuenta el número de veces que ocurre el evento en relación con el número total de veces que realiza el experimento.",
+            "Compara los resultados obtenidos experimentalmente con las predicciones anticipadas."
           ]
         }
       ],
       "7": [
         {
           "numero": 1,
-          "enunciado": "Reconoce la existencia de los números irracionales como números no racionales y los describe de acuerdo con sus características y propiedades.",
+          "enunciado": "Comprende y resuelve problemas, que involucran los números racionales con las operaciones (suma, resta, multiplicación, división, potenciación, radicación) en contextos escolares y extraescolares.",
           "evidencias": [
-            "m Utiliza procedimientos geométricos para representar números racionales e irracionales. m Identifica las diferentes representaciones (decimales y no decimales) para argumentar por qué un número es o"
+            "Describe situaciones en las que los números enteros y racionales con sus operaciones están presentes.",
+            "Utiliza los signos \"positivo\" y \"negativo\" para describir cantidades relativas con números enteros y racionales.",
+            "Resuelve problemas en los que se involucran variaciones porcentuales."
           ]
         },
         {
           "numero": 2,
-          "enunciado": "Construye representaciones, argumentos y ejemplos de propiedades de los números racionales y no racionales.",
+          "enunciado": "Describe y utiliza diferentes algoritmos, convencionales y no convencionales, al realizar operaciones entre números racionales en sus diferentes representaciones (fracciones y decimales) y los emplea con sentido en la solución de problemas.",
           "evidencias": [
-            "Justificar procedi",
-            "Construye varias representaciones (geo"
+            "Representa los números enteros y racionales en una recta numérica.",
+            "Estima el valor de una raíz cuadrada y de una potencia.",
+            "Construye representaciones geométricas y pictóricas para ilustrar relaciones entre cantidades.",
+            "Calcula e interpreta el máximo común divisor y el mínimo común múltiplo entre números enteros.",
+            "Describe procedimientos para calcular el resultado de una operación (suma, resta, multiplicación y división) entre números enteros y racionales."
           ]
         },
         {
           "numero": 3,
           "enunciado": "Utiliza diferentes relaciones, operaciones y representaciones en los números racionales para argumentar y solucionar problemas en los que aparecen cantidades desconocidas.",
           "evidencias": [
-            "m Realiza operaciones para calcular el número decimal que representa una fracción y viceversa. m Usa las propiedades distributiva, asociativa, modulativa, del inverso y conmutativa de la suma y la mul"
+            "Realiza operaciones para calcular el número decimal que representa una fracción y viceversa.",
+            "Usa las propiedades distributiva, asociativa, modulativa, del inverso y conmutativa de la suma y la multiplicación en los racionales para proponer diferentes caminos al realizar un cálculo.",
+            "Determina el valor desconocido de una cantidad a partir de las transformaciones de una expresión algebraica."
           ]
         },
         {
           "numero": 4,
           "enunciado": "Utiliza escalas apropiadas para representar e interpretar planos, mapas y maquetas con diferentes unidades.",
           "evidencias": [
-            "Representa e interpreta situaciones de a"
+            "Identifica los tipos de escalas y selecciona la adecuada para la elaboración de planos de acuerdo al formato o espacio disponible para dibujar.",
+            "Expresa la misma medida con diferentes unidades según el contexto.",
+            "Representa e interpreta situaciones de ampliación y reducción en contextos diversos."
           ]
         },
         {
           "numero": 5,
           "enunciado": "Observa objetos tridimensionales desde diferentes puntos de vista, los representa según su ubicación y los reconoce cuando se transforman mediante rotaciones, traslaciones y reflexiones.",
           "evidencias": [
-            "Reconoce e interpreta",
-            "Representa objetos tridi"
+            "Establece relaciones entre la posición y las vistas de un objeto.",
+            "Reconoce e interpreta la representación de un objeto.",
+            "Representa objetos tridimensionales cuando se transforman."
           ]
         },
         {
           "numero": 6,
           "enunciado": "Representa en el plano cartesiano la variación de magnitudes (áreas y perímetro) y con base en la variación explica el comportamiento de situaciones y fenómenos de la vida diaria.",
           "evidencias": [
-            "m Interpreta las modificaciones entre el perímetro y el área con un factor de variación respectivo. m Establece diferencias entre los gráficos del perímetro y del área. m Coordina los cambios de la va"
+            "Interpreta las modificaciones entre el perímetro y el área con un factor de variación respectivo.",
+            "Establece diferencias entre los gráficos del perímetro y del área.",
+            "Coordina los cambios de la variación entre el perímetro y la longitud de los lados o el área de una figura.",
+            "Organiza la información (registros tabulares y gráficos) para comprender la relación entre el perímetro y el área."
           ]
         },
         {
           "numero": 7,
           "enunciado": "Plantea y resuelve ecuaciones, las describe verbalmente y representa situaciones de variación de manera numérica, simbólica o gráfica.",
           "evidencias": [
-            "m Plantea modelos algebraicos, gráficos o numéricos en los que identifica variables y rangos de variación de las variables. m Toma decisiones informadas en exploraciones numéricas, algebraicas o gráfi"
+            "Plantea modelos algebraicos, gráficos o numéricos en los que identifica variables y rangos de variación de las variables.",
+            "Toma decisiones informadas en exploraciones numéricas, algebraicas o gráficas de los modelos matemáticos usados.",
+            "Utiliza métodos informales exploratorios para resolver ecuaciones."
           ]
         },
         {
           "numero": 8,
           "enunciado": "Plantea preguntas para realizar estudios estadísticos en los que representa información mediante histogramas, polígonos de frecuencia, gráficos de línea entre otros; identifica variaciones, relaciones o tendencias para dar respuesta a las preguntas planteadas.",
           "evidencias": [
-            "Encuentra e interpreta"
+            "Plantea preguntas, diseña y realiza un plan para recolectar la información pertinente.",
+            "Construye tablas de frecuencia y gráficos (histogramas, polígonos de frecuencia, gráficos de línea, entre otros), para datos agrupados usando, calculadoras o software adecuado.",
+            "Encuentra e interpreta las medidas de tendencia central y el rango en datos agrupados, empleando herramientas tecnológicas cuando sea posible.",
+            "Analiza la información presentada identificando variaciones, relaciones o tendencias y elabora conclusiones que permiten responder la pregunta planteada."
           ]
         },
         {
           "numero": 9,
           "enunciado": "Usa el principio multiplicativo en situaciones aleatorias sencillas y lo representa con tablas o diagramas de árbol. Asigna probabilidades a eventos compuestos y los interpreta a partir de propiedades básicas de la probabilidad.",
           "evidencias": [
-            "m Elabora tablas o diagramas de árbol para representar las distintas maneras en que un experimento aleatorio puede suceder. m Usa el principio multiplicativo para calcular el número de resultados posi"
+            "Elabora tablas o diagramas de árbol para representar las distintas maneras en que un experimento aleatorio puede suceder.",
+            "Usa el principio multiplicativo para calcular el número de resultados posibles.",
+            "Interpreta el número de resultados considerando que cuando se cambia de orden no se altera el resultado."
           ]
         }
       ],
       "8": [
         {
           "numero": 1,
-          "enunciado": "Utiliza los números reales (sus operaciones, relaciones y propiedades) para resolver problemas con expresiones polinómicas.",
+          "enunciado": "Reconoce la existencia de los números irracionales como números no racionales y los describe de acuerdo con sus características y propiedades.",
           "evidencias": [
-            "Construye representaciones geo"
+            "Utiliza procedimientos geométricos para representar números racionales e irracionales.",
+            "Identifica las diferentes representaciones (decimales y no decimales) para argumentar por qué un número es o no racional."
           ]
         },
         {
           "numero": 2,
-          "enunciado": "Propone y desarrolla expresiones algebraicas en el conjunto de los números reales y utiliza las propiedades de la igualdad y de orden para determinar el conjunto solución de relaciones entre tales expresiones.",
+          "enunciado": "Construye representaciones, argumentos y ejemplos de propiedades de los números racionales y no racionales.",
           "evidencias": [
-            "Identifica y uti"
+            "Utiliza procedimientos geométricos o aritméticos para construir algunos números irracionales y los ubica en la recta numérica.",
+            "Justificar procedimientos con los cuales se representa geométricamente números racionales y números reales.",
+            "Construye varias representaciones (geométrica, decimales o no decimales) de un mismo número racional o irracional."
           ]
         },
         {
           "numero": 3,
           "enunciado": "Reconoce los diferentes usos y significados de las operaciones (convencionales y no convencionales) y del signo igual (relación de equivalencia e igualdad condicionada) y los utiliza para argumentar equivalencias entre expresiones algebraicas y resolver sistemas de ecuaciones.",
           "evidencias": [
-            "Propone y ejecuta procedi"
+            "Reconoce el uso del signo igual como relación de equivalencia de expresiones algebraicas en los números reales.",
+            "Propone y ejecuta procedimientos para resolver una ecuación lineal y sistemas de ecuaciones lineales y argumenta la validez o no de un procedimiento.",
+            "Usa el conjunto solución de una relación (de equivalencia y de orden) para argumentar la validez o no de un procedimiento."
           ]
         },
         {
           "numero": 4,
           "enunciado": "Describe atributos medibles de diferentes sólidos y explica relaciones entre ellos por medio del lenguaje algebraico.",
           "evidencias": [
-            "Grado 8º PGBRK Derechos Básicos de Aprendizaje"
+            "Utiliza lenguaje algebraico para representar el volumen de un prisma en términos de sus aristas.",
+            "Realiza la representación gráfica del desarrollo plano de un prisma.",
+            "Estima, calcula y compara volúmenes a partir de las relaciones entre las aristas de un prisma o de otros sólidos.",
+            "Interpreta las expresiones algebraicas que representan el volumen y el área cuando sus dimensiones varían.",
+            "Identifica la posibilidad del error en la medición del volumen haciendo aproximaciones pertinentes al respecto.",
+            "Explora y crea estrategias para calcular el volumen de cuerpos regulares e irregulares."
           ]
         },
         {
           "numero": 5,
           "enunciado": "Utiliza y explica diferentes estrategias para encontrar el volumen de objetos regulares e irregulares en la solución de problemas en las matemáticas y en otras ciencias.",
           "evidencias": [
-            "m Estima medidas de volumen con unidades estandarizadas y no estandarizadas. m Utiliza la relación de las unidades de capacidad con las unidades de volumen (litros, dm3, etc) en la solución de un prob"
+            "Estima medidas de volumen con unidades estandarizadas y no estandarizadas.",
+            "Utiliza la relación de las unidades de capacidad con las unidades de volumen (litros, dm³, etc) en la solución de un problema."
           ]
         },
         {
           "numero": 6,
           "enunciado": "Identifica relaciones de congruencia y semejanza entre las formas geométricas que configuran el diseño de un objeto.",
           "evidencias": [
-            "m Utiliza criterios para argumentar la congruencia de dos triángulos. m Discrimina casos de semejanza de triángulos en situaciones diversas. m Resuelve problemas que implican aplicación de los criteri"
+            "Utiliza criterios para argumentar la congruencia de dos triángulos.",
+            "Discrimina casos de semejanza de triángulos en situaciones diversas.",
+            "Resuelve problemas que implican aplicación de los criterios de semejanza.",
+            "Compara figuras y argumenta la posibilidad de ser congruente o semejantes entre sí."
           ]
         },
         {
           "numero": 7,
           "enunciado": "Identifica regularidades y argumenta propiedades de figuras geométricas a partir de teoremas y las aplica en situaciones reales.",
           "evidencias": [
-            "m Describe teoremas y argumenta su validez a través de diferentes recursos (Software, tangram, papel, entre otros). m Argumenta la relación pitagórica por medio de construcción al utilizar material co"
+            "Describe teoremas y argumenta su validez a través de diferentes recursos (Software, tangram, papel, entre otros).",
+            "Argumenta la relación pitagórica por medio de construcción al utilizar material concreto.",
+            "Reconoce relaciones geométricas al utilizar el teorema de Pitágoras y Thales, entre otros.",
+            "Aplica el teorema de Pitágoras para calcular la medida de cualquier lado de un triángulo rectángulo.",
+            "Resuelve problemas utilizando teoremas básicos."
           ]
         },
         {
           "numero": 8,
           "enunciado": "Identifica y analiza relaciones entre propiedades de las gráficas y propiedades de expresiones algebraicas y relaciona la variación y covariación con los comportamientos gráficos, numéricos y características de las expresiones algebraicas en situaciones de modelación.",
           "evidencias": [
-            "Reconoce y representa re"
+            "Opera con formas simbólicas y las interpreta.",
+            "Relaciona un cambio en la variable independiente con el cambio correspondiente en la variable dependiente.",
+            "Encuentra valores desconocidos en ecuaciones algebraicas.",
+            "Reconoce y representa relaciones numéricas mediante expresiones algebraicas y encuentra el conjunto de variación de una variable en función del contexto."
           ]
         },
         {
           "numero": 9,
           "enunciado": "Propone, compara y usa procedimientos inductivos y lenguaje algebraico para formular y poner a prueba conjeturas en diversas situaciones o contextos.",
           "evidencias": [
-            "Reconoce patrones nu",
-            "Describe diferentes usos de"
+            "Opera con formas simbólicas que representan números y encuentra valores desconocidos en ecuaciones numéricas.",
+            "Reconoce patrones numéricos y los describe verbalmente.",
+            "Representa relaciones numéricas mediante expresiones algebraicas y opera con y sobre variables.",
+            "Describe diferentes usos del signo igual (equivalencia, igualdad condicionada) en las expresiones algebraicas.",
+            "Utiliza las propiedades de los conjuntos numéricos para resolver ecuaciones."
           ]
         },
         {
           "numero": 10,
           "enunciado": "Propone relaciones o modelos funcionales entre variables e identifica y analiza propiedades de covariación entre variables, en contextos numéricos, geométricos y cotidianos y las representa mediante gráficas (cartesianas de puntos, continuas, formadas por segmentos, etc.).",
           "evidencias": [
-            "m Toma decisiones informadas en exploraciones numéricas, algebraicas o gráficas de los modelos matemáticos usados. m Relaciona características algebraicas de las funciones, sus gráficas y procesos de"
+            "Toma decisiones informadas en exploraciones numéricas, algebraicas o gráficas de los modelos matemáticos usados.",
+            "Relaciona características algebraicas de las funciones, sus gráficas y procesos de aproximación sucesiva."
           ]
         },
         {
           "numero": 11,
           "enunciado": "Interpreta información presentada en tablas de frecuencia y gráficos cuyos datos están agrupados en intervalos y decide cuál es la medida de tendencia central que mejor representa el comportamiento de dicho conjunto.",
           "evidencias": [
-            "Usa estrategias gráficas o nu"
+            "Interpreta los datos representados en diferentes tablas y gráficos.",
+            "Usa estrategias gráficas o numéricas para encontrar las medidas de tendencia central de un conjunto de datos agrupados.",
+            "Describe el comportamiento de los datos empleando las medidas de tendencia central y el rango.",
+            "Reconoce cómo varían las medidas de tendencia central y el rango cuando varían los datos."
           ]
         },
         {
           "numero": 12,
           "enunciado": "Hace predicciones sobre la posibilidad de ocurrencia de un evento compuesto e interpreta la predicción a partir del uso de propiedades básicas de la probabilidad.",
           "evidencias": [
-            "Identifica y enu",
-            "Identifica y enu",
-            "Reconoce cuando dos eventos son o no"
+            "Identifica y enumera el espacio muestral de un experimento aleatorio.",
+            "Identifica y enumera los resultados favorables de ocurrencia de un evento indicado.",
+            "Asigna la probabilidad de la ocurrencia de un evento usando valores entre 0 y 1.",
+            "Reconoce cuando dos eventos son o no mutuamente excluyentes y les asigna la probabilidad usando la regla de la adición."
           ]
         }
       ],
       "9": [
         {
           "numero": 1,
-          "enunciado": "Utiliza las propiedades de los números reales para justificar procedimientos y diferentes representaciones de subconjuntos de ellos.",
+          "enunciado": "Utiliza los números reales (sus operaciones, relaciones y propiedades) para resolver problemas con expresiones polinómicas.",
           "evidencias": [
-            "m Argumenta la existencia de los números irracionales. m Utiliza representaciones geométricas de los números irracionales y los ubica en una recta numérica. m Describe la propiedad de densidad de los"
+            "Considera el error que genera la aproximación de un número real a partir de números racionales.",
+            "Identifica la diferencia entre exactitud y aproximación en las diferentes representaciones de los números reales.",
+            "Construye representaciones geométricas y numéricas de los números reales (con decimales, raíces, razones, y otros símbolos) y realiza conversiones entre ellas."
           ]
         },
         {
           "numero": 2,
-          "enunciado": "Utiliza las propiedades algebraicas de equivalencia y de orden de los números reales para comprender y crear estrategias que permitan compararlos y comparar subconjuntos de ellos (por ejemplo, intervalos).",
+          "enunciado": "Propone y desarrolla expresiones algebraicas en el conjunto de los números reales y utiliza las propiedades de la igualdad y de orden para determinar el conjunto solución de relaciones entre tales expresiones.",
           "evidencias": [
-            "m Ordena de menor a mayor o viceversa números reales. m Describe el ‘efecto’ que tendría realizar operaciones con números reales (positivos, negativos, mayores y menores que 1) sobre la cantidad. m Ut"
+            "Identifica y utiliza múltiples representaciones de números reales para realizar transformaciones y comparaciones entre expresiones algebraicas.",
+            "Establece conjeturas al resolver una situación problema, apoyado en propiedades y relaciones entre números reales.",
+            "Determina y describe relaciones al comparar características de gráficas y expresiones algebraicas o funciones."
           ]
         },
         {
           "numero": 3,
           "enunciado": "Utiliza los números reales, sus operaciones, relaciones y representaciones para analizar procesos infinitos y resolver problemas.",
           "evidencias": [
-            "Grado 9º PGBRK Derechos Básicos de Aprendizaje"
+            "Encuentra las relaciones y propiedades que determinan la formación de secuencias numéricas.",
+            "Determina y utiliza la expresión general de una sucesión para calcular cualquier valor de la misma y para compararla con otras sucesiones."
           ]
         },
         {
           "numero": 4,
           "enunciado": "Identifica y utiliza relaciones entre el volumen y la capacidad de algunos cuerpos redondos (cilindro, cono y esfera) con referencia a las situaciones escolares y extraescolares.",
           "evidencias": [
-            "Construye cuerpos redondos usando diferentes estrategias."
+            "Estima la capacidad de objetos con superficies redondas.",
+            "Construye cuerpos redondos usando diferentes estrategias.",
+            "Compara y representa las relaciones que encuentra de manera experimental entre el volumen y la capacidad de objetos con superficies redondas.",
+            "Explica la pertinencia o no de la solución de un problema de cálculo de área o de volumen, de acuerdo con las condiciones de la situación."
           ]
         },
         {
           "numero": 5,
           "enunciado": "Utiliza teoremas, propiedades y relaciones geométricas (teorema de Thales y el teorema de Pitágoras) para proponer y justificar estrategias de medición y cálculo de longitudes.",
           "evidencias": [
-            "Describe y justifica procesos de",
-            "Justifica procedi"
+            "Describe y justifica procesos de medición de longitudes.",
+            "Explica propiedades de figuras geométricas que se involucran en los procesos de medición.",
+            "Justifica procedimientos de medición a partir del Teorema de Thales, Teorema de Pitágoras y relaciones intra e interfigurales.",
+            "Valida la precisión de instrumentos para medir longitudes.",
+            "Propone alternativas para estimar y medir con precisión diferentes magnitudes."
           ]
         },
         {
           "numero": 6,
           "enunciado": "Conjetura acerca de las regularidades de las formas bidimensionales y tridimensionales y realiza inferencias a partir de los criterios de semejanza, congruencia y teoremas básicos.",
           "evidencias": [
-            "m Reconoce regularidades en formas bidimen- sionales y tridimensionales. mExplica criterios de semejanza y congruencia a partir del teorema de Thales. mCompara figuras geométricas y conjetura sobre po"
+            "Reconoce regularidades en formas bidimensionales y tridimensionales.",
+            "Explica criterios de semejanza y congruencia a partir del teorema de Thales.",
+            "Compara figuras geométricas y conjetura sobre posibles regularidades.",
+            "Redacta y argumenta procesos llevados a cabo para resolver situaciones de semejanza y congruencia de figuras."
           ]
         },
         {
           "numero": 7,
           "enunciado": "Interpreta el espacio de manera analítica a partir de relaciones geométricas que se establecen en las trayectorias y desplazamientos de los cuerpos en diferentes situaciones.",
           "evidencias": [
-            "m Describe verbalmente procesos de trayectorias y de desplazamiento. m Explica y representa gráficamente la variación del movimiento de diferentes objetos."
+            "Describe verbalmente procesos de trayectorias y de desplazamiento.",
+            "Explica y representa gráficamente la variación del movimiento de diferentes objetos."
           ]
         },
         {
           "numero": 8,
           "enunciado": "Utiliza expresiones numéricas, algebraicas o gráficas para hacer descripciones de situaciones concretas y tomar decisiones con base en su interpretación.",
           "evidencias": [
-            "Interpreta expresiones nu"
+            "Opera con formas simbólicas que representan cantidades.",
+            "Reconoce que las letras pueden representar números y cantidades, y que se pueden operar con ellas y sobre ellas.",
+            "Interpreta expresiones numéricas, algebraicas o gráficas y toma decisiones con base en su interpretación."
           ]
         },
         {
           "numero": 9,
           "enunciado": "Utiliza procesos inductivos y lenguaje simbólico o algebraico para formular, proponer y resolver conjeturas en la solución de problemas numéricos, geométricos, métricos, en situaciones cotidianas y no cotidianas.",
           "evidencias": [
-            "Propone conjeturas sobre configuraciones geo",
-            "Interpreta expresiones nu"
+            "Efectúa exploraciones, organiza los resultados de las mismas y propone patrones de comportamiento.",
+            "Propone conjeturas sobre configuraciones geométricas o numéricas y las expresa verbal o simbólicamente.",
+            "Valida las conjeturas y explica sus conclusiones.",
+            "Interpreta expresiones numéricas y toma decisiones con base en su interpretación."
           ]
         },
         {
           "numero": 10,
           "enunciado": "Propone un diseño estadístico adecuado para resolver una pregunta que indaga por la comparación sobre las distribuciones de dos grupos de datos, para lo cual usa comprensivamente diagramas de caja, medidas de tendencia central, de variación y de localización.",
           "evidencias": [
-            "Construye diagra"
+            "Define el método para recolectar los datos (encuestas, observación o experimento simple) e identifica la población y el tamaño de la muestra del estudio.",
+            "Construye diagramas de caja y a partir de los resultados representados en ellos describe y compara la distribución de un conjunto de datos.",
+            "Compara las distribuciones de los conjuntos de datos a partir de las medidas de tendencia central, las de variación y las de localización.",
+            "Elabora conclusiones para responder el problema planteado."
           ]
         },
         {
           "numero": 11,
           "enunciado": "Encuentra el número de posibles resultados de experimentos aleatorios, con reemplazo y sin reemplazo, usando técnicas de conteo adecuadas, y argumenta la selección realizada en el contexto de la situación abordada. Encuentra la probabilidad de eventos aleatorios compuestos.",
           "evidencias": [
-            "Diferencia experi"
+            "Diferencia experimentos aleatorios realizados con reemplazo, de experimentos aleatorios realizados sin reemplazo.",
+            "Encuentra el número de posibles resultados de un experimento aleatorio, usando métodos adecuados (diagramas de árbol, combinaciones, permutaciones, regla de la multiplicación, etc.).",
+            "Justifica la elección de un método particular de acuerdo al tipo de situación.",
+            "Encuentra la probabilidad de eventos dados usando razón entre frecuencias."
           ]
         }
       ],
       "10": [
         {
           "numero": 1,
-          "enunciado": "Utiliza las propiedades de los números (naturales, enteros, racionales y reales) y sus relaciones y operaciones para construir y comparar los distintos sistemas numéricos.",
+          "enunciado": "Utiliza las propiedades de los números reales para justificar procedimientos y diferentes representaciones de subconjuntos de ellos.",
           "evidencias": [
-            "Describe propiedades de",
-            "Construye representaciones de"
+            "Argumenta la existencia de los números irracionales.",
+            "Utiliza representaciones geométricas de los números irracionales y los ubica en una recta numérica.",
+            "Describe la propiedad de densidad de los números reales y utiliza estrategias para calcular un número entre otros dos."
           ]
         },
         {
           "numero": 2,
-          "enunciado": "Justifica la validez de las propiedades de orden de los números reales y las utiliza para resolver problemas analíticos que se modelen con inecuaciones.",
+          "enunciado": "Utiliza las propiedades algebraicas de equivalencia y de orden de los números reales para comprender y crear estrategias que permitan compararlos y comparar subconjuntos de ellos (por ejemplo, intervalos).",
           "evidencias": [
-            "m Utiliza propiedades del producto de números Reales para resolver ecuaciones e inecuaciones. m Interpreta las operaciones en diversos dominios numéricos para validar propiedades de ecuaciones e inecu"
+            "Ordena de menor a mayor o viceversa números reales.",
+            "Describe el 'efecto' que tendría realizar operaciones con números reales (positivos, negativos, mayores y menores que 1) sobre la cantidad.",
+            "Utiliza las propiedades de la equivalencia para realizar cálculos con números reales."
           ]
         },
         {
           "numero": 3,
           "enunciado": "Resuelve problemas que involucran el significado de medidas de magnitudes relacionales (velocidad media, aceleración media) a partir de tablas, gráficas y expresiones algebraicas.",
           "evidencias": [
-            "Interpreta y expresa"
+            "Reconoce la relación funcional entre variables asociadas a problemas.",
+            "Interpreta y expresa magnitudes definidas como razones entre magnitudes (velocidad, aceleración, etc.), con las unidades respectivas y las relaciones entre ellas.",
+            "Utiliza e interpreta la razón de cambio para resolver problemas relacionados con magnitudes como velocidad, aceleración.",
+            "Explica las respuestas y resultados en un problema usando las expresiones algebraicas y la pertinencia de las unidades utilizadas en los cálculos."
           ]
         },
         {
           "numero": 4,
           "enunciado": "Comprende y utiliza funciones para modelar fenómenos periódicos y justifica las soluciones.",
           "evidencias": [
-            "m Reconoce el significado de las razones trigonométricas en un triángulo rectángulo para ángulos agudos, en particular, seno, coseno y tangente. m Explora, en una situación o fenómeno de variación per"
+            "Reconoce el significado de las razones trigonométricas en un triángulo rectángulo para ángulos agudos, en particular, seno, coseno y tangente.",
+            "Explora, en una situación o fenómeno de variación periódica, valores, condiciones, relaciones o comportamientos, a través de diferentes representaciones.",
+            "Calcula algunos valores de las razones seno y coseno para ángulos no agudos, auxiliándose de ángulos de referencia inscritos en el círculo unitario.",
+            "Reconoce algunas aplicaciones de las funciones trigonométricas en el estudio de fenómenos diversos de variación periódica, por ejemplo: movimiento circular, movimiento del péndulo, del pistón, ciclo de la respiración, entre otros.",
+            "Modela fenómenos periódicos a través de funciones trigonométricas."
           ]
         },
         {
           "numero": 5,
           "enunciado": "Explora y describe las propiedades de los lugares geométricos y de sus transformaciones a partir de diferentes representaciones.",
           "evidencias": [
-            "m Localiza objetos geométricos en el plano cartesiano. m Identifica las propiedades de lugares geométricos a través de sus representación en un sistema de referencia. m Utiliza las expresiones simbóli"
+            "Localiza objetos geométricos en el plano cartesiano.",
+            "Identifica las propiedades de lugares geométricos a través de sus representación en un sistema de referencia.",
+            "Utiliza las expresiones simbólicas de las cónicas y propone los rangos de variación para obtener una gráfica requerida.",
+            "Representa lugares geométricos en el plano cartesiano, a partir de su expresión algebraica."
           ]
         },
         {
           "numero": 6,
           "enunciado": "Comprende y usa el concepto de razón de cambio para estudiar el cambio promedio y el cambio alrededor de un punto y lo reconoce en representaciones gráficas, numéricas y algebraicas.",
           "evidencias": [
-            "m Utiliza representaciones gráficas o numéricas para tomar decisiones, frente a la solución de problemas prácticos. m Determina la tendencia numérica en relación con problemas prácticos como predicció"
+            "Utiliza representaciones gráficas o numéricas para tomar decisiones, frente a la solución de problemas prácticos.",
+            "Determina la tendencia numérica en relación con problemas prácticos como predicción del comportamiento futuro.",
+            "Relaciona características algebraicas de las funciones, sus gráficas y procesos de aproximación sucesiva."
           ]
         },
         {
           "numero": 7,
           "enunciado": "Resuelve problemas mediante el uso de las propiedades de las funciones y usa representaciones tabulares, gráficas y algebraicas para estudiar la variación, la tendencia numérica y las razones de cambio entre magnitudes.",
           "evidencias": [
-            "Grado 10º PGBRK Derechos Básicos de Aprendizaje"
+            "Utiliza representaciones gráficas o numéricas para tomar decisiones en problemas prácticos.",
+            "Usa la pendiente de la recta tangente como razón de cambio, la reconoce y verbaliza en representaciones gráficas, numéricas y algebraicas.",
+            "Utiliza la razón entre magnitudes para tomar decisiones sobre el cambio.",
+            "Relaciona características algebraicas de las funciones, sus gráficas y procesos de aproximación sucesiva."
           ]
         },
         {
           "numero": 8,
           "enunciado": "Selecciona muestras aleatorias en poblaciones grandes para inferir el comportamiento de las variables en estudio. Interpreta, valora y analiza críticamente los resultados y las inferencias presentadas en estudios estadísticos.",
           "evidencias": [
-            "Construye gráficas para representar",
-            "Hace inferencias sobre"
+            "Define la población de la cual va a extraer las muestras.",
+            "Define el tamaño y el método de selección de la muestra.",
+            "Construye gráficas para representar las distribuciones de los datos muestrales y encuentra los estadígrafos adecuados. Usa software cuando sea posible.",
+            "Hace inferencias sobre los parámetros basadas en los estadígrafos calculados.",
+            "Hace análisis críticos de las conclusiones de los estudios presentados en medios de comunicación o en artículos científicos."
           ]
         },
         {
           "numero": 9,
           "enunciado": "Comprende y explica el carácter relativo de las medidas de tendencias central y de dispersión, junto con algunas de sus propiedades, y la necesidad de complementar una medida con otra para obtener mejores lecturas de los datos.",
           "evidencias": [
-            "m Encuentra las medidas de tendencia central y de dispersión, usando, cuando sea posible, herramientas tecnológicas. m Interpreta y compara lo que representan cada una de las medidas de tendencia cent"
+            "Encuentra las medidas de tendencia central y de dispersión, usando, cuando sea posible, herramientas tecnológicas.",
+            "Interpreta y compara lo que representan cada una de las medidas de tendencia central en un conjunto de datos.",
+            "Interpreta y compara lo que representan cada una de las medidas de dispersión en un conjunto de datos.",
+            "Usa algunas de las propiedades de las medidas de tendencia central y de dispersión para caracterizar un conjunto de datos.",
+            "Formula conclusiones sobre la distribución de un conjunto de datos, empleando más de una medida."
           ]
         },
         {
           "numero": 10,
           "enunciado": "Propone y realiza experimentos aleatorios en contextos de las ciencias naturales o sociales y predice la ocurrencia de eventos, en casos para los cuales el espacio muestral es indeterminado.",
           "evidencias": [
-            "Grado 10º PGBRK Derechos Básicos de Aprendizaje"
+            "Plantea o identifica una pregunta cuya solución requiera de la realización de un experimento aleatorio.",
+            "Identifica la población y las variables en estudio.",
+            "Encuentra muestras aleatorias para hacer predicciones sobre el comportamiento de las variables en estudio.",
+            "Usa la probabilidad frecuencial para interpretar la posibilidad de ocurrencia de un evento dado.",
+            "Infiere o valida la probabilidad de ocurrencia del evento en estudio."
           ]
         }
       ],
       "11": [
         {
+          "numero": 1,
+          "enunciado": "Utiliza las propiedades de los números (naturales, enteros, racionales y reales) y sus relaciones y operaciones para construir y comparar los distintos sistemas numéricos.",
+          "evidencias": [
+            "Describe propiedades de los números y las operaciones que son comunes y diferentes en los distintos sistemas numéricos.",
+            "Utiliza la propiedad de densidad para justificar la necesidad de otras notaciones para subconjuntos de los números reales.",
+            "Construye representaciones de los conjuntos numéricos y establece relaciones acorde con sus propiedades."
+          ]
+        },
+        {
+          "numero": 2,
+          "enunciado": "Justifica la validez de las propiedades de orden de los números reales y las utiliza para resolver problemas analíticos que se modelen con inecuaciones.",
+          "evidencias": [
+            "Utiliza propiedades del producto de números reales para resolver ecuaciones e inecuaciones.",
+            "Interpreta las operaciones en diversos dominios numéricos para validar propiedades de ecuaciones e inecuaciones."
+          ]
+        },
+        {
           "numero": 3,
           "enunciado": "Utiliza instrumentos, unidades de medida, sus relaciones y la noción de derivada como razón de cambio, para resolver problemas, estimar cantidades y juzgar la pertinencia de las soluciones de acuerdo al contexto.",
           "evidencias": [
-            "Interpreta y expresa"
+            "Reconoce magnitudes definidas como razones entre otras magnitudes.",
+            "Interpreta y expresa magnitudes como velocidad y aceleración, con las unidades respectivas y las relaciones entre ellas.",
+            "Utiliza e interpreta la derivada para resolver problemas relacionados con la variación y la razón de cambio de funciones que involucran magnitudes como velocidad, aceleración, longitud, tiempo.",
+            "Explica las respuestas y resultados en un problema usando las expresiones algebraicas y la pertinencia de las unidades utilizadas en los cálculos."
           ]
         },
         {
           "numero": 4,
           "enunciado": "Interpreta y diseña técnicas para hacer mediciones con niveles crecientes de precisión (uso de diferentes instrumentos para la misma medición, revisión de escalas y rangos de medida, estimaciones, verificaciones a través de mediciones indirectas).",
           "evidencias": [
-            "m Interpreta la rapidez como una razón de cambio entre dos cantidades. m Justifica la precisión de una medición directa o indirecta de acuerdo con información suministrada en gráficas y tablas. m Esta"
+            "Interpreta la rapidez como una razón de cambio entre dos cantidades.",
+            "Justifica la precisión de una medición directa o indirecta de acuerdo con información suministrada en gráficas y tablas.",
+            "Establece conclusiones pertinentes con respecto a la precisión de mediciones en contextos específicos (científicos, industriales).",
+            "Determina las unidades e instrumentos adecuados para mejorar la precisión en las mediciones.",
+            "Reconoce la diferencia entre la precisión y la exactitud en procesos de medición."
           ]
         },
         {
           "numero": 5,
           "enunciado": "Interpreta la noción de derivada como razón de cambio y como valor de la pendiente de la tangente a una curva y desarrolla métodos para hallar las derivadas de algunas funciones básicas en contextos matemáticos y no matemáticos.",
           "evidencias": [
-            "m Relaciona la noción derivada con características numéricas, geométricas y métricas. m Utiliza la derivada para estudiar la covariación entre dos magnitudes y relaciona características de la derivada"
+            "Relaciona la noción derivada con características numéricas, geométricas y métricas.",
+            "Utiliza la derivada para estudiar la covariación entre dos magnitudes y relaciona características de la derivada con características de la función.",
+            "Halla la derivada de algunas funciones empleando métodos gráficos y numéricos."
           ]
         },
         {
           "numero": 6,
           "enunciado": "Modela objetos geométricos en diversos sistemas de coordenadas (cartesiano, polar, esférico) y realiza comparaciones y toma decisiones con respecto a los modelos.",
           "evidencias": [
-            "m Reconoce y utiliza distintos sistemas de coordenadas para modelar. m Compara objetos geométricos, a partir de puntos de referencia diferentes. m Explora el entorno y lo representa mediante diversos"
+            "Reconoce y utiliza distintos sistemas de coordenadas para modelar.",
+            "Compara objetos geométricos, a partir de puntos de referencia diferentes.",
+            "Explora el entorno y lo representa mediante diversos sistemas de coordenadas."
           ]
         },
         {
           "numero": 7,
           "enunciado": "Usa propiedades y modelos funcionales para analizar situaciones y para establecer relaciones funcionales entre variables que permiten estudiar la variación en situaciones intraescolares y extraescolares.",
           "evidencias": [
-            "m Plantea modelos funcionales en los que identifica variables y rangos de variación de las variables. m Relaciona el signo de la derivada con características numéricas, geométricas y métricas. m Utili"
+            "Plantea modelos funcionales en los que identifica variables y rangos de variación de las variables.",
+            "Relaciona el signo de la derivada con características numéricas, geométricas y métricas.",
+            "Utiliza la derivada para estudiar la variación y relaciona características de la derivada con características de la función.",
+            "Relaciona características algebraicas de las funciones, sus gráficas y procesos de aproximación sucesiva."
           ]
         },
         {
           "numero": 8,
           "enunciado": "Encuentra derivadas de funciones, reconoce sus propiedades y las utiliza para resolver problemas.",
           "evidencias": [
-            "m Utiliza la derivada para estudiar la variación y relaciona características de la derivada con características de la función. m Relaciona características algebraicas de las funciones, sus gráficas y"
+            "Utiliza la derivada para estudiar la variación y relaciona características de la derivada con características de la función.",
+            "Relaciona características algebraicas de las funciones, sus gráficas y procesos de aproximación sucesiva.",
+            "Calcula derivadas de funciones."
           ]
         },
         {
           "numero": 9,
           "enunciado": "Plantea y resuelve situaciones problemáticas del contexto real y/o matemático que implican la exploración de posibles asociaciones o correlaciones entre las variables estudiadas.",
           "evidencias": [
-            "m En situaciónes matemáticas plantea preguntas que indagan por la correlación o la asociación entre variables. m Define el plan de recolección de la información, en el que se incluye: definición de po"
+            "En situaciones matemáticas plantea preguntas que indagan por la correlación o la asociación entre variables.",
+            "Define el plan de recolección de la información, en el que incluye: definición de población y muestra, método para recolectar la información (encuestas, observaciones o experimentos simples), variables a estudiar.",
+            "Elabora gráficos de dispersión usando software adecuado como Excel y analiza las relaciones que se visibilizan en el gráfico.",
+            "Expresa cualitativamente las relaciones entre las variables, para lo cual utiliza su conocimiento de los modelos lineales.",
+            "Usa adecuadamente la desviación estándar, la media, el coeficiente de variación y el de correlación para dar respuesta a la pregunta planteada."
           ]
         },
         {
           "numero": 10,
           "enunciado": "Plantea y resuelve problemas en los que se reconoce cuando dos eventos son o no independientes y usa la probabilidad condicional para comprobarlo.",
           "evidencias": [
-            "Interpreta y asigna"
+            "Propone problemas a estudiar en variedad de situaciones aleatorias.",
+            "Reconoce los diferentes eventos que se proponen en una situación o problema.",
+            "Interpreta y asigna la probabilidad de cada evento.",
+            "Usa la probabilidad condicional de cada evento para decidir si son o no independientes."
           ]
         }
       ]
