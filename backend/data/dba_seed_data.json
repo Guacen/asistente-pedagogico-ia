@@ -1,7 +1,7 @@
 {
-  "version": "1.5",
+  "version": "1.6",
   "fuente": "MEN Colombia — Derechos Básicos de Aprendizaje",
-  "nota": "Los DBA no definen un orden de trabajo en el aula. Son aprendizajes anuales. Lenguaje re-extraído verbatim de dba_lenguaje-min.pdf (MEN, V.2 2016) el 2026-08-08 — reemplaza datos truncados/desalineados de versiones anteriores. Matemáticas re-extraída verbatim de dba_matematicas-min.pdf (MEN V.2, 2016) en sprint dba-matematicas-reextraido. Ciencias Naturales re-extraída verbatim de dba_c.naturales-min.pdf (MEN V.1, 2016) en sprint dba-ciencias-naturales-reextraido. Ciencias Sociales re-extraída verbatim de dba_c.sociales-v2_0.pdf (MEN V.1, 2016) en sprint dba-ciencias-sociales-reextraido.",
+  "nota": "Los DBA no definen un orden de trabajo en el aula. Son aprendizajes anuales. Lenguaje re-extraído verbatim de dba_lenguaje-min.pdf (MEN, V.2 2016) el 2026-08-08 — reemplaza datos truncados/desalineados de versiones anteriores. Matemáticas re-extraída verbatim de dba_matematicas-min.pdf (MEN V.2, 2016) en sprint dba-matematicas-reextraido. Ciencias Naturales re-extraída verbatim de dba_c.naturales-min.pdf (MEN V.1, 2016) en sprint dba-ciencias-naturales-reextraido. Ciencias Sociales re-extraída verbatim de dba_c.sociales-v2_0.pdf (MEN V.1, 2016) en sprint dba-ciencias-sociales-reextraido. Inglés re-extraído verbatim de dba-transicion-y-primaria_ingles-min.pdf y DBA-ingles-espanol.pdf (MEN/Colombia Bilingüe, 2016) en sprint dba-ingles-reextraido.",
   "asignaturas": {
     "Lenguaje": {
       "1": [
@@ -3443,30 +3443,31 @@
       "Transición": [
         {
           "numero": 1,
-          "enunciado": "Reconoce instrucciones sencillas relacionadas con su entorno inmediato y responde a ellas de manera no verbal.",
+          "enunciado": "Reconoce instrucciones sencillas relacionadas con su entorno inmediato, y responde a ellas de manera no verbal.",
           "evidencias": [
-            "Responde corporalmente a instrucciones como Stand up, Sit down, Open your book."
+            "Stand up, please!"
           ]
         },
         {
           "numero": 2,
-          "enunciado": "Identifica, repite y utiliza palabras asociadas con su entorno inmediato (casa y salón de clase).",
+          "enunciado": "Asocia imágenes con sonidos de palabras relacionadas con su casa y salón de clases.",
           "evidencias": [
-            "Nombra objetos del salón y del hogar en inglés usando vocabulario básico."
+            "Liz, where is the kitchen?"
           ]
         },
         {
           "numero": 3,
-          "enunciado": "Comprende y responde preguntas muy sencillas sobre sus datos personales, tales como su nombre, edad y su familia.",
+          "enunciado": "Identifica, repite y utiliza palabras asociadas con su entorno inmediato (casa y salón de clase).",
           "evidencias": [
-            "Responde 'What's your name?' y 'How old are you?' con frases simples."
+            "Rosita, what is this? — A table.",
+            "Mauro, what is this? — A chair."
           ]
         },
         {
           "numero": 4,
-          "enunciado": "Asocia imágenes con sonidos de palabras relacionadas con su casa y salón de clases.",
+          "enunciado": "Comprende y responde preguntas muy sencillas sobre sus datos personales, tales como su nombre, edad y su familia.",
           "evidencias": [
-            "Relaciona la imagen de objetos cotidianos con su nombre en inglés."
+            "What's your name? — My name is Mauro."
           ]
         }
       ],
@@ -3475,35 +3476,36 @@
           "numero": 1,
           "enunciado": "Comprende y responde a instrucciones sobre tareas escolares básicas, de manera verbal y no verbal.",
           "evidencias": [
-            "Sigue instrucciones como 'Color the circle red', 'Put the pencil on the table'."
+            "Use red to color the circle. Use blue to color the squares."
           ]
         },
         {
           "numero": 2,
-          "enunciado": "Organiza la secuencia de eventos principales en una historia corta y sencilla, sobre temas familiares, usando imágenes.",
+          "enunciado": "Comprende y realiza declaraciones sencillas, usando expresiones ensayadas, sobre su entorno inmediato (casa y escuela).",
           "evidencias": [
-            "Ordena imágenes de una historia corta y las describe con palabras sencillas."
+            "Where is the pencil? — The pencil is on the table. — Thank you."
           ]
         },
         {
           "numero": 3,
-          "enunciado": "Responde preguntas sencillas sobre información personal básica, como su nombre, edad, familia y compañeros de clase.",
+          "enunciado": "Organiza la secuencia de eventos principales en una historia corta y sencilla, sobre temas familiares, usando imágenes, después de haberla leído o escuchado.",
           "evidencias": [
-            "Responde preguntas como 'How old are you?' y 'What's your name?'."
+            "Last, a beautiful butterfly appears. — This is the end of the story!"
           ]
         },
         {
           "numero": 4,
-          "enunciado": "Comprende y realiza declaraciones sencillas, usando expresiones ensayadas, sobre su entorno inmediato (casa y escuela).",
+          "enunciado": "Responde preguntas sencillas sobre información personal básica, como su nombre, edad, familia y compañeros de clase.",
           "evidencias": [
-            "Usa frases como 'The pencil is on the table' para describir su entorno."
+            "How old are you? — I am 7 years old."
           ]
         },
         {
           "numero": 5,
           "enunciado": "Menciona algunas cualidades físicas propias y de las personas que le rodean a través de palabras y frases previamente estudiadas.",
           "evidencias": [
-            "Describe características físicas usando adjetivos sencillos: tall, short, big."
+            "My sister has short, blonde hair.",
+            "My mother has long, black hair."
           ]
         }
       ],
@@ -3512,28 +3514,29 @@
           "numero": 1,
           "enunciado": "Expresa ideas sencillas sobre temas estudiados, usando palabras y frases.",
           "evidencias": [
-            "Produce oraciones simples como 'The bird can fly' y 'The fish can swim'."
+            "And the fish can swim.",
+            "The bird can fly."
           ]
         },
         {
           "numero": 2,
-          "enunciado": "Intercambia información personal como su nombre, edad y procedencia con compañeros y profesores, usando frases sencillas.",
+          "enunciado": "Comprende la secuencia de una historia corta y sencilla sobre temas familiares, y la cuenta nuevamente a partir de ilustraciones y palabras conocidas.",
           "evidencias": [
-            "Mantiene una conversación corta sobre su origen usando 'I am from...'."
+            "First, the cat and the dog are talking. Then, they play together. (Woof!)"
           ]
         },
         {
           "numero": 3,
-          "enunciado": "Menciona aspectos culturales propios de su entorno, usando vocabulario y expresiones conocidas.",
+          "enunciado": "Intercambia información personal como su nombre, edad y procedencia con compañeros y profesores, usando frases sencillas, siguiendo modelos provistos por el docente.",
           "evidencias": [
-            "Describe características de su comunidad en inglés con vocabulario básico."
+            "Where are you from? — I am from La Dorada, Caldas. — I am from Duitama, Boyacá, and you?"
           ]
         },
         {
           "numero": 4,
-          "enunciado": "Comprende la secuencia de una historia corta y sencilla sobre temas familiares y la cuenta nuevamente a partir de ilustraciones y palabras conocidas.",
+          "enunciado": "Menciona aspectos culturales propios de su entorno, usando vocabulario y expresiones conocidas.",
           "evidencias": [
-            "Retell una historia usando 'First... Then... Last...'"
+            "People from Colombia are hard-working. — Yes, my parents are hard-working."
           ]
         }
       ],
@@ -3542,28 +3545,32 @@
           "numero": 1,
           "enunciado": "Comprende y describe algunos detalles en textos cortos y sencillos sobre temas familiares, a partir de imágenes y frases conocidas.",
           "evidencias": [
-            "Lee un texto corto sobre un personaje e identifica detalles clave."
+            "Felipe lives in Yopal. He is 8 years old. He loves technology, especially he likes to play with his Tablet. The problem is that Felipe spends more than 5 hours playing with his tablet every day. This might be bad for him. — Felipe has a problem. He plays with his tablet every day."
           ]
         },
         {
           "numero": 2,
-          "enunciado": "Responde, de manera oral o escrita, preguntas sencillas sobre textos descriptivos cortos y alusivos a temas conocidos.",
+          "enunciado": "Responde, de manera oral o escrita, preguntas sencillas sobre textos descriptivos cortos y alusivos a temas conocidos y de clase.",
           "evidencias": [
-            "Responde preguntas de comprensión sobre textos descriptivos breves."
+            "What is your favorite superhero? A superhero is a person who has special abilities, and helps people in need. There are many examples of superheroes on TV: Iron man, Superman, Wonder Woman, and Captain America. They usually wear a cape and a mask so people don't know who they are. They have super powers, such as: flying, disappearing, fighting, etc.",
+            "What is a superhero? It's a person who has super powers.",
+            "What are some examples of superheroes? Superman, Wonder Woman, Captain America.",
+            "What does a superhero do? A superhero helps people in need.",
+            "Who is your favorite superhero? Spider-Man."
           ]
         },
         {
           "numero": 3,
-          "enunciado": "Describe, de manera oral y escrita, objetos, lugares, personas y comunidades, usando oraciones simples.",
+          "enunciado": "Intercambia ideas y opiniones sencillas con compañeros y profesores, siguiendo modelos o a través de imágenes.",
           "evidencias": [
-            "Escribe o dice oraciones describiendo su barrio o comunidad."
+            "Mauro, do you watch TV every day? — Yes, I watch TV 2 hours every day. — Rosita, how about you? — I don't watch TV. I don't like it."
           ]
         },
         {
           "numero": 4,
-          "enunciado": "Intercambia ideas y opiniones sencillas con compañeros y profesores, siguiendo modelos o a través de imágenes.",
+          "enunciado": "Describe, de manera oral y escrita, objetos, lugares, personas y comunidades, usando oraciones simples.",
           "evidencias": [
-            "Participa en diálogos cortos expresando gustos y preferencias."
+            "My neighborhood. This is my neighborhood. There is a park, and a church. There are many houses. There are trees, plants, and a small river. The river is dirty because people throw garbage in it."
           ]
         }
       ],
@@ -3572,28 +3579,28 @@
           "numero": 1,
           "enunciado": "Comprende la idea general y algunos detalles en un texto informativo corto y sencillo sobre temas conocidos y de interés.",
           "evidencias": [
-            "Lee un texto informativo y responde preguntas de comprensión."
+            "Animals have different characteristics: birds, for example, have feathers and wings; mammals have legs; and fish have scales. Type of animal / Characteristics — Mammals: Legs; Birds: Feathers and wings."
           ]
         },
         {
           "numero": 2,
-          "enunciado": "Intercambia opiniones sencillas sobre un tema de interés, a través de oraciones simples y conocidas.",
+          "enunciado": "Pregunta y responde, de forma oral o escrita, interrogantes relacionados con el 'quién, cuándo y dónde', después de leer o escuchar un texto corto y sencillo siempre que el tema le sea conocido.",
           "evidencias": [
-            "Expresa acuerdo o desacuerdo sobre temas escolares en inglés."
+            "Who is the main character of the story? — Mary. — When did she go to the doctor? — On Monday."
           ]
         },
         {
           "numero": 3,
-          "enunciado": "Compara características básicas de personas, objetos y lugares de su escuela y comunidad, a través de oraciones simples.",
+          "enunciado": "Intercambia opiniones sencillas sobre un tema de interés, a través de oraciones simples y conocidas.",
           "evidencias": [
-            "Usa comparativos: 'This tree is taller than that one'."
+            "What do you think about the \"Safe the earth project\" in our school? — Yes, it is important for our school. — It is great."
           ]
         },
         {
           "numero": 4,
-          "enunciado": "Pregunta y responde, de forma oral o escrita, interrogantes relacionados con el quién, cuándo y dónde, después de leer o escuchar un texto corto.",
+          "enunciado": "Compara características básicas de personas, objetos y lugares de su escuela y comunidad, a través de oraciones simples.",
           "evidencias": [
-            "Formula y responde preguntas de comprensión lectora sobre who, when, where."
+            "This tree is taller than that one. — ...and this classroom is bigger than that one."
           ]
         }
       ],
@@ -3602,28 +3609,28 @@
           "numero": 1,
           "enunciado": "Comprende información general y específica en un texto narrativo corto sobre temas conocidos y de interés.",
           "evidencias": [
-            "Lee una narración corta y responde preguntas sobre hechos específicos."
+            "This is my community. It is located near Nevado del Ruiz, an important mountain in the Andean region. We are farmers and we love nature; for that reason, we protect our environment..."
           ]
         },
         {
           "numero": 2,
-          "enunciado": "Produce un texto narrativo oral y/o escrito, corto y sencillo, que responde al ¿qué?, ¿quién?, ¿cuándo? y ¿dónde? de un evento o anécdota.",
+          "enunciado": "Produce un texto narrativo oral y/o escrito, corto y sencillo, que responde al '¿qué?, ¿quién?, ¿cuándo? y ¿dónde?' de un evento o anécdota.",
           "evidencias": [
-            "Escribe una anécdota breve sobre un evento personal o de su comunidad."
+            "Last summer, Thomas was in his bedroom. Last summer, Thomas was in his bedroom when he heard a strange noise. He opened the window to see who made that noise in the backyard. No one was there. The curious boy went out of the house to try to find out the origin of the noise."
           ]
         },
         {
           "numero": 3,
           "enunciado": "Intercambia información sobre hábitos, gustos y preferencias acerca de temas conocidos, siguiendo modelos provistos por el profesor.",
           "evidencias": [
-            "Participa en diálogos sobre hábitos usando 'I prefer...', 'I like...'."
+            "Hi Nancy, how are you? — Fine, and you? — Good. Hey, how do you plan to help our school environment? — Mmmm, I prefer to collect plastic bottles to recycle. — Well, I want to clean the garden and plant some trees. — Great! I love that."
           ]
         },
         {
           "numero": 4,
           "enunciado": "Explica causas y consecuencias de una situación a través de oraciones simples de manera oral y escrita siguiendo un modelo establecido.",
           "evidencias": [
-            "Usa conectores como 'because' para explicar causas y consecuencias."
+            "Sugar can be bad because it can cause health problems."
           ]
         }
       ],
@@ -3631,242 +3638,368 @@
         {
           "numero": 1,
           "enunciado": "Participa en una conversación corta para decir su nombre, edad y datos básicos a profesores, amigos y familiares.",
-          "evidencias": []
+          "evidencias": [
+            "Hello, I am Antonio. I am your new classmate. — Hi Antonio, How are you? — I am fine, thank you. What is your name? — My name is Margarita."
+          ]
         },
         {
           "numero": 2,
           "enunciado": "Solicita y brinda aclaraciones sobre cómo se escriben nombres y palabras desconocidas en una conversación corta.",
-          "evidencias": []
+          "evidencias": [
+            "Antonio: Where are you from? Margarita: I am from Riohacha. Antonio: Margarita, how do you spell that? Margarita: R-I-O-H-A-C-H-A. Antonio: Nice to meet you, Margarita. Margarita: Nice to meet you, too."
+          ]
         },
         {
           "numero": 3,
-          "enunciado": "Comprende instrucciones relacionadas con las actividades y tareas de la clase, la escuela y su comunidad y expresa de manera escrita y oral lo que entiende de estas.",
-          "evidencias": []
+          "enunciado": "Comprende y utiliza palabras familiares y frases cortas sobre rutinas, actividades cotidianas y gustos.",
+          "evidencias": [
+            "I'm Angela Poole. I'm a doctor. I work in a hospital. I really like my job. On weekends, I like to play soccer with my children and listen to music. Name: Angela. Last name: Poole. Occupation: Doctor. Likes: Play soccer and listen to music."
+          ]
         },
         {
           "numero": 4,
-          "enunciado": "Comprende y utiliza palabras familiares y frases cortas sobre rutinas, actividades cotidianas y gustos.",
-          "evidencias": []
+          "enunciado": "Comprende instrucciones relacionadas con las actividades y tareas de la clase, la escuela y su comunidad y expresa de manera escrita y oral lo que entiende de estas.",
+          "evidencias": [
+            "Don't run in the halls.",
+            "Use the trash can.",
+            "Turn off the lights."
+          ]
         },
         {
           "numero": 5,
           "enunciado": "Describe las características básicas de personas, cosas y lugares de su escuela, ciudad y comunidad, a través de frases y oraciones sencillas.",
-          "evidencias": []
+          "evidencias": [
+            "My City. I live in Pasto. This is a small and beautiful city in the Andean area of Colombia. There are many mountains around the city. Many tourists visit the famous Galeras Volcano and the Black and White's Carnival Museum."
+          ]
         },
         {
           "numero": 6,
-          "enunciado": "Escribe información personal básica en formatos preestablecidos que solicitan datos como nombre, edad, fecha de nacimiento, género, nacionalidad, dirección y teléfono.",
-          "evidencias": []
+          "enunciado": "Responde a preguntas relacionadas con el 'qué, quién y cuándo' después de leer o escuchar un texto corto y sencillo, siempre y cuando el tema esté relacionado con eventos que le son familiares.",
+          "evidencias": [
+            "Carnival of Barranquilla. Carnival is one of the most traditional Colombian folklore celebrations. Dance groups, costume makers, and the Queen of the Carnival work very hard to make it an unforgettable party. We celebrate carnival for four days. On Saturday, we see 'The Battle of Flowers', a parade of dance groups and floats. On Sunday, we see 'La Gran Parada de Tradición' and the 'Orchestra Festival'. On Monday, 'the Gran Parada de Comparsas' fantasy costumes and dancing. Carnival ends on Tuesday with The Burial of Joselito, who symbolizes the joy of the Barranquilla Carnival.",
+            "What is the Carnival of Barranquilla? The Carnival is a traditional Colombian folklore celebration.",
+            "Where is this celebration performed? Barranquilla.",
+            "Who participates in the party? Dance groups, costume makers, and the Queen of the Carnival.",
+            "What is the 'Battle of Flowers'? A parade of dance groups and floats."
+          ]
         },
         {
           "numero": 7,
-          "enunciado": "Responde a preguntas relacionadas con el qué, quién y cuándo después de leer o escuchar un texto corto y sencillo sobre eventos que le son familiares.",
-          "evidencias": []
+          "enunciado": "Escribe información personal básica en formatos preestablecidos que solicitan datos como nombre, edad, fecha de nacimiento, género, nacionalidad, dirección, teléfono, etc.",
+          "evidencias": [
+            "Name: Mariluz. Last name: González. Sex: Male __ Female X. Age: 15. Birthday: August 24th. Nationality: Colombian. Address: 79th St # 42 - 200. City: Tunja. Phone: 741 48 60."
+          ]
         },
         {
           "numero": 8,
           "enunciado": "Comprende el tema e información general de un texto corto y sencillo, valiéndose de ayudas tales como imágenes, títulos y palabras clave.",
-          "evidencias": []
+          "evidencias": [
+            "Carlos: This text is about France and some interesting facts. Jesús: Yes, for example the capital is Paris and the language they speak is French. Carlos: And the flag is blue, white and red.",
+            "Population: more than 65.7 million people. Religion: mainly Christians (Roman Catholic 64%). Currency: 1 Euro=100 cents. Name: France. Language: French. Flag: blue, white and red. Tourist attractions: Eiffel Tower, Louvre Museum, Notre Dame Cathedral."
+          ]
         }
       ],
       "7": [
         {
           "numero": 1,
-          "enunciado": "Participa en conversaciones cortas en las que brinda información sobre sí mismo, sobre personas, lugares y eventos que le son familiares, usando frases y oraciones sencillas previamente memorizadas.",
-          "evidencias": []
+          "enunciado": "Participa en conversaciones cortas en las que brinda información sobre sí mismo, sobre personas, lugares y eventos que le son familiares. Para ello, usa frases y oraciones sencillas previamente memorizadas.",
+          "evidencias": [
+            "Anita: Hi, Luisa. Tomorrow we have our math test. Luisa: That is true. I'm very nervous. I need to pass. Anita: Why don't we study together? Luisa: That is a great idea. When we finish, we can play some videogames to relax. Anita: Ok. Come to my house after school. Luisa: Ok. See you there."
+          ]
         },
         {
           "numero": 2,
-          "enunciado": "Escribe textos cortos y sencillos sobre acciones, experiencias y planes que le son familiares, ayudándose de una secuencia de imágenes y un modelo preestablecido.",
-          "evidencias": []
+          "enunciado": "Describe, de manera oral, personas, actividades, eventos y experiencias personales. Estructura estas descripciones con frases y oraciones sencillas previamente ensayadas con sus compañeros y su docente.",
+          "evidencias": [
+            "Good morning, Harmony in the classroom is very important; I will share some ideas to help us do this. Respect the teachers, the classroom, other students and yourself. To show respect we can listen to others and take turns when we speak. It is also important to understand that people have different points of view. These ideas can help to live in harmony in our classroom."
+          ]
         },
         {
           "numero": 3,
-          "enunciado": "Describe, de manera oral, personas, actividades, eventos y experiencias personales con frases y oraciones sencillas previamente ensayadas.",
-          "evidencias": []
+          "enunciado": "Escribe textos cortos y sencillos sobre acciones, experiencias y planes que le son familiares. Para la escritura se ayuda de una secuencia de imágenes y un modelo pre-establecido.",
+          "evidencias": [
+            "To keep a healthy life style, we need to take care of our body, mind and soul.",
+            "People need to do regular exercise and have a balanced diet.",
+            "People need to enjoy family and friends and learn new things to keep their mind healthy.",
+            "People also need to meditate and live with passion to have a long and healthy life."
+          ]
         },
         {
           "numero": 4,
-          "enunciado": "Entiende la idea principal y algunos detalles relacionados con actividades, lugares y personas en un texto descriptivo corto, apoyándose en palabras y frases familiares.",
-          "evidencias": []
+          "enunciado": "Entiende la idea principal y algunos detalles relacionados con actividades, lugares y personas en un texto descriptivo corto. Para la comprensión del texto, se apoya en palabras y frases familiares.",
+          "evidencias": [
+            "Character: Mother Teresa of Calcutta. Name: Agnes Gonxha Bojaxhiu. Place and date of birth: Uskub, August 26, 1910. Contributions to humanity: Humanitarian acts. Year of death: 1997.",
+            "Mother Teresa of Calcutta. Mother Teresa was a catholic nun born in Uskub, Ottoman Empire on August 26, 1910. This is now Skopje, the capital of the Republic of Macedonia. Her real name was Agnes Gonxha Bojaxhiu. Her father died when she was a little girl and her mother raised her. She decided to devote her life to God when she was very young. She became a sister of Loreto when she was 18 years old. She is well known worldwide for her humanitarian acts. She created the organization of the Missionaries of Charity to help many poor, sick and needy people. In 1979, she received the Nobel Peace Prize for her hard work. After her death in 1997, the Catholic Church started the process to make her a saint. Today there are more than 4,000 nuns like Mother Teresa taking care of the poorest people in the world."
+          ]
         },
         {
           "numero": 5,
-          "enunciado": "Reconoce información específica relacionada con objetos, personas y acciones cuando le son conocidos y le hablan de manera pausada, pudiendo requerir ayudas visuales.",
-          "evidencias": []
+          "enunciado": "Reconoce información específica relacionada con objetos, personas y acciones cuando le son conocidos y le hablan de manera pausada. Para esto, puede llegar a requerir de ayudas visuales tales como imágenes o textos.",
+          "evidencias": [
+            "Disposal, Analysis, Collection, Transportation, Recovery, Recycling."
+          ]
         },
         {
           "numero": 6,
-          "enunciado": "Describe acciones relacionadas con un tema de su entorno familiar o escolar usando oraciones sencillas apoyadas en imágenes.",
-          "evidencias": []
+          "enunciado": "Da y recibe instrucciones, recomendaciones y sugerencias sobre temas relacionados con su entorno cotidiano.",
+          "evidencias": [
+            "Recipe for an omelette. 1. Crack the eggs into a bowl with salt and pepper. Beat well with a fork. 2. Pour the eggs in a frying pan and spread them out evenly. 3. Put some grated cheese. 4. Fold it over in half and remove from pan."
+          ]
         },
         {
           "numero": 7,
-          "enunciado": "Da y recibe instrucciones, recomendaciones y sugerencias sobre temas relacionados con su entorno cotidiano.",
-          "evidencias": []
+          "enunciado": "Describe acciones relacionadas con un tema de su entorno familiar o escolar. Para esto, usa oraciones sencillas y se apoya en imágenes.",
+          "evidencias": [
+            "We are destroying our planet. It is necessary that we make decisions to save it.",
+            "I will start with me. For example, I will take short showers to use water efficiently.",
+            "I will plant new trees in my mum's garden.",
+            "I will recycle paper, plastic and cans at home and at school.",
+            "In this way, I can contribute to save my planet."
+          ]
         }
       ],
       "8": [
         {
           "numero": 1,
-          "enunciado": "Solicita y brinda información sobre experiencias y planes de manera clara y breve, utilizando vocabulario conocido y apoyándose en sus compañeros y el profesor.",
-          "evidencias": []
+          "enunciado": "Solicita y brinda información sobre experiencias y planes de manera clara y breve. Para esto, utiliza información propia o de situaciones que le son familiares, empleando el vocabulario conocido y apoyándose en sus compañeros y el profesor.",
+          "evidencias": [
+            "Laura: Did you send the email to your teacher? Daniela: No, I didn't. I am going to send it later. Laura: Remember that we have until 3:00 p.m. Daniela: I know. I will do it."
+          ]
         },
         {
           "numero": 2,
-          "enunciado": "Reconoce información específica en textos cortos orales y escritos sobre temas de interés general, usando estrategias de lectura como pre-visualización, predicción y skimming.",
-          "evidencias": []
+          "enunciado": "Explica por escrito, de forma coherente y sencilla, situaciones y hechos que le son familiares. Puede establecer relaciones de adición, de secuencia causa y efecto; y comparaciones sencillas.",
+          "evidencias": [
+            "The Water Cycle. Earth is mostly water. Water is needed for all forms of life. Water can be found in snow, glaciers, lakes, streams, and underground. Water can also be in the form of vapor. The sun heats the water and it evaporates into the atmosphere. When the atmosphere is cold, the vapor becomes clouds and then rain or snow."
+          ]
         },
         {
           "numero": 3,
-          "enunciado": "Explica por escrito, de forma coherente y sencilla, situaciones y hechos que le son familiares, estableciendo relaciones de adición, secuencia, causa-efecto y comparaciones sencillas.",
-          "evidencias": []
+          "enunciado": "Reconoce información específica en textos cortos orales y escritos sobre temas de interés general. Para esto, utiliza diferentes estrategias de lectura: Pre-visualización (imágenes, títulos, subtítulos, etc), Predicción: Subrayado, palabras claves o parecidas al español; identificación del sentido general del texto (skimming).",
+          "evidencias": [
+            "English around the World. People use words to express their ideas, intentions, emotions and information. Currently, the words that people use are often English words. The English language has More than 500.000 words. Most of these words are very unusual. Some words that English speakers use are taken from different languages. For example: Avocato, Barbecue and Totem come from indigenous American language. Jungle and Yoga are of Indian origin. Kangaroo comes from an aboriginal Australian word. Ketchup is Chinese. Color is Latin. Besides, other languages take some words from English too, for instance: Basketball, Tennis, Play Station, Chat, O.K., Bye. Actually, you do not need to travel to USA or UK to learn English because English is Everywhere.",
+            "Reading strategy: Predicting: Key words. How many times do these words occur in the text: English, language(s), word?",
+            "Reading strategy: Predicting: Cognates. Find words in the first paragraph that are similar to Spanish words."
+          ]
         },
         {
           "numero": 4,
-          "enunciado": "Intercambia información sobre temas académicos del entorno escolar y de interés general, a través de conversaciones sencillas, diálogos y juego de roles, expresando opiniones de manera sencilla.",
-          "evidencias": []
+          "enunciado": "Intercambia información sobre temas académicos del entorno escolar y de interés general, a través de conversaciones sencillas, diálogos y juego de roles. En estas conversaciones, puede expresar opiniones de manera sencilla a partir de modelos previamente estudiados.",
+          "evidencias": [
+            "Santi: Do you think that recycling paper is important? Camilo: Yes, because recycling paper saves the trees in the forest. Santi: How do you save the trees? Camilo: If we recycle paper, we don't need to cut more trees to make more paper. Santi: I agree with you. I also think recycling paper is very important."
+          ]
         },
         {
           "numero": 5,
           "enunciado": "Realiza recomendaciones a personas de su comunidad sobre qué hacer, dónde, cuándo o cómo, con base en situaciones cotidianas de su vida familiar, escolar o de su entorno.",
-          "evidencias": []
+          "evidencias": [
+            "Tomas: You should organize your free time. Eduardo: Really? How? Tomas: You can make a schedule. Eduardo: Really, is it helpful? Tomas: Yes, I do it and it really helps me to organize my time. Eduardo: Thank you! I will try. Tomas: I think that you really need to do it as soon as possible. Eduardo: Can you help me to do it? Tomas: O.k. Do you want to start right now? Eduardo: It is O.K. I am free! Tomas: First of all, you should know when you are free and what activities you have to do; then, you should plan the activities according to their importance. Eduardo: Oh! That's a good idea! I am going to do a list of my pending activities."
+          ]
         },
         {
           "numero": 6,
-          "enunciado": "Expresa sus emociones y sentimientos sobre una situación o tema específico de su entorno familiar o escolar, presentando sus razones de forma clara y sencilla.",
-          "evidencias": []
+          "enunciado": "Hace exposiciones breves sobre un tema académico relacionado con su entorno escolar o su comunidad y tiene en cuenta: hechos relevantes, detalles concretos y vocabulario específico. Para esto, se ha preparado previamente y se ha asesorado con sus compañeros y profesor.",
+          "evidencias": [
+            "Good morning! My purpose today is to talk about language. Language is the ability to acquire and use the system of communication. There are about 5.000 to 7.000 languages in the world. When we communicate, we can use words, symbols, gestures, movements, or images. It means that language can be verbal (words: spoken or written) and symbolic (images, gestures, movements, symbols). In conclusion, we use language to interact with other people, to express our ideas, feelings and emotions."
+          ]
         },
         {
           "numero": 7,
-          "enunciado": "Hace exposiciones breves sobre un tema académico relacionado con su entorno escolar o su comunidad, teniendo en cuenta hechos relevantes, detalles concretos y vocabulario específico.",
-          "evidencias": []
+          "enunciado": "Expresa sus emociones y sentimientos sobre una situación o tema específico de su entorno familiar o escolar, presentando sus razones de forma clara y sencilla. Para esto, se vale del vocabulario conocido.",
+          "evidencias": [
+            "Sara: I am really sad. Julio: Why? What's up? Sara: My best friend has a serious problem. Julio: What kind of problem? Sara: She has an eating disorder called anorexia and I don't know how to help her. Julio: Oh, dear! Let's talk to our teacher."
+          ]
         },
         {
           "numero": 8,
-          "enunciado": "Narra brevemente hechos actuales, situaciones cotidianas o sus experiencias propias, en forma oral o escrita, teniendo en cuenta la secuencia de las acciones y la claridad de las ideas.",
-          "evidencias": []
+          "enunciado": "Narra brevemente hechos actuales, situaciones cotidianas o sus experiencias propias, en forma oral o escrita. Para esto, tiene en cuenta la secuencia de las acciones, la claridad de las ideas y se asesora con sus compañeros y su profesor.",
+          "evidencias": [
+            "My first trip... The first time I left my small town was when I went to the capital. We had a school visit to a local newspaper printing plant to understand the process of producing and printing the newspaper. When we finished the activity we went to a mall. It was exciting for me because I have never been to a mall before. There were some things which surprised me because I have never seen them, such as: the electronic stairs and the elevator. I was afraid first but once I tried them, I really enjoyed it!"
+          ]
         }
       ],
       "9": [
         {
           "numero": 1,
-          "enunciado": "Explica el por qué de planes y acciones relacionadas con su entorno personal, escolar y comunitario, estructurando sus explicaciones de manera apropiada con ortografía, pronunciación y conectores adecuados.",
-          "evidencias": []
+          "enunciado": "Explica el por qué de planes y acciones relacionadas con su entorno personal, escolar y comunitario. Estructura sus explicaciones de manera apropiada y tiene en cuenta la ortografía, la pronunciación y conectores para comunicar sus ideas.",
+          "evidencias": [
+            "In order to prevent Chikungunya, I will follow these recommendations: First, I will empty or cover containers such as buckets, dustbins and flower pots in my yard. By doing so, I can assure that mosquitoes don't breed in my house. Second, I will apply mosquito repellent on my arms and legs because the fragrance of the repellent will keep them away. Third, I will sleep under a mosquito net when necessary so they don't bite me at night. Chikungunya is preventable. It is always better to be cautious rather than getting this disease. Sometimes if it is not treated on time it may even lead to other health complications."
+          ]
         },
         {
           "numero": 2,
-          "enunciado": "Resume la información que ha leído o escuchado sobre temas relacionados con su entorno escolar y académico a través de escritos estructurados.",
-          "evidencias": []
+          "enunciado": "Reconoce relaciones de causa y efecto en lecturas cortas sobre temas académicos. Para esto, tiene en cuenta el vocabulario, los conectores y sus conocimientos previos. Por ejemplo, después de leer un texto corto, puede identificar las causas y efectos y representarlos a través de un gráfico.",
+          "evidencias": [
+            "Endangered Species. Endangered species are those plants and animals that are in danger of extinction. There are degrees of endangerment: critically endangered, threatened, and rare species. Extinction is a very normal process in the evolution of animals and plants. The causes can be related to survival, climate, and human intervention. Survival relates to how an animal can live and reproduce in an environment. If the conditions become unlivable, then the species will become extinct. When climate changes occur, less rain for example, a species may not be able to adapt well enough to that new habitat. Human intervention includes chemical pollution, destruction of habitats, or exploitation of plants and animals for food and other products.",
+            "Extinction — Survival, Climate, Human intervention. Survival: Survival. Climate: Climate. Human intervention: Chemical pollution, Destruction of habitats, Exploitation of plants and animals."
+          ]
         },
         {
           "numero": 3,
-          "enunciado": "Reconoce relaciones de causa y efecto en lecturas cortas sobre temas académicos, teniendo en cuenta el vocabulario, los conectores y sus conocimientos previos.",
-          "evidencias": []
+          "enunciado": "Resume la información que ha leído o escuchado sobre temas relacionados con su entorno escolar y académico. Por ejemplo, al leer un texto, lo resume en una oración.",
+          "evidencias": [
+            "The Right to Health. All individuals are entitled to a minimum standard of health. The right to health has been included in documents such as the Universal Declaration of Human Rights, the International Covenant on Economic, Social and Cultural Rights and the Convention on the Rights of Persons with Disabilities. However, the right to health is interpreted and applied in different ways in every country depending on certain conditions such as the definition, the minimum rights that are included, and the institutions that are responsible for ensuring this right. All people have the right to health as established in the Universal Declaration of Human Rights, but how the right is interpreted and applied depends on the conditions of every country.",
+            "All people have the right to health as established in the Universal Declaration of Human Rights, but how the right is interpreted and applied depends on the conditions of every country."
+          ]
         },
         {
           "numero": 4,
-          "enunciado": "Realiza exposiciones cortas sobre un tema académico de su interés, teniendo en cuenta la secuencia de las acciones, la claridad de las ideas y asesorándose con sus compañeros y su profesor.",
-          "evidencias": []
+          "enunciado": "Realiza exposiciones cortas sobre un tema académico de su interés. Para esto, tiene en cuenta la secuencia de las acciones, la claridad de las ideas y se asesora con sus compañeros y su profesor.",
+          "evidencias": [
+            "Para realizar su exposición tiene en cuenta: Elección del tema. Consulta (fuentes digitales, escritas u orales). Determinación de la estructura expositiva, de lo general a lo particular o viceversa. Estructura: Introducción. Presentación del tema. Desarrollo. Explicación de las ideas y características principales del tema. Conclusión. Breve síntesis de las ideas más importantes. Elaboración de recursos didácticos (carteleras, presentaciones digitales, etc.). Manejo de la expresión oral: uso de tecnicismos, pronunciación, énfasis en palabras claves, buen tono de voz, citar fuentes.",
+            "Good morning! Today, I am going to talk about Equality Right. According to the Charter Rules, 'Every individual is equal; therefore, they should have the same right to the equal protection and equal benefit of the law without discrimination and, in particular, without discrimination based on race, national or ethnic origin, color, religion, sex, age or mental or physical disability'."
+          ]
         },
         {
           "numero": 5,
-          "enunciado": "Expresa su opinión sobre un tema discutido en clase y relacionado con su entorno académico, citando lo que han dicho sus compañeros, otras personas o fuentes de información.",
-          "evidencias": []
+          "enunciado": "Expresa su opinión sobre un tema discutido en clase y relacionado con su entorno académico. Para esto, cita lo que han dicho sus compañeros, otras personas o fuentes de información.",
+          "evidencias": [
+            "Blanca: Accepting differences helps us live in harmony. Paola: I agree with you. However, there are a lot of people in our country who don't accept differences. The Colombian Constitution states that 'Colombia has ethnic, cultural, linguistic and religious diversity' but most of us don't respect the characteristics of others. Blanca: As Mr. Rodriguez said in class, we have to start in our homes and classrooms. We need to set some rules among us to recognize the other. Paola: Actually, in our class we have agreed to not bully people who use piercings and tattoos. The reason for this is that for some piercings and tattoos are related to drug addiction. So, bullying is not allowed in our class. Blanca: Excellent idea! We have to start with things like these actions."
+          ]
         },
         {
           "numero": 6,
-          "enunciado": "Intercambia información sobre temas del entorno escolar y de interés general en una conversación, basándose en apuntes tomados después de leer o escuchar información sobre el tema tratado.",
-          "evidencias": []
+          "enunciado": "Intercambia información sobre temas del entorno escolar y de interés general en una conversación. Para esto, se basa en los apuntes tomados después de leer o escuchar información sobre el tema tratado.",
+          "evidencias": [
+            "Susi: In this video, we can see that the number of pregnant teenagers has increased. The government has developed many campaigns but this situation continues. Lili: That's right. Also, it was interesting to hear that teenagers don't think about the consequences of their actions and don't like to use contraceptive methods. Susi: I agree, we need to think more about the consequences of what we do."
+          ]
         },
         {
           "numero": 7,
-          "enunciado": "Identifica el propósito, las partes y tipo de textos en una lectura o audio cortos y los comparte con sus compañeros, apoyándose en la estructura del texto, títulos, subtítulos y conectores.",
-          "evidencias": []
+          "enunciado": "Identifica el propósito, las partes y tipo de textos en una lectura o audio cortos y los comparte con sus compañeros. Para eso, se apoya en la estructura del texto, los títulos y subtítulos, marcadores de secuencia, conectores y el vocabulario que se repite.",
+          "evidencias": [
+            "The text I read was about netiquette. It had a short introduction where they define the word 'netiquette' and then they present some rules to use when we post messages in the different media. At the end, the author says that following netiquette rules is important to have effective communication.",
+            "Text: Netiquette. Purpose: Inform about rules to follow when writing online messages. Type: Explanation. Parts: Definition: what is netiquette? Body: tips. Conclusion: Importance of netiquette for communication."
+          ]
         },
         {
           "numero": 8,
-          "enunciado": "Redacta textos de mediana longitud en los cuales realiza recomendaciones o sugerencias sobre situaciones de interés personal, escolar o social, teniendo en cuenta relaciones de contraste, comparación y adición.",
-          "evidencias": []
+          "enunciado": "Redacta textos de mediana longitud en los cuales realiza recomendaciones o sugerencias sobre temas de interés personal, escolar o social. Para ello, tiene en cuenta las relaciones de contraste, comparación, adición, entre otras.",
+          "evidencias": [
+            "Tech News. Safe Social Networking. Facebook, Instagram, Snapchat, and Twitter are among the most frequently used social networks. These sites expand rapidly. Young people use social networks to communicate among them. However, the use of these networks has its risks. First, people can be vulnerable when they publish their locations and what they are doing all the time. People you do not know can get your personal information easily. They can harm you. I suggest that people avoid doing this. Second, once your pictures go into cyberspace, they always remain. Pictures can be used to bully you or your family. People should not post pictures that others can use against them. Choose your photos carefully. Finally, to keep social networking safe, everyone must do their part. Do not give too much information about you and don't post inappropriate photos."
+          ]
         }
       ],
       "10": [
         {
           "numero": 1,
-          "enunciado": "Distingue información general y específica en textos de opinión y discusiones orales y escritos sobre temas conocidos, respondiendo a las preguntas ¿de qué trata el texto? y ¿cuál es el enunciado más importante del autor?",
-          "evidencias": []
+          "enunciado": "Distingue información general y específica en textos de opinión y discusiones orales y escritos sobre temas conocidos. Para esto, responde a las preguntas ¿de qué trata el texto? y ¿cuál es el enunciado más importante que el autor dice acerca del tema? Por ejemplo, al leer un texto resalta las ideas de cada párrafo y los detalles que las sustentan.",
+          "evidencias": [
+            "Letter to the editor: Tattoos. Dear editor, I do not understand what is happening with young people these days! More and more often I see them with tattoos on their arms, their legs, and some on their necks. This younger generation does not know the risks of tattooing. There is the risk of long-term effects of illnesses and infections that could be created by dirty needles. Besides it is very painful to remove the tattoo if they change their mind. Anyway, I will never let my children get a tattoo!",
+            "In this article, the writer says that tattoos are bad for young people because they do not understand the risks. She thinks tattoos are not good and will never let her children get one."
+          ]
         },
         {
           "numero": 2,
-          "enunciado": "Redacta textos narrativos, descriptivos y expositivos relacionados con temas de su interés o que le resultan familiares, siguiendo un proceso de planeación, escritura, revisión y edición.",
-          "evidencias": []
+          "enunciado": "Explica las ideas de un texto oral o escrito acerca de temas de su interés o que le son familiares a partir de su conocimiento previo, inferencias e interpretaciones. Para esto, al leer un texto, hace comentarios que dan cuenta de su comprensión personal del mismo.",
+          "evidencias": [
+            "Protect your children from advertising. By Healthy Kids Foundation. Being a child today is very different from what it was ten or fifteen years ago. Children see thousands of advertisements on TV, on the Internet, and all around them daily. As a parent, you can help your children face 'the dangers' of advertising by talking and explaining to them what advertisers do and what their intentions are. Children need to understand that advertisers will always try to make them buy something because that is their job. They will always try to present things creatively so children end up desiring the products that companies advertise. Finally, as a parent, you can help your children learn the differences between commercial advertising messages and other types of media messages that are produced with educational, entertaining, or informative purposes.",
+            "I can understand from this discussion that parents have the responsibility to guide their children and let them see how advertisers can trick them... I also understand that not all advertisements have the same intention, and it is important to differentiate among the types."
+          ]
         },
         {
           "numero": 3,
-          "enunciado": "Explica las ideas de un texto oral o escrito acerca de temas de su interés o que le son familiares a partir de su conocimiento previo, inferencias e interpretaciones.",
-          "evidencias": []
+          "enunciado": "Redacta textos narrativos, descriptivos y expositivos relacionados con temas de su interés o que le resultan familiares. Para esto, sigue un proceso de planeación, escritura, revisión y edición. Se apoya en su profesor(a) y/o compañeros(as) de clase.",
+          "evidencias": [
+            "Think about and write down all the ideas that come to your mind related to the topic. Brainstorming: advantages and disadvantages of being a vegetarian. In a country like Colombia, vegetarians are often seen as strange individuals because they do not eat meat. Many people cannot understand how a person can live without eating meat. However, there are more advantages than disadvantages of being a vegetarian. Paragraph 1: vegetarians have lower chances of having heart attack. Paragraph 2: vegetarians have lower chances of developing cancer. Paragraph 3: vegetarians help to preserve the environment. Conclusion: to be a vegetarian has many advantages.",
+            "Being a Vegetarian in Colombia: A hard Decision. In a country like Colombia, vegetarians are often seen as strange individuals because they do not eat meat. Many people cannot understand how a person can live without eating meat. However, there are more advantages than disadvantages of being a vegetarian. To mention a few, according to research, vegetarians have lower chances of heart attacks. Fatty red meat and processed meat are high in saturated fat, which increases the levels of bad cholesterol in the body and, therefore, increases the risk for heart disease. Studies have also demonstrated that vegetarians have lower chances of developing cancer. Every day cancer is more clearly connected to meat consumption. In short, a vegetarian diet lowers the chances of getting cancer. Finally, vegetarians help to preserve the environment since raising cattle for beef and milk emits a significant amount of Carbon Dioxide into the air and also consumes vast amounts of scarce resources such as water and land. When people decide not to eat meat, they contribute with the preservation of the environment. In conclusion, contrary to what many people may think, being a vegetarian has many advantages.",
+            "Tittle: Introduction/general information. Thesis statement. Body paragraph 1 Topic sentence Supporting ideas. Body paragraph 2 (*If needed) Topic sentence Supporting ideas. Body paragraph 3(*If needed) Topic sentence Supporting ideas 2. Conclusion. Restatement of the thesis."
+          ]
         },
         {
           "numero": 4,
-          "enunciado": "Produce mensajes escritos, tales como cartas y correos electrónicos, claros y bien estructurados teniendo en cuenta el contexto en el que tienen lugar.",
-          "evidencias": []
+          "enunciado": "Produce mensajes escritos, tales como cartas y correos electrónicos, claros y bien estructurados teniendo en cuenta el contexto en el que tienen lugar. Para esto, utiliza el vocabulario y las estructuras de texto requeridas. Por ejemplo, al escribir un correo electrónico saluda, escribe su mensaje y se despide.",
+          "evidencias": [
+            "A student writes her teacher about her impossibility to attend her class. To: Angela Castro. Cc: Subject: Absence to class this week. Dear Ms. Castro, I was feeling sick this morning. My head hurt, I had a rash, and I had a high fever. I went to the doctor, and he told me that I needed to rest. I have chikungunya. For this, I will not attend your class this week. I will give you the written excuse. I will talk to my classmates to catch up. I hope that you understand my situation. Regards, Nathalie"
+          ]
         },
         {
           "numero": 5,
-          "enunciado": "Sostiene conversaciones espontáneas y sencillas acerca de temas que son de su conocimiento, interés personal o académico, seleccionando expresiones apropiadas para iniciar, mantener y cerrar una conversación.",
-          "evidencias": []
+          "enunciado": "Intercambia opiniones sobre situaciones de interés personal, escolar o social. Para esto, presenta sus opiniones de manera natural y coherente y hace uso de expresiones conocidas.",
+          "evidencias": [
+            "Juan: 'Today we are going to talk about nature conservation, more specifically about Parque Tayrona. The question is: Should we open this natural park to tourism investment?' Diana: 'Well, first, I want to say that we have to be careful with nature. When we destroy nature, we destroy our own life.' Carlos: 'That is true! When we cut down trees, for example, we create problems with the production of oxygen in the planet and also with the erosion of the soil.' David: 'I understand what you all mean, but investing in the country is also important. If we open the park to tourism investment, more people will have jobs, and families will have more places to go and spend their time together.' Diana: 'I think that more jobs and more places to visit aren't more important. As I said if we destroy nature, we destroy our own life...'"
+          ]
         },
         {
           "numero": 6,
-          "enunciado": "Intercambia opiniones sobre situaciones de interés personal, escolar o social, presentando sus opiniones de manera natural y coherente.",
-          "evidencias": []
+          "enunciado": "Sostiene conversaciones espontáneas y sencillas acerca de temas que son de su conocimiento, interés personal o académico. Según su propósito y el conocimiento del interlocutor, es capaz de seleccionar expresiones apropiadas para iniciar, mantener y cerrar una conversación.",
+          "evidencias": [
+            "Hi, Michael. How are you? Hi, Erica. I'm fine. How are you? I'm doing well. Hey! Did you watch the news last night? Nevado del Ruiz is melting! Can you imagine that? Oh my God! It's terrible! I went there two years ago with my family, and it's an awesome place. Is there any plan to recover it? They didn't say, but I don't think so because people don't help. I hope somebody does something about it. Me too. Hey! I'm running late to class. I'll see you later. Ok. Bye."
+          ]
         },
         {
           "numero": 7,
-          "enunciado": "Responde preguntas e inquietudes después de hacer una exposición oral sobre temas generales o académicos de interés, basándose en la información consultada y organizada.",
-          "evidencias": []
+          "enunciado": "Responde preguntas e inquietudes después de hacer una exposición oral sobre temas generales o académicos de interés. Para esto, se basa en la información consultada y organizada.",
+          "evidencias": [
+            "How do earthquakes happen? An Earthquake is the shaking of the earth by the unexpected movement of rocks below its surface. This surface, called crust, is made of tectonic plates. These plates are independent blocks of rock. They 'crash' or move against each other and produce changes in the earth's topography. The areas where these changes happen are called fault lines...",
+            "Q1: What does topography mean? Answer: Topography is the detailed description of an area.",
+            "Q2: Are earthquakes predictable? Answer: Earthquakes are hard to predict. The exact day, time and place of an earthquake cannot be anticipated. Scientists are trying to do it, but it is difficult."
+          ]
         }
       ],
       "11": [
         {
           "numero": 1,
-          "enunciado": "Identifica el propósito de textos orales y escritos de mediana longitud relacionados con temas de interés general y de su entorno académico y la comparte con otros, utilizando su conocimiento acerca de la estructura de los textos.",
-          "evidencias": []
+          "enunciado": "Identifica el propósito de textos orales y escritos de mediana longitud relacionados con temas de interés general y de su entorno académico y la comparte con otros. Para esto, utiliza su conocimiento acerca de la estructura de los textos.",
+          "evidencias": [
+            "The Daily [newspaper]. 'The purpose of this Editorial is to support the idea that Colombia has all the rights to keep the treasures found in the Galleon...'",
+            "'The purpose of this manual is to explain how to install the software...'"
+          ]
         },
         {
           "numero": 2,
-          "enunciado": "Explica tanto en forma oral como escrita las causas y los efectos, así como el problema y la solución de una situación, definiendo la relación entre las ideas y utilizando el lenguaje correspondiente.",
-          "evidencias": []
+          "enunciado": "Explica tanto en forma oral como escrita las causas y los efectos, así como el problema y la solución de una situación. Para esto, define la relación entre las ideas que quiere explicar y utiliza el lenguaje correspondiente.",
+          "evidencias": [
+            "What happened yesterday... Heavy rain made the rivers overflow. Although the city does not have a formal evacuation plan, people have created an informal emergency system. There are alarms in every neighborhood and local leaders activated them when they realized there was a flood. Consequently, people escaped the flood by running to the mountains. For this reason, many lives were saved and there were no injuries. In conclusion, having an emergency system could be the difference between life and death."
+          ]
         },
         {
           "numero": 3,
-          "enunciado": "Reconoce la opinión del autor(a) en textos orales y escritos de mediana longitud que se relacionan con su contexto escolar y académico, haciendo uso de su conocimiento previo y la estructura del texto.",
-          "evidencias": []
+          "enunciado": "Reconoce la opinión del autor(a) en textos orales y escritos de mediana longitud que se relacionan con su contexto escolar y académico. Para esto, hace uso tanto de su conocimiento previo del tema como de la estructura del texto. Por ejemplo, después de leer o escuchar un texto, escribe brevemente cuál es la opinión del autor.",
+          "evidencias": [
+            "Animal Abuse. Animals are living beings just like humans. They cannot talk, but they have feelings just as humans do. When we abuse them, they feel pain. When we neglect them, they pay the consequences. When we let them starve, they feel hunger. They cannot take action to fight for their rights. Therefore, humans have the responsibility to ensure animal rights as living beings are respected. Those who violate their rights must be punished by the law. By concerned citizen from Bogotá.",
+            "The writer of this message strongly defends the punishment for animal abusers. This person defends legal punishment for those who put animals in danger. I also think that he/she thinks that if a person is careless with an animal, that person should be punished."
+          ]
         },
         {
           "numero": 4,
-          "enunciado": "Redacta textos argumentativos con una estructura clara y sencilla sobre temas académicos, siguiendo modelos y un proceso de planeación, escritura, revisión y edición.",
-          "evidencias": []
+          "enunciado": "Redacta textos argumentativos con una estructura clara y sencilla sobre temas académicos. Para esto, sigue modelos y un proceso de planeación, escritura, revisión y edición; se apoya en su profesor(a) y/o compañeros(as) de clase.",
+          "evidencias": [
+            "Think about and write down all the ideas that come to your mind related to the topic. Brainstorming: Do citizens have the right to protect private information from the government? Tracking information is... common, and... can be bad dangerous for people. 2 important justifications reasons are: rights to privacy and freedom of speech. Paragraph 1: ...our individual private posts are aceons on the Internet should not be seen reviewed. Somebody can see our informaeon and... Paragraph 2: ...we also have the right to say express our thoughts and feelings freely too. If we want... Paragraph 3: ...vegetarians help to preserve the environment. Conclusion: in my opinion, the government should not track and use private information of ciezens... invasion of our privacy and...",
+            "Do citizens have the right to protect private information from the government? Tracking information is becoming common, and without protection, it can be dangerous for people. Three important reasons are: the right to privacy, freedom of speech, and the right to feel safe. Sometimes we post our actions on the Internet. These private posts should not be reviewed or scrutinized by third party observers, specifically the government. The government can see our information and misinterpret it as something wrong or illegal. Our private information is and should always be ours. We also have the right to express our thoughts and feelings freely too. If we want to discuss a political point, for example, the government might use the information incorrectly and take actions. Our expressions are private and should be protected from government interpretation. The right to feel safe is very important to us as individuals. If we choose to state an opinion or post an important event in our lives, we should be able to trust that it is not going to be used for unsafe reasons by third party observers. Our information is important to us, and it should not be violated for any reason. So, in my opinion, the government should not track and use private information of citizens. This invades our privacy and our freedom of speech. It also can put us in danger.",
+            "Tittle: Introduction: Background/general information. Thesis statement. Body paragraph 1 Topic sentence Supporting ideas. Body paragraph 2 (*If needed) Topic sentence Supporting ideas. Body paragraph 3 (*If needed) Topic sentence Supporting ideas. Conclusion Restatement of the thesis."
+          ]
         },
         {
           "numero": 5,
-          "enunciado": "Expresa de manera oral y escrita su posición acerca de un tema conocido teniendo en cuenta a quién está dirigido el texto, definiendo el tono del mensaje de acuerdo con el contexto o la cercanía con su audiencia.",
-          "evidencias": []
+          "enunciado": "Expresa de manera oral y escrita su posición acerca de un tema conocido teniendo en cuenta a quién está dirigido el texto. Para esto, define el tono del mensaje de acuerdo con el contexto o la cercanía con su audiencia (formal o informal). Por ejemplo, puede manifestar su opinión acerca de un mismo tema a dos interlocutores diferentes.",
+          "evidencias": [
+            "MAIL Message to a friend: 'Hi Christian, Can you imagine??? My Math teacher took away my cellphone 'cause it rang in class I hate when these things happen !!! He will give it back to me in a week... Why are teachers so strict? They don't understand us. It's like they never were young. Arghhhh! I'm writing a message to the school principal asap because I think this is unfair. WBS. Kisses, Meli'",
+            "MAIL Message to the school's principal: 'Dear Mr. Castro, I would like to express my disagreement with something Mr. Torres did in class yesterday morning. I was in his Math class, and by accident, my cellphone rang because I forgot to put it in silent mode. He immediately confiscated my cellphone. It was not my intention to disrupt his class, and I think I deserved a second chance before he did that. I understand teachers need to manage discipline in their classrooms, but I think Mr. Torres is too strict. He says will return my cellphone next week. I think this is unfair. I would like to ask you to talk to him, please, so he gives me the cellphone before that. I am looking forward to your kind reply. Sincerely, Melissa Arias'"
+          ]
         },
         {
           "numero": 6,
-          "enunciado": "Expresa de manera oral su punto de vista acerca de un tema controversial previamente estudiado, consultando fuentes confiables y organizando la información para desarrollar sus ideas de manera clara y estructurada.",
-          "evidencias": []
+          "enunciado": "Expresa de manera oral su punto de vista acerca de un tema controversial previamente estudiado. Para esto, consulta fuentes confiables, selecciona y organiza la información y la utiliza para desarrollar sus ideas de una manera clara y estructurada. Por ejemplo, se dirige a una audiencia y presenta sus opiniones a partir de sus notas.",
+          "evidencias": [
+            "'The death penalty is not the right way to reduce murder rates.' First, the death penalty may put the life of innocent people at risk. Lawyers, judges, and juries can make mistakes, and innocent people can pay for murders they have not committed. Second, the death penalty does not stop murder from happening. Countries that use death penalty still experience higher murder rates. Finally, we cannot kill someone to show people that murdering is bad."
+          ]
         },
         {
           "numero": 7,
-          "enunciado": "Mantiene discusiones formales acerca de temas académicos que ha preparado previamente, siguiendo las ideas de un tema propuesto, expresando su opinión y contrastándola con la de otros.",
-          "evidencias": []
+          "enunciado": "Mantiene discusiones formales acerca de temas académicos que ha preparado previamente. Para esto, sigue las ideas de un tema propuesto, expresa su opinión y la contrasta con la de otros. Por ejemplo, participa en un debate sobre problemas de inmigración.",
+          "evidencias": [
+            "Opening statements: A: 'Ladies and gentlemen, today we're here to talk about immigration problem in the country. We believe that our country needs to close its borders to immigrants. We have many problems, and we can't solve other people's problems...'",
+            "Rebuttal: B: 'If countries around us have problems, those problems could be our own problems in the future. For that reason, we must help immigrants. Immigrants are people like you and me...'",
+            "Closing statements: B: 'In short, we are humans, and when a person needs help, it is a human act to help.'"
+          ]
         },
         {
           "numero": 8,
-          "enunciado": "Narra de manera oral o escrita experiencias personales o historias conocidas, brindando detalles de las situaciones, los lugares, las personas y las acciones.",
-          "evidencias": []
+          "enunciado": "Narra de manera oral o escrita experiencias personales o historias conocidas. Para esto, brinda detalles de las situaciones, los lugares, las personas y las acciones. Por ejemplo, comparte una lección de vida con sus compañeros.",
+          "evidencias": [
+            "'When I was a kid I didn't study much. I listened to my teacher in class, and I didn't study for exams. I remembered the explanations, and I answered all the questions. As I advanced from elementary school to high school, it was more complicated and I needed to study, but I didn't. For this reason, I failed grade 7 and that was a very bad experience. I had to make new friends, retake the course, graduate later, and I had to feel my parents' disappointment. Since that moment, I promised I was going to study seriously, and I was going to be a good student. Failing that year taught me a very important life lesson.'"
+          ]
         }
       ]
     },
