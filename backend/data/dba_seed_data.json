@@ -1,7 +1,7 @@
 {
-  "version": "1.6",
+  "version": "1.7",
   "fuente": "MEN Colombia — Derechos Básicos de Aprendizaje",
-  "nota": "Los DBA no definen un orden de trabajo en el aula. Son aprendizajes anuales. Lenguaje re-extraído verbatim de dba_lenguaje-min.pdf (MEN, V.2 2016) el 2026-08-08 — reemplaza datos truncados/desalineados de versiones anteriores. Matemáticas re-extraída verbatim de dba_matematicas-min.pdf (MEN V.2, 2016) en sprint dba-matematicas-reextraido. Ciencias Naturales re-extraída verbatim de dba_c.naturales-min.pdf (MEN V.1, 2016) en sprint dba-ciencias-naturales-reextraido. Ciencias Sociales re-extraída verbatim de dba_c.sociales-v2_0.pdf (MEN V.1, 2016) en sprint dba-ciencias-sociales-reextraido. Inglés re-extraído verbatim de dba-transicion-y-primaria_ingles-min.pdf y DBA-ingles-espanol.pdf (MEN/Colombia Bilingüe, 2016) en sprint dba-ingles-reextraido.",
+  "nota": "Los DBA no definen un orden de trabajo en el aula. Son aprendizajes anuales. Lenguaje re-extraído verbatim de dba_lenguaje-min.pdf (MEN, V.2 2016) el 2026-08-08 — reemplaza datos truncados/desalineados de versiones anteriores. Matemáticas re-extraída verbatim de dba_matematicas-min.pdf (MEN V.2, 2016) en sprint dba-matematicas-reextraido. Ciencias Naturales re-extraída verbatim de dba_c.naturales-min.pdf (MEN V.1, 2016) en sprint dba-ciencias-naturales-reextraido. Ciencias Sociales re-extraída verbatim de dba_c.sociales-v2_0.pdf (MEN V.1, 2016) en sprint dba-ciencias-sociales-reextraido. Inglés re-extraído verbatim de dba-transicion-y-primaria_ingles-min.pdf y DBA-ingles-espanol.pdf (MEN/Colombia Bilingüe, 2016) en sprint dba-ingles-reextraido. Transición (asignatura transversal) re-extraída verbatim de dba_transicion-min_0.pdf (MEN V.1, 2016) en sprint dba-transicion-reextraido. Con esto se completa el re-extracto verbatim de las 7 asignaturas del catálogo DBA.",
   "asignaturas": {
     "Lenguaje": {
       "1": [
@@ -4011,6 +4011,7 @@
           "evidencias": [
             "Explica las razones por las que hace una elección.",
             "Muestra iniciativa en la realización de actividades.",
+            "Demuestra constancia al realizar sus actividades.",
             "Anticipa algunas consecuencias de las decisiones que toma."
           ]
         },
@@ -4019,15 +4020,18 @@
           "enunciado": "Se apropia de hábitos y prácticas para el cuidado personal y de su entorno.",
           "evidencias": [
             "Muestra independencia en la realización de prácticas de higiene y alimentación saludables.",
-            "Identifica situaciones que ponen en riesgo su salud y seguridad."
+            "Identifica algunas situaciones que ponen en riesgo su salud y seguridad.",
+            "Contribuye a mantener el aseo y organización de los espacios físicos que utiliza.",
+            "Practica acciones individuales y colectivas que ayudan a prevenir problemas ambientales y a conservar su entorno."
           ]
         },
         {
           "numero": 3,
           "enunciado": "Identifica y valora las características corporales y emocionales en sí mismo y en los demás.",
           "evidencias": [
-            "Menciona similitudes y diferencias que encuentra entre él y sus compañeros.",
-            "Representa su cuerpo a través de diferentes lenguajes artísticos."
+            "Menciona algunas similitudes y diferencias que encuentra entre él y sus compañeros.",
+            "Representa su cuerpo a través de diferentes lenguajes artísticos (dibujo, danza, escultura, rondas, entre otros).",
+            "Manifiesta sus gustos y disgustos frente a diferentes situaciones y reconoce paulatinamente sus emociones."
           ]
         },
         {
@@ -4035,7 +4039,9 @@
           "enunciado": "Reconoce que es parte de una familia, de una comunidad y un territorio con costumbres, valores y tradiciones.",
           "evidencias": [
             "Identifica características del lugar donde vive.",
-            "Describe roles de personas cercanas en su familia y comunidad."
+            "Reconoce que todas las personas tienen valores y cada una es importante.",
+            "Describe roles de personas de su familia y entorno cercano.",
+            "Reconoce que tiene unos derechos y los vive en la interacción con otros."
           ]
         },
         {
@@ -4043,7 +4049,9 @@
           "enunciado": "Participa en la construcción colectiva de acuerdos, objetivos y proyectos comunes.",
           "evidencias": [
             "Propone su punto de vista en espacios de construcción colectiva.",
-            "Acepta sus equivocaciones y busca reestablecer las relaciones."
+            "Reconoce que los demás pueden tener un punto de vista diferente al suyo y los escucha.",
+            "Acepta sus equivocaciones y busca reestablecer las relaciones cuando por alguna razón incumple sus acuerdos.",
+            "Muestra respeto por los acuerdos de convivencia que se construyen en su familia, con sus pares y otros miembros de su comunidad."
           ]
         },
         {
@@ -4051,87 +4059,103 @@
           "enunciado": "Demuestra consideración y respeto al relacionarse con otros.",
           "evidencias": [
             "Comprende que una misma situación puede generar reacciones diferentes en las personas.",
-            "Asume actitudes colaborativas y solidarias."
+            "Asume actitudes colaborativas y solidarias en las actividades en las que participa.",
+            "Reconoce que existen diversos seres vivos a los cuales conoce y cuida."
           ]
         },
         {
           "numero": 7,
           "enunciado": "Expresa y representa lo que observa, siente, piensa e imagina, a través del juego, la música, el dibujo y la expresión corporal.",
           "evidencias": [
-            "Participa en canciones, rondas y juegos tradicionales.",
-            "Expresa libremente sus pensamientos y emociones a través de dibujos y pinturas."
+            "Participa en canciones, rondas y juegos tradicionales haciendo aportes personales de manera espontánea.",
+            "Dramatiza diálogos con sus juguetes y otros elementos del ambiente con los que dibuja, arma o construye muñecos.",
+            "Representa y simboliza diferentes roles y actividades al usar los objetos que encuentra a su alrededor.",
+            "Expresa libremente sus pensamientos y emociones a través de dibujos, pinturas, figuras modeladas o fotografías."
           ]
         },
         {
           "numero": 8,
           "enunciado": "Identifica las relaciones sonoras en el lenguaje oral.",
           "evidencias": [
-            "Identifica palabras que riman en juegos con el lenguaje oral.",
-            "Reconoce sonidos iniciales y finales de palabras."
+            "Identifica palabras que riman en juegos con la música, las rondas, la poesía, juegos corporales, entre otros.",
+            "Sigue y construye juegos de segmentación de palabras orales a través de las palmas, el zapateo, y otras estrategias.",
+            "Establece asociaciones entre los sonidos onomatopéyicos del entorno y los objetos que simbolizan."
           ]
         },
         {
           "numero": 9,
           "enunciado": "Establece relaciones e interpreta imágenes, letras, objetos, personajes que encuentra en distintos tipos de textos.",
           "evidencias": [
-            "Lee imágenes, hace preguntas, formula ideas y crea historias.",
-            "Identifica letras que le son cotidianas y las asocia en diferentes tipos de textos."
+            "Lee imágenes, hace preguntas, formula ideas y crea historias a propósito de lo que percibe en diferentes registros (textos escritos, pinturas, aplicaciones, páginas web, entre otros).",
+            "Identifica letras que le son cotidianas y las asocia en diferentes tipos de textos (pancartas, avisos publicitarios, libros álbum, revistas, entre otros).",
+            "Explora diferentes tipos de texto y reconoce su propósito (recetarios, libro álbum, cuento, diccionarios ilustrados, enciclopedias infantiles, cancioneros, entre otros).",
+            "Establece relaciones sobre lo que le leen y situaciones de su vida cotidiana u otros temas de su interés."
           ]
         },
         {
           "numero": 10,
-          "enunciado": "Comprende que las personas nos comunicamos a través de diferentes sistemas de signos y los usa como alternativa para interactuar con otros.",
+          "enunciado": "Expresa ideas, intereses y emociones a través de sus propias grafías y formas semejantes a las letras convencionales en formatos con diferentes intenciones comunicativas.",
           "evidencias": [
-            "Usa gestos, dibujos, símbolos para comunicar ideas.",
-            "Reconoce señales del entorno y su significado."
+            "Se interesa por saber cómo se escriben las palabras que escucha.",
+            "Identifica y asocia los sonidos de las letras que escucha en las lecturas y los vincula con sus propias grafías o pseudoletras para escribir lo que quiere o necesita expresar (una historia, una invitación, una carta, una receta, etc.).",
+            "Escribe su nombre propio con las letras que conoce."
           ]
         },
         {
           "numero": 11,
           "enunciado": "Crea situaciones y propone alternativas de solución a problemas cotidianos a partir de sus conocimientos e imaginación.",
           "evidencias": [
-            "Coopera con otros haciendo uso de su imaginación para identificar soluciones.",
-            "Participa en el desarrollo de actividades en espacios libres y naturales."
+            "Crea ambientes haciendo uso de objetos, materiales y espacios.",
+            "Muestra atención y concentración en las actividades que desarrolla.",
+            "Participa en el desarrollo de actividades en espacios libres y naturales.",
+            "Coopera con otros haciendo uso de su imaginación para identificar soluciones alternativas a los desafíos que crea o se le plantean."
           ]
         },
         {
           "numero": 12,
           "enunciado": "Establece relaciones entre las causas y consecuencias de los acontecimientos que le suceden a él o a su alrededor.",
           "evidencias": [
-            "Observa y hace registros gráficos para explicar lo que sucede.",
-            "Anticipa lo que puede pasar en situaciones cotidianas."
+            "Observa y hace registros gráficos, sonoros o audiovisuales para explicar lo que sucede.",
+            "Realiza preguntas de temas que son de su interés.",
+            "Formula explicaciones para aquello que sucede a su alrededor.",
+            "Resuelve situaciones cotidianas usando sus saberes, experiencias y habilidades."
           ]
         },
         {
           "numero": 13,
           "enunciado": "Usa diferentes herramientas y objetos con variadas posibilidades.",
           "evidencias": [
-            "Arma, desarma y transforma objetos de su entorno.",
-            "Identifica características de las cosas que encuentra a su alrededor."
+            "Arma, desarma y transforma objetos de su entorno para descubrir, comprender su funcionamiento y darle otros usos según sus intereses o necesidades.",
+            "Participa en juegos de transformaciones y construcción de juguetes con materiales cotidianos y bloques de construcción.",
+            "Identifica características de las cosas que encuentra a su alrededor y se pregunta sobre cómo funcionan."
           ]
         },
         {
           "numero": 14,
           "enunciado": "Construye nociones de espacio, tiempo y medida a través de experiencias cotidianas.",
           "evidencias": [
-            "Mide objetos utilizando patrones de medida no convencionales.",
-            "Identifica nociones temporales como antes, durante y después."
+            "Mide objetos utilizando patrones de medida no convencionales (número de pasos que hay entre un lugar y otro, la palma de la mano, lanas, cordones, recipientes, entre otros).",
+            "Reconoce el antes, el ahora y el después de un evento.",
+            "Sitúa acontecimientos relevantes en el tiempo.",
+            "Reconoce y establece relaciones espaciales a partir de su cuerpo y objetos (izquierda-derecha, arriba-abajo, delante-detrás, cerca-lejos, dentro-fuera) al participar en actividades grupales como juegos, danzas y rondas."
           ]
         },
         {
           "numero": 15,
           "enunciado": "Compara, ordena, clasifica objetos e identifica patrones de acuerdo con diferentes criterios.",
           "evidencias": [
-            "Identifica el patrón que conforma una secuencia y puede continuarla.",
-            "Clasifica colecciones de objetos de acuerdo a sus atributos."
+            "Identifica el patrón que conforma una secuencia (pollo-gato-pollo) y puede continuarla (pollo-gato-pollo-gato).",
+            "Crea series de acuerdo a un atributo (del más largo al más corto, del más pesado al más liviano, etc).",
+            "Clasifica colecciones de objetos de acuerdo a sus atributos (por la funcionalidad, por el sabor, por la tonalidad, por el peso, entre otras)."
           ]
         },
         {
           "numero": 16,
           "enunciado": "Determina la cantidad de objetos que conforman una colección, al establecer relaciones de correspondencia y acciones de juntar y separar.",
           "evidencias": [
-            "Cuenta colecciones de objetos y determina cuántos hay.",
-            "Realiza acciones de juntar y separar objetos reconociendo su efecto en la cantidad."
+            "Determina cuántos objetos conforman una colección a partir de: la percepción global, la enumeración y la correspondencia uno a uno.",
+            "Compara colecciones de objetos y determina: ¿cuántos hay?, ¿en dónde hay más?, ¿en dónde hay menos?, ¿cuántos hacen falta para tener la misma cantidad?, ¿cuántos le sobran?, entre otras.",
+            "Comprende situaciones que implican agregar y quitar, y propone procedimientos basados en la manipulación de objetos concretos o representaciones gráficas."
           ]
         }
       ]
