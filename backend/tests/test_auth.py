@@ -45,7 +45,7 @@ def test_login_password_incorrecta_devuelve_401(client_no_auth, seed_docente):
 
 
 def test_login_email_inexistente_devuelve_401(client_no_auth):
-    r = _login(client_no_auth, "no-existe@test.com", "cualquiera")
+    r = _login(client_no_auth, "no-existe@test.com", "Cualquiera1")
     assert r.status_code == 401
 
 
@@ -111,12 +111,12 @@ def test_registro_nuevo_docente(client_no_auth):
     r = client_no_auth.post("/api/auth/register", json={
         "nombre_completo": "Nuevo Docente",
         "email": "nuevo@test.com",
-        "password": "supersegura",
+        "password": "Supersegura1",
         "consentimiento_datos": True,  # sprint email-verification-consent
     })
     assert r.status_code in (200, 201), r.text
     # Ahora puede loguearse
-    r_login = _login(client_no_auth, "nuevo@test.com", "supersegura")
+    r_login = _login(client_no_auth, "nuevo@test.com", "Supersegura1")
     assert r_login.status_code == 200
 
 
@@ -124,7 +124,7 @@ def test_registro_con_email_duplicado_falla(client_no_auth, seed_docente):
     r = client_no_auth.post("/api/auth/register", json={
         "nombre_completo": "Otro Docente",
         "email": seed_docente["docente"].email,  # ya existe
-        "password": "cualquiera",
+        "password": "Cualquiera1",
         "consentimiento_datos": True,
     })
     assert r.status_code >= 400, f"Debería fallar por email duplicado, obtuvo {r.status_code}"

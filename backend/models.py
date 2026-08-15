@@ -262,6 +262,46 @@ class PasswordResetToken(Base):
     creado_en = Column(DateTime, default=datetime.utcnow, nullable=False)
 
 
+class TokenBlacklist(Base):
+    """
+    JWT revocados antes de su expiración natural (logout explícito).
+    get_current_docente rechaza cualquier token cuyo `jti` esté acá.
+
+    `expires_at` es la expiración ORIGINAL del token (no la fecha de
+    revocación) — permite purgar filas cuyo token ya habría expirado
+    igual por su cuenta, sin necesidad de guardarlas más tiempo.
+    """
+    __tablename__ = "token_blacklist"
+
+    jti = Column(String(36), primary_key=True)
+    expires_at = Column(DateTime, nullable=False, index=True)
+    creado_en = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class AuditLog(Base):
+    """
+    Bitácora de accesos a datos sensibles de estudiantes — obligatoria
+    para cumplimiento de Ley 1581 (datos de menores). Sprint
+    seguridad-avanzada.
+
+    `accion` documentadas: 'login', 'logout', 'ver_piar', 'generar_piar',
+    'exportar_docx', 'ver_estudiante', 'editar_estudiante'.
+    Solo inserciones — nunca se edita ni se borra una fila (excepto
+    purga por retención, no implementada todavía).
+    """
+    __tablename__ = "audit_log"
+
+    id_log = Column(String(36), primary_key=True, default=new_uuid)
+    id_docente = Column(
+        String(36), ForeignKey("docentes.id_docente"), nullable=False, index=True,
+    )
+    accion = Column(String(50), nullable=False, index=True)
+    recurso_tipo = Column(String(50), nullable=True)
+    recurso_id = Column(String(36), nullable=True, index=True)
+    ip = Column(String(45), nullable=True)
+    timestamp = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+
 class Grupo(Base):
     __tablename__ = "grupos"
 

@@ -5,7 +5,7 @@ import uuid
 from typing import List
 
 import aiofiles
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
+from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -24,6 +24,7 @@ from schemas import (
     EvaluacionColumnaCreate, EvaluacionColumnaOut, EvaluacionColumnaUpdate,
     GrupoCreate, GrupoOut, GrupoUpdate, NotaCreate, NotaOut,
 )
+from security_utils import obtener_ip_cliente, registrar_auditoria
 
 router = APIRouter(prefix="/api", tags=["grupos"])
 
@@ -188,11 +189,18 @@ def _get_grupo_or_404(
 @router.get("/grupos/{grupo_id}/estudiantes", response_model=List[EstudianteOut])
 def list_estudiantes(
     grupo_id: str,
+    request: Request,
     docente=Depends(verify_trial_active),
     db: Session = Depends(get_db),
 ):
     _get_grupo_or_404(grupo_id, docente, db)
-    return db.query(Estudiante).filter(Estudiante.id_grupo == grupo_id).all()
+    estudiantes = db.query(Estudiante).filter(Estudiante.id_grupo == grupo_id).all()
+    registrar_auditoria(
+        db, docente.id_docente, "ver_estudiante",
+        recurso_tipo="grupo", recurso_id=grupo_id,
+        ip=obtener_ip_cliente(request),
+    )
+    return estudiantes
 
 
 @router.post("/grupos/{grupo_id}/estudiantes", response_model=EstudianteOut, status_code=201)
@@ -215,6 +223,7 @@ def update_estudiante(
     grupo_id: str,
     estudiante_id: str,
     data: EstudianteUpdate,
+    request: Request,
     docente=Depends(verify_trial_active),
     db: Session = Depends(get_db),
 ):
@@ -230,6 +239,11 @@ def update_estudiante(
         setattr(est, field, value)
     db.commit()
     db.refresh(est)
+    registrar_auditoria(
+        db, docente.id_docente, "editar_estudiante",
+        recurso_tipo="estudiante", recurso_id=estudiante_id,
+        ip=obtener_ip_cliente(request),
+    )
     return est
 
 

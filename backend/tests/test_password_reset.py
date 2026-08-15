@@ -176,6 +176,6 @@ def test_reset_password_token_expirado_devuelve_410(client_no_auth, db_session, 
 def test_reset_password_token_inexistente_devuelve_404(client_no_auth):
     r = client_no_auth.post(
         "/api/auth/reset-password?token=no-existe-xxx",
-        json={"password_nuevo": "cualquierClave"},
+        json={"password_nuevo": "CualquierClave1"},
     )
     assert r.status_code == 404

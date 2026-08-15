@@ -1,4 +1,5 @@
 import secrets
+import uuid
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -11,13 +12,25 @@ from sqlalchemy.orm import Session
 from config import settings
 from database import get_db
 from email_service import enviar_correo_reset_password, enviar_correo_verificacion
-from models import Docente, EmailVerification, PasswordResetToken, Suscripcion, UsoMensual
+from models import (
+    Docente, EmailVerification, PasswordResetToken, Suscripcion,
+    TokenBlacklist, UsoMensual,
+)
+from rate_limiter import limiter
 from schemas import (
     AceptarConsentimiento, ChangePassword, DocenteCreate, DocenteOut,
-    DocenteUpdate, ForgotPassword, ReenviarVerificacion, ResetPassword, Token,
+    DocenteUpdate, ForgotPassword, ReenviarVerificacion, RefreshTokenRequest,
+    ResetPassword, Token,
 )
+from security_utils import obtener_ip_cliente, registrar_auditoria
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
+
+# Alias retro-compat — el nombre original vivía en este módulo; varios
+# comentarios/tests lo referencian. La implementación real ahora está
+# en security_utils (compartida con piar.py/documento.py/grupos.py para
+# audit_log).
+_obtener_ip_cliente = obtener_ip_cliente
 
 # Ventana de vida de un token de verificación. 24h según el sprint.
 _TOKEN_VERIFICACION_HORAS = 24
@@ -49,11 +62,52 @@ def verify_password(plain: str, hashed: str) -> bool:
     return pwd_context.verify(_truncate_password(plain), hashed)
 
 
-def create_access_token(data: dict) -> str:
+def _nuevo_jti() -> str:
+    return str(uuid.uuid4())
+
+
+def create_access_token(data: dict, *, jti: Optional[str] = None) -> str:
+    """
+    Access token de vida corta (ACCESS_TOKEN_EXPIRE_MINUTES, 60 min por
+    default). Lleva `jti` (para poder blacklistearlo en logout) y
+    `type="access"` — get_current_docente rechaza cualquier token cuyo
+    type no sea exactamente este (evita que un refresh token filtrado se
+    use directamente como bearer de la API).
+    """
     payload = data.copy()
     expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    payload.update({"exp": expire})
+    payload.update({"exp": expire, "jti": jti or _nuevo_jti(), "type": "access"})
     return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
+
+def create_refresh_token(data: dict) -> str:
+    """
+    Refresh token de vida larga (REFRESH_TOKEN_EXPIRE_DAYS, 30 días por
+    default) — sólo sirve para pedir un access_token nuevo en
+    POST /api/auth/refresh, nunca como bearer directo de la API.
+    """
+    payload = data.copy()
+    expire = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    payload.update({"exp": expire, "jti": _nuevo_jti(), "type": "refresh"})
+    return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
+
+def _emitir_tokens(docente_id: str) -> tuple[str, str]:
+    """Access + refresh token para el mismo docente, cada uno con su jti."""
+    return (
+        create_access_token({"sub": docente_id}),
+        create_refresh_token({"sub": docente_id}),
+    )
+
+
+def _token_blacklisteado(db: Session, jti: Optional[str]) -> bool:
+    if not jti:
+        # Tokens emitidos ANTES de este sprint no tienen jti — no se
+        # pueden blacklistear individualmente, pero siguen expirando por
+        # su cuenta (ver ACCESS_TOKEN_EXPIRE_MINUTES). No es un caso a
+        # bloquear, es el período de transición del deploy.
+        return False
+    return db.query(TokenBlacklist).filter(TokenBlacklist.jti == jti).first() is not None
 
 
 def get_current_docente(
@@ -69,6 +123,11 @@ def get_current_docente(
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         docente_id: str = payload.get("sub")
         if not docente_id:
+            raise credentials_exception
+        # Un refresh token nunca debe funcionar como bearer de la API.
+        if payload.get("type", "access") != "access":
+            raise credentials_exception
+        if _token_blacklisteado(db, payload.get("jti")):
             raise credentials_exception
     except JWTError:
         raise credentials_exception
@@ -159,11 +218,16 @@ def verify_trial_active(
 
 
 def verify_token_for_socket(token: str, db: Session) -> Optional[Docente]:
-    """Verifica token JWT para conexiones WebSocket."""
+    """Verifica token JWT para conexiones WebSocket. Mismas reglas que
+    get_current_docente: sólo access tokens no blacklisteados."""
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         docente_id: str = payload.get("sub")
         if not docente_id:
+            return None
+        if payload.get("type", "access") != "access":
+            return None
+        if _token_blacklisteado(db, payload.get("jti")):
             return None
         return db.query(Docente).filter(Docente.id_docente == docente_id).first()
     except JWTError:
@@ -215,23 +279,12 @@ def _crear_token_reset_password(
     return f"{base}/nueva-password.html?token={token}"
 
 
-def _obtener_ip_cliente(request: Request) -> Optional[str]:
-    """
-    Extrae la IP del cliente respetando proxies confiables (Railway pone
-    X-Forwarded-For). Se guarda para auditoría de consentimiento Ley 1581.
-    """
-    xff = request.headers.get("x-forwarded-for")
-    if xff:
-        # X-Forwarded-For puede ser una lista: "client, proxy1, proxy2".
-        # El cliente es siempre el primero.
-        return xff.split(",")[0].strip()[:45]
-    if request.client and request.client.host:
-        return request.client.host[:45]
-    return None
-
-
 @router.post("/register", response_model=Token, status_code=status.HTTP_201_CREATED)
-def register(data: DocenteCreate, request: Request, db: Session = Depends(get_db)):
+@limiter.limit("3/hour")
+def register(
+    data: DocenteCreate, request: Request, response: Response,
+    db: Session = Depends(get_db),
+):
     # Consentimiento Ley 1581 — obligatorio para nuevos registros.
     # Grandfathered (docentes previos al deploy) aceptan post-login vía
     # POST /aceptar-consentimiento; ese path NO pasa por este endpoint.
@@ -279,9 +332,10 @@ def register(data: DocenteCreate, request: Request, db: Session = Depends(get_db
 
     # Emitimos el JWT igual — el frontend redirige a "verifica tu correo"
     # y la mayoría de endpoints exigen get_current_docente_verificado.
-    token = create_access_token({"sub": docente.id_docente})
+    access_token, refresh_token = _emitir_tokens(docente.id_docente)
     return Token(
-        access_token=token,
+        access_token=access_token,
+        refresh_token=refresh_token,
         token_type="bearer",
         docente=DocenteOut.model_validate(docente),
     )
@@ -385,7 +439,13 @@ def aceptar_consentimiento(
 
 
 @router.post("/login", response_model=Token)
-def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+@limiter.limit("5/15minutes")
+def login(
+    request: Request,
+    response: Response,
+    form: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(get_db),
+):
     docente = db.query(Docente).filter(Docente.email == form.username).first()
 
     if not docente or not verify_password(form.password, docente.password_hash):
@@ -394,12 +454,94 @@ def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get
             detail="Credenciales inválidas",
         )
 
-    token = create_access_token({"sub": docente.id_docente})
+    access_token, refresh_token = _emitir_tokens(docente.id_docente)
+    registrar_auditoria(
+        db, docente.id_docente, "login", ip=obtener_ip_cliente(request),
+    )
     return Token(
-        access_token=token,
+        access_token=access_token,
+        refresh_token=refresh_token,
         token_type="bearer",
         docente=DocenteOut.model_validate(docente),
     )
+
+
+@router.post("/refresh", response_model=Token)
+@limiter.limit("10/hour")
+def refresh_token_endpoint(
+    request: Request,
+    response: Response,
+    data: RefreshTokenRequest,
+    db: Session = Depends(get_db),
+):
+    """
+    Cambia un refresh token vigente por un access_token nuevo (sin
+    rotación — el mismo refresh_token se puede reusar hasta su propia
+    expiración a los 30 días, o hasta que el docente cierre sesión).
+    """
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Refresh token inválido o expirado",
+    )
+    try:
+        payload = jwt.decode(
+            data.refresh_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM],
+        )
+    except JWTError:
+        raise credentials_exception
+
+    if payload.get("type") != "refresh":
+        raise credentials_exception
+    if _token_blacklisteado(db, payload.get("jti")):
+        raise credentials_exception
+
+    docente_id = payload.get("sub")
+    docente = db.query(Docente).filter(Docente.id_docente == docente_id).first() if docente_id else None
+    if not docente:
+        raise credentials_exception
+
+    nuevo_access = create_access_token({"sub": docente.id_docente})
+    return Token(
+        access_token=nuevo_access,
+        refresh_token=data.refresh_token,
+        token_type="bearer",
+        docente=DocenteOut.model_validate(docente),
+    )
+
+
+@router.post("/logout")
+def logout(
+    request: Request,
+    token: str = Depends(oauth2_scheme),
+    docente: Docente = Depends(get_current_docente),
+    db: Session = Depends(get_db),
+):
+    """
+    Blacklistea el access token actual — cualquier request posterior con
+    este mismo token (incluidas conexiones de socket) recibe 401. El
+    refresh token asociado sigue vivo (el frontend puede pedir uno
+    nuevo); si se quiere cerrar sesión "en todos lados" hay que además
+    descartar el refresh token del lado del cliente.
+    """
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Token inválido")
+
+    jti = payload.get("jti")
+    exp = payload.get("exp")
+    if jti and exp:
+        ya_blacklisteado = db.query(TokenBlacklist).filter(TokenBlacklist.jti == jti).first()
+        if not ya_blacklisteado:
+            db.add(TokenBlacklist(
+                jti=jti, expires_at=datetime.utcfromtimestamp(exp),
+            ))
+            db.commit()
+
+    registrar_auditoria(
+        db, docente.id_docente, "logout", ip=obtener_ip_cliente(request),
+    )
+    return {"mensaje": "Sesión cerrada correctamente"}
 
 
 @router.get("/me", response_model=DocenteOut)
@@ -451,9 +593,11 @@ def cambiar_password(
 
 
 @router.post("/forgot-password")
+@limiter.limit("3/hour")
 def forgot_password(
-    data: ForgotPassword,
     request: Request,
+    response: Response,
+    data: ForgotPassword,
     db: Session = Depends(get_db),
 ):
     """

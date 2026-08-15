@@ -22,7 +22,7 @@ def test_registro_crea_docente_con_trial_7_dias(client_no_auth):
     r = client_no_auth.post("/api/auth/register", json={
         "nombre_completo": "Docente Nuevo",
         "email": "nuevo-trial@test.com",
-        "password": "clave1234",
+        "password": "Clave1234",
         "consentimiento_datos": True,
     })
     assert r.status_code == 201

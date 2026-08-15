@@ -21,10 +21,14 @@ import socketio
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from config import settings
 from database import create_tables
 from migrate import apply_migrations, seed_pro_user
+from rate_limiter import limiter
 
 # Importar routers
 import admin
@@ -61,23 +65,92 @@ app = FastAPI(
 )
 
 # ============================================================
-# CORS
+# RATE LIMITING (slowapi) — sprint seguridad-avanzada
+# El Limiter vive en rate_limiter.py (evita import circular con auth.py,
+# que lo usa para decorar login/register/forgot-password/refresh).
+# key_func=get_remote_address → límite por IP, no por docente (todavía
+# no hay sesión en esos endpoints).
 # ============================================================
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        settings.FRONTEND_URL,
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# ============================================================
+# CORS — restrictivo (sprint seguridad-avanzada)
+# En producción SOLO el dominio real de Maestr.ia. Los orígenes de
+# desarrollo local (localhost/127.0.0.1) sólo se agregan cuando
+# ENVIRONMENT=development — nunca en el deploy de Railway.
+# ============================================================
+
+_CORS_ORIGINS_PROD = [
+    "https://usemaestria.co",
+    "https://www.usemaestria.co",
+]
+if settings.FRONTEND_URL not in _CORS_ORIGINS_PROD:
+    _CORS_ORIGINS_PROD.append(settings.FRONTEND_URL)
+
+origins = list(_CORS_ORIGINS_PROD)
+if settings.ENVIRONMENT == "development":
+    origins.extend([
         "http://localhost:8000",
         "http://127.0.0.1:8000",
         "http://localhost:8080",
         "http://127.0.0.1:5500",
         "http://localhost:5500",
-    ],
+        "http://localhost:3000",
+    ])
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_headers=["Authorization", "Content-Type"],
 )
+
+# ============================================================
+# SECURITY HEADERS — sprint seguridad-avanzada
+# Protección contra XSS, clickjacking y MIME sniffing en TODAS las
+# respuestas.
+#
+# El CSP whitelistea exactamente los recursos externos que el frontend
+# ya carga hoy (auditado con grep sobre frontend/*.html) — un CSP que
+# sólo cubriera 'self' + checkout.wompi.co habría roto el sitio entero
+# en el primer request real:
+#   script-src: cdn.socket.io (chat en vivo), cdn.tailwindcss.com
+#     (Tailwind vía CDN, usado en casi todas las páginas), cdn.jsdelivr.net
+#     (marked.js, parser de Markdown del chat), cdnjs.cloudflare.com
+#     (Font Awesome), checkout.wompi.co (widget de pago).
+#   style-src / font-src: cdnjs.cloudflare.com (CSS + webfonts de Font
+#     Awesome, cargados por <link>/@font-face).
+#   connect-src / frame-src: checkout.wompi.co (el checkout de Wompi se
+#     embebe/redirige desde precios.html/cuenta.html).
+# ============================================================
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' "
+            "https://checkout.wompi.co https://cdn.socket.io "
+            "https://cdn.tailwindcss.com https://cdn.jsdelivr.net "
+            "https://cdnjs.cloudflare.com; "
+            "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; "
+            "font-src 'self' data: https://cdnjs.cloudflare.com; "
+            "img-src 'self' data: https:; "
+            "connect-src 'self' https://checkout.wompi.co; "
+            "frame-src https://checkout.wompi.co;"
+        )
+        return response
+
+
+app.add_middleware(SecurityHeadersMiddleware)
 
 # ============================================================
 # CACHE-CONTROL — assets/ y css/ (logo, icon, brand.css, main.css)
@@ -141,6 +214,8 @@ def on_startup():
     print("✅ Tablas creadas / verificadas")
     apply_migrations()
     seed_pro_user()
+    from cleanup_token_blacklist import limpiar_blacklist_expirados
+    limpiar_blacklist_expirados()
     print(f"🌐 Frontend servido desde: {FRONTEND_DIR}")
     import llm
     proveedor = llm.proveedor_activo()

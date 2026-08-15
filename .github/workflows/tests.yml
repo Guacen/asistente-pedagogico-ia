@@ -28,3 +28,27 @@ jobs:
       - name: Run pytest
         working-directory: backend
         run: python -m pytest tests/ -v
+
+      - name: Dependency vulnerability scan (pip-audit)
+        working-directory: backend
+        run: |
+          pip install pip-audit
+          # Audita los paquetes YA instalados en este entorno (los mismos
+          # de requirements.txt) — evita reconstruir un venv desde cero
+          # con `-r requirements.txt`, que falla en runners sin toolchain
+          # de compilación para paquetes con extensión nativa. Paso
+          # obligatorio: cualquier CVE conocido corta el pipeline.
+          pip-audit --strict
+
+      - name: Dependency vulnerability scan (safety)
+        working-directory: backend
+        continue-on-error: true
+        run: |
+          pip install safety
+          # `safety check` (modo legacy) no requiere API key, a diferencia
+          # de `safety scan`. Se corre como señal adicional pero
+          # non-blocking: safety puede requerir autenticación según la
+          # versión/política vigente del servicio y no debe tumbar CI por
+          # una dependencia externa fuera de nuestro control. pip-audit
+          # (arriba) es el chequeo obligatorio real de este pipeline.
+          safety check --full-report || true
