@@ -18,7 +18,7 @@ import re
 from datetime import datetime
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -26,6 +26,7 @@ from sqlalchemy.orm import Session
 from auth import verify_trial_active
 from database import get_db
 from models import Calificacion, Docente, Estudiante, EvaluacionColumna, Grupo
+from security_utils import obtener_ip_cliente, registrar_auditoria
 
 router = APIRouter(prefix="/api", tags=["documentos"])
 
@@ -553,6 +554,7 @@ def _inline_runs(paragraph, text: str):
 async def generar_documento(
     grupo_id: str,
     body: GenerarDocumentoRequest,
+    request: Request,
     docente: Docente = Depends(verify_trial_active),
     db: Session = Depends(get_db),
 ):
@@ -582,6 +584,12 @@ async def generar_documento(
     # Nombre de archivo seguro
     safe = re.sub(r'[^\w\s-]', '', titulo).strip().replace(' ', '_')[:60] or 'documento'
     filename = f"{safe}.docx"
+
+    registrar_auditoria(
+        db, docente.id_docente, "exportar_docx",
+        recurso_tipo="grupo", recurso_id=grupo_id,
+        ip=obtener_ip_cliente(request),
+    )
 
     return StreamingResponse(
         io.BytesIO(docx_bytes),

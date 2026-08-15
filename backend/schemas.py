@@ -2,7 +2,9 @@ import math
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, EmailStr, computed_field
+from pydantic import BaseModel, EmailStr, Field, computed_field, field_validator
+
+from security_utils import sanitizar_texto, validar_password_fuerte
 
 
 # ============================================================
@@ -10,8 +12,8 @@ from pydantic import BaseModel, EmailStr, computed_field
 # ============================================================
 
 class DocenteCreate(BaseModel):
-    nombre_completo: str
-    email: EmailStr
+    nombre_completo: str = Field(max_length=100)
+    email: EmailStr = Field(max_length=254)
     password: str
     # Sprint email-verification-consent — Ley 1581.
     # Requerido para nuevos registros. El caller (auth.register) valida
@@ -19,12 +21,33 @@ class DocenteCreate(BaseModel):
     # momento del deploy quedan con NULL y aceptan via banner post-login.
     consentimiento_datos: bool = False
 
+    @field_validator("nombre_completo")
+    @classmethod
+    def _sanitizar_nombre(cls, v: str) -> str:
+        limpio = sanitizar_texto(v, 100) or ""
+        if not limpio:
+            raise ValueError("El nombre no puede estar vacío.")
+        return limpio
+
+    @field_validator("password")
+    @classmethod
+    def _validar_password(cls, v: str) -> str:
+        error = validar_password_fuerte(v)
+        if error:
+            raise ValueError(error)
+        return v
+
 
 class DocenteUpdate(BaseModel):
-    nombre_completo: Optional[str] = None
-    institucion: Optional[str] = None
-    ciudad: Optional[str] = None
-    departamento: Optional[str] = None
+    nombre_completo: Optional[str] = Field(default=None, max_length=100)
+    institucion: Optional[str] = Field(default=None, max_length=200)
+    ciudad: Optional[str] = Field(default=None, max_length=100)
+    departamento: Optional[str] = Field(default=None, max_length=100)
+
+    @field_validator("nombre_completo", "institucion", "ciudad", "departamento")
+    @classmethod
+    def _sanitizar(cls, v: Optional[str]) -> Optional[str]:
+        return sanitizar_texto(v, 200) if v is not None else v
 
 
 def _dias_restantes_trial(plan: str, trial_ends_at: Optional[datetime]) -> int:
@@ -65,11 +88,25 @@ class ChangePassword(BaseModel):
     password_actual: str
     password_nuevo: str
 
+    @field_validator("password_nuevo")
+    @classmethod
+    def _validar_password_nuevo(cls, v: str) -> str:
+        error = validar_password_fuerte(v)
+        if error:
+            raise ValueError(error)
+        return v
+
 
 class Token(BaseModel):
     access_token: str
+    refresh_token: str
     token_type: str
     docente: DocenteOut
+
+
+# ── Sprint seguridad-avanzada — refresh token ──
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
 
 
 # ── Sprint trial-7-dias ──
@@ -99,15 +136,23 @@ class ForgotPassword(BaseModel):
 class ResetPassword(BaseModel):
     password_nuevo: str
 
+    @field_validator("password_nuevo")
+    @classmethod
+    def _validar_password_nuevo(cls, v: str) -> str:
+        error = validar_password_fuerte(v)
+        if error:
+            raise ValueError(error)
+        return v
+
 
 # ============================================================
 # GRUPOS
 # ============================================================
 
 class GrupoCreate(BaseModel):
-    nombre_grupo: str
-    grado: str
-    asignatura: str
+    nombre_grupo: str = Field(max_length=100)
+    grado: str = Field(max_length=10)
+    asignatura: str = Field(max_length=50)
     anio_lectivo: int
     periodo_actual: int = 1
     cantidad_estudiantes: int
@@ -117,15 +162,25 @@ class GrupoCreate(BaseModel):
     # se crea el grupo (comportamiento pre-fix).
     estudiantes: List["EstudianteCreate"] = []
 
+    @field_validator("nombre_grupo")
+    @classmethod
+    def _sanitizar_nombre_grupo(cls, v: str) -> str:
+        return sanitizar_texto(v, 100) or v
+
 
 class GrupoUpdate(BaseModel):
-    nombre_grupo: Optional[str] = None
+    nombre_grupo: Optional[str] = Field(default=None, max_length=100)
     grado: Optional[str] = None
     asignatura: Optional[str] = None
     anio_lectivo: Optional[int] = None
     periodo_actual: Optional[int] = None
     cantidad_estudiantes: Optional[int] = None
     recursos_disponibles: Optional[List[str]] = None
+
+    @field_validator("nombre_grupo")
+    @classmethod
+    def _sanitizar_nombre_grupo(cls, v: Optional[str]) -> Optional[str]:
+        return sanitizar_texto(v, 100) if v is not None else v
 
 
 class GrupoOut(BaseModel):
@@ -148,19 +203,29 @@ class GrupoOut(BaseModel):
 # ============================================================
 
 class EstudianteCreate(BaseModel):
-    codigo_estudiante: str
-    genero: Optional[str] = None
+    codigo_estudiante: str = Field(max_length=100)
+    genero: Optional[str] = Field(default=None, max_length=20)
     tiene_piar: bool = False
-    diagnostico: Optional[str] = None
-    ajustes: Optional[str] = None
+    diagnostico: Optional[str] = Field(default=None, max_length=5000)
+    ajustes: Optional[str] = Field(default=None, max_length=5000)
+
+    @field_validator("codigo_estudiante", "genero", "diagnostico", "ajustes")
+    @classmethod
+    def _sanitizar(cls, v: Optional[str]) -> Optional[str]:
+        return sanitizar_texto(v, 5000) if v is not None else v
 
 
 class EstudianteUpdate(BaseModel):
-    codigo_estudiante: Optional[str] = None
-    genero: Optional[str] = None
+    codigo_estudiante: Optional[str] = Field(default=None, max_length=100)
+    genero: Optional[str] = Field(default=None, max_length=20)
     tiene_piar: Optional[bool] = None
-    diagnostico: Optional[str] = None
-    ajustes: Optional[str] = None
+    diagnostico: Optional[str] = Field(default=None, max_length=5000)
+    ajustes: Optional[str] = Field(default=None, max_length=5000)
+
+    @field_validator("codigo_estudiante", "genero", "diagnostico", "ajustes")
+    @classmethod
+    def _sanitizar(cls, v: Optional[str]) -> Optional[str]:
+        return sanitizar_texto(v, 5000) if v is not None else v
 
 
 class EstudianteOut(BaseModel):
@@ -198,7 +263,12 @@ class MensajeOut(BaseModel):
 # ============================================================
 
 class NotaCreate(BaseModel):
-    contenido: str
+    contenido: str = Field(max_length=5000)
+
+    @field_validator("contenido")
+    @classmethod
+    def _sanitizar_contenido(cls, v: str) -> str:
+        return sanitizar_texto(v, 5000) or v
 
 
 class NotaOut(BaseModel):

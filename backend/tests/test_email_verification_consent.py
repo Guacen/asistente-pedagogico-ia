@@ -109,7 +109,7 @@ def test_register_sin_consentimiento_devuelve_400(client_no_auth):
     r = client_no_auth.post("/api/auth/register", json={
         "nombre_completo": "Sin Consentimiento",
         "email": "sin@test.com",
-        "password": "supersegura",
+        "password": "Supersegura1",
         # consentimiento_datos ausente → default False
     })
     assert r.status_code == 400
@@ -128,7 +128,7 @@ def test_register_con_consentimiento_crea_docente_no_verificado(
     r = client_no_auth.post("/api/auth/register", json={
         "nombre_completo": "Con Consentimiento",
         "email": "con@test.com",
-        "password": "supersegura",
+        "password": "Supersegura1",
         "consentimiento_datos": True,
     })
     assert r.status_code in (200, 201), r.text
@@ -150,7 +150,7 @@ def test_register_crea_token_verificacion_con_24h_ttl(client_no_auth, db_session
 
     r = client_no_auth.post("/api/auth/register", json={
         "nombre_completo": "Token TTL", "email": "ttl@test.com",
-        "password": "supersegura", "consentimiento_datos": True,
+        "password": "Supersegura1", "consentimiento_datos": True,
     })
     assert r.status_code in (200, 201)
     doc = db_session.query(Docente).filter_by(email="ttl@test.com").first()
@@ -171,7 +171,7 @@ def test_me_bloqueado_si_email_no_verificado(client_no_auth):
     """Después del registro, /me devuelve 401 con code=email_no_verificado."""
     r_reg = client_no_auth.post("/api/auth/register", json={
         "nombre_completo": "Bloqueado", "email": "bloq@test.com",
-        "password": "supersegura", "consentimiento_datos": True,
+        "password": "Supersegura1", "consentimiento_datos": True,
     })
     token = r_reg.json()["access_token"]
 
@@ -186,7 +186,7 @@ def test_me_raw_funciona_aunque_no_verificado(client_no_auth):
     """/me-raw es la variante para la landing de verificación."""
     r_reg = client_no_auth.post("/api/auth/register", json={
         "nombre_completo": "Raw", "email": "raw@test.com",
-        "password": "supersegura", "consentimiento_datos": True,
+        "password": "Supersegura1", "consentimiento_datos": True,
     })
     token = r_reg.json()["access_token"]
 
@@ -205,7 +205,7 @@ def test_verificar_email_con_token_valido_marca_verificado(client_no_auth, db_se
 
     client_no_auth.post("/api/auth/register", json={
         "nombre_completo": "Verif OK", "email": "vok@test.com",
-        "password": "supersegura", "consentimiento_datos": True,
+        "password": "Supersegura1", "consentimiento_datos": True,
     })
     doc = db_session.query(Docente).filter_by(email="vok@test.com").first()
     verif = db_session.query(EmailVerification).filter_by(id_docente=doc.id_docente).first()
@@ -228,7 +228,7 @@ def test_verificar_email_dos_veces_es_idempotente(client_no_auth, db_session):
 
     client_no_auth.post("/api/auth/register", json={
         "nombre_completo": "Idem", "email": "idem@test.com",
-        "password": "supersegura", "consentimiento_datos": True,
+        "password": "Supersegura1", "consentimiento_datos": True,
     })
     doc = db_session.query(Docente).filter_by(email="idem@test.com").first()
     verif = db_session.query(EmailVerification).filter_by(id_docente=doc.id_docente).first()
@@ -249,7 +249,7 @@ def test_verificar_email_token_expirado_devuelve_410(client_no_auth, db_session)
 
     client_no_auth.post("/api/auth/register", json={
         "nombre_completo": "Expirado", "email": "exp@test.com",
-        "password": "supersegura", "consentimiento_datos": True,
+        "password": "Supersegura1", "consentimiento_datos": True,
     })
     doc = db_session.query(Docente).filter_by(email="exp@test.com").first()
     verif = db_session.query(EmailVerification).filter_by(id_docente=doc.id_docente).first()
@@ -268,7 +268,7 @@ def test_me_pasa_despues_de_verificar(client_no_auth, db_session):
 
     r_reg = client_no_auth.post("/api/auth/register", json={
         "nombre_completo": "Ya Verificó", "email": "yav@test.com",
-        "password": "supersegura", "consentimiento_datos": True,
+        "password": "Supersegura1", "consentimiento_datos": True,
     })
     token = r_reg.json()["access_token"]
     doc = db_session.query(Docente).filter_by(email="yav@test.com").first()
@@ -291,7 +291,7 @@ def test_reenviar_verificacion_email_conocido_crea_nuevo_token(client_no_auth, d
 
     client_no_auth.post("/api/auth/register", json={
         "nombre_completo": "Reenviar", "email": "reenv@test.com",
-        "password": "supersegura", "consentimiento_datos": True,
+        "password": "Supersegura1", "consentimiento_datos": True,
     })
     doc = db_session.query(Docente).filter_by(email="reenv@test.com").first()
 
@@ -320,7 +320,7 @@ def test_reenviar_verificacion_email_ya_verificado_no_crea_token(client_no_auth,
 
     client_no_auth.post("/api/auth/register", json={
         "nombre_completo": "Ya", "email": "ya@test.com",
-        "password": "supersegura", "consentimiento_datos": True,
+        "password": "Supersegura1", "consentimiento_datos": True,
     })
     doc = db_session.query(Docente).filter_by(email="ya@test.com").first()
     doc.email_verificado = True

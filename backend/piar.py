@@ -22,7 +22,7 @@ import re
 from datetime import datetime
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -33,6 +33,7 @@ from ia import client as anthropic_client
 from config import settings
 from models import Docente, Estudiante, Grupo, Mensaje, PIAR
 from prompts import MODO_PIAR
+from security_utils import obtener_ip_cliente, registrar_auditoria
 
 router = APIRouter(prefix="/api/piar", tags=["piar"])
 
@@ -533,6 +534,7 @@ def _construir_piar_docx(
 @router.post("/", response_model=PIAROut, status_code=201)
 async def crear_piar(
     body: PIARCreateRequest,
+    request: Request,
     docente: Docente = Depends(verify_trial_active),
     db: Session = Depends(get_db),
 ):
@@ -613,12 +615,19 @@ async def crear_piar(
     db.add(piar)
     db.commit()
     db.refresh(piar)
+
+    registrar_auditoria(
+        db, docente.id_docente, "generar_piar",
+        recurso_tipo="piar", recurso_id=piar.id_piar,
+        ip=obtener_ip_cliente(request),
+    )
     return piar
 
 
 @router.get("/estudiante/{id_estudiante}", response_model=List[PIARResumenOut])
 def listar_por_estudiante(
     id_estudiante: str,
+    request: Request,
     docente: Docente = Depends(verify_trial_active),
     db: Session = Depends(get_db),
 ):
@@ -661,6 +670,11 @@ def listar_por_estudiante(
         .order_by(PIAR.anio.desc(), PIAR.periodo.desc(), PIAR.version.desc())
         .all()
     )
+    registrar_auditoria(
+        db, docente.id_docente, "ver_piar",
+        recurso_tipo="estudiante", recurso_id=id_estudiante,
+        ip=obtener_ip_cliente(request),
+    )
     return piars
 
 
@@ -698,6 +712,7 @@ def aprobar_piar(
 @router.get("/{piar_id}/docx")
 def descargar_docx(
     piar_id: str,
+    request: Request,
     docente: Docente = Depends(verify_trial_active),
     db: Session = Depends(get_db),
 ):
@@ -721,6 +736,12 @@ def descargar_docx(
 
     safe = re.sub(r"[^\w\s-]", "", estudiante.codigo_estudiante).strip().replace(" ", "_")[:40]
     filename = f"PIAR_{safe or 'estudiante'}_P{piar.periodo}_v{piar.version}.docx"
+
+    registrar_auditoria(
+        db, docente.id_docente, "exportar_docx",
+        recurso_tipo="piar", recurso_id=piar_id,
+        ip=obtener_ip_cliente(request),
+    )
 
     return StreamingResponse(
         io.BytesIO(docx_bytes),

@@ -26,7 +26,7 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 
 from auth import verify_trial_active
@@ -34,6 +34,7 @@ from database import get_db
 from documento import _docx_bytes
 from models import Docente, Estudiante, Grupo, Observacion
 from prompts import PROMPT_BASE, PROMPT_MODO_OBSERVACIONES
+from security_utils import sanitizar_texto
 
 router = APIRouter(prefix="/api/observaciones", tags=["observaciones"])
 
@@ -57,7 +58,15 @@ class ObservacionCreate(BaseModel):
     id_grupo: str
     id_estudiante: Optional[str] = None  # nullable — puede ser grupal
     tipo: str
-    situacion_descrita: str = Field(min_length=1)
+    situacion_descrita: str = Field(min_length=1, max_length=5000)
+
+    @field_validator("situacion_descrita")
+    @classmethod
+    def _sanitizar_situacion(cls, v: str) -> str:
+        limpio = sanitizar_texto(v, 5000) or ""
+        if not limpio:
+            raise ValueError("La situación descrita no puede estar vacía.")
+        return limpio
 
 
 class ObservacionUpdate(BaseModel):

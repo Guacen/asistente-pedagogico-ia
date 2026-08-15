@@ -224,6 +224,13 @@ def apply_migrations():
     from models import TransaccionPago  # noqa: F401
     Base.metadata.create_all(bind=engine, tables=[TransaccionPago.__table__])
 
+    # ── Sprint seguridad-avanzada ──
+    # 2 tablas nuevas, sin ALTER TABLE necesario — create_all idempotente.
+    from models import AuditLog, TokenBlacklist  # noqa: F401
+    Base.metadata.create_all(bind=engine, tables=[
+        TokenBlacklist.__table__, AuditLog.__table__,
+    ])
+
     # Backfill uni-personal: cada docente sin id_institucion recibe una
     # Institucion nueva a su nombre. Idempotente — si ya tiene, no toca.
     _backfill_instituciones_unipersonales()
@@ -248,6 +255,10 @@ def apply_migrations():
         print("✅ Migración: tabla 'dbas' verificada/creada")
     if "mallas_curriculares" in inspector.get_table_names():
         print("✅ Migración: tabla 'mallas_curriculares' verificada/creada")
+    if "token_blacklist" in inspector.get_table_names():
+        print("✅ Migración: tabla 'token_blacklist' verificada/creada")
+    if "audit_log" in inspector.get_table_names():
+        print("✅ Migración: tabla 'audit_log' verificada/creada")
 
     print("✅ Migraciones aplicadas")
 

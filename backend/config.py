@@ -10,10 +10,14 @@ class Settings(BaseSettings):
     # Producción (Railway): postgresql://user:pass@host:5432/db
     DATABASE_URL: str = "sqlite:///./asistente_pedagogico.db"
 
-    # JWT
+    # JWT — sprint seguridad-avanzada: access token de vida corta (60 min)
+    # + refresh token de 30 días para no forzar re-login constante. Antes
+    # el access token vivía 7 días sin blacklist real — una filtración de
+    # token quedaba válida una semana entera.
     SECRET_KEY: str = "cambia-esta-clave-en-produccion"
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 10080  # 7 días
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 30
 
     # Prueba gratuita self-service — sprint trial-7-dias.
     TRIAL_DIAS: int = 7

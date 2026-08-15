@@ -45,6 +45,7 @@ from prompts import (
     MODOS_ACTIVOS,
     normalizar_modo,
 )
+from security_utils import sanitizar_mensaje_chat
 
 # ============================================================
 # INSTANCIA DE SOCKET.IO
@@ -364,7 +365,10 @@ async def send_message(sid, data):
     y emite los chunks en tiempo real.
     """
     grupo_id = data.get("grupo_id")
-    mensaje_texto = (data.get("mensaje") or "").strip()
+    # Sanitización (sprint seguridad-avanzada): quita HTML/scripts, trunca
+    # a 2000 chars y remueve patrones conocidos de prompt injection ANTES
+    # de persistir el mensaje y de que llegue al LLM.
+    mensaje_texto = sanitizar_mensaje_chat((data.get("mensaje") or "").strip())
     # Normaliza el modo: si el frontend no lo envía o envía basura → planeacion.
     # Cualquier modo no aceptado explícitamente cae al DEFAULT en vez de fallar,
     # así el pipeline queda a prueba de clientes desactualizados.

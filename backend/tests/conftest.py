@@ -34,14 +34,30 @@ def test_engine():
     )
     from database import Base
     from models import (  # noqa: F401 — asegura registro de tablas en Base
-        Archivo, Calificacion, ChatSesion, DBA, Docente, EmailVerification,
-        Estudiante, EvaluacionColumna, Grupo, Institucion, MallaCurricular,
-        MallaItem, Mensaje, Nota, Observacion, PIAR, PasswordResetToken,
-        RateLimitCounter, SeguimientoDBA, Suscripcion, TransaccionPago, UsoMensual,
+        Archivo, AuditLog, Calificacion, ChatSesion, DBA, Docente,
+        EmailVerification, Estudiante, EvaluacionColumna, Grupo, Institucion,
+        MallaCurricular, MallaItem, Mensaje, Nota, Observacion, PIAR,
+        PasswordResetToken, RateLimitCounter, SeguimientoDBA, Suscripcion,
+        TokenBlacklist, TransaccionPago, UsoMensual,
     )
     Base.metadata.create_all(bind=engine)
     yield engine
     engine.dispose()
+
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limiter():
+    """
+    slowapi.Limiter guarda sus contadores en memoria a nivel de proceso
+    (no por-test) — sin este reset, un test que agota un límite (p.ej.
+    login 5/15min) dejaría a los tests siguientes recibiendo 429 aunque
+    usen datos completamente distintos, porque TestClient siempre pega
+    desde la misma "IP" (request.client.host == 'testclient').
+    """
+    from rate_limiter import limiter
+    limiter.reset()
+    yield
+    limiter.reset()
 
 
 @pytest.fixture(scope="function")
