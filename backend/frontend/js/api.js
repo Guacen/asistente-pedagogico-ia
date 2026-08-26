@@ -6,27 +6,95 @@
 class ApiClient {
     constructor(baseUrl) {
         this.baseUrl = baseUrl;
+        // Promesa compartida del refresh en curso — si dos llamadas
+        // reciben 401 casi al mismo tiempo (típico al cargar una página
+        // con varios fetch en paralelo), ambas esperan el MISMO refresh
+        // en vez de disparar dos POST /api/auth/refresh (limitado a
+        // 10/hora en el backend).
+        this._refreshInFlight = null;
     }
-    
+
     // Obtener token del localStorage
     getToken() {
         return localStorage.getItem('token');
     }
-    
+
     // Guardar token
     setToken(token) {
         localStorage.setItem('token', token);
     }
-    
+
     // Eliminar token
     removeToken() {
         localStorage.removeItem('token');
     }
-    
+
+    // Refresh token (sprint seguridad-avanzada) — vida larga (30 días),
+    // sólo sirve para pedir un access_token nuevo, nunca como bearer.
+    getRefreshToken() {
+        return localStorage.getItem('refresh_token');
+    }
+
+    setRefreshToken(token) {
+        if (token) localStorage.setItem('refresh_token', token);
+    }
+
+    removeRefreshToken() {
+        localStorage.removeItem('refresh_token');
+    }
+
+    // Intercambia el refresh_token guardado por un access_token nuevo.
+    // Devuelve true/false — nunca lanza (los llamadores sólo necesitan
+    // saber si pueden reintentar o no).
+    async refreshToken() {
+        const refreshToken = this.getRefreshToken();
+        if (!refreshToken) return false;
+
+        if (!this._refreshInFlight) {
+            this._refreshInFlight = this._doRefresh(refreshToken).finally(() => {
+                this._refreshInFlight = null;
+            });
+        }
+        return this._refreshInFlight;
+    }
+
+    async _doRefresh(refreshToken) {
+        try {
+            const response = await fetch(`${this.baseUrl}/api/auth/refresh`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ refresh_token: refreshToken }),
+            });
+            if (!response.ok) return false;
+            const data = await response.json();
+            this.setToken(data.access_token);
+            this.setRefreshToken(data.refresh_token);
+            return true;
+        } catch (error) {
+            console.error('Error refrescando token:', error);
+            return false;
+        }
+    }
+
+    // Limpia la sesión local y redirige a login — última instancia
+    // cuando ni el access token ni el refresh token sirven ya.
+    // No re-navega si ya estamos en una página de guest (login/registro)
+    // para evitar loops de redirección.
+    _handleAuthFailure() {
+        this.removeToken();
+        this.removeRefreshToken();
+        localStorage.removeItem('user');
+        const path = window.location.pathname;
+        const enPaginaGuest = path.endsWith('/login.html') || path.endsWith('/registro.html');
+        if (!enPaginaGuest) {
+            window.location.replace('login.html');
+        }
+    }
+
     // Método genérico para hacer requests
     async request(endpoint, options = {}) {
         const token = this.getToken();
-        
+
         const config = {
             ...options,
             headers: {
@@ -35,9 +103,18 @@ class ApiClient {
                 ...options.headers
             }
         };
-        
+
         try {
-            const response = await fetch(`${this.baseUrl}${endpoint}`, config);
+            let response = await fetch(`${this.baseUrl}${endpoint}`, config);
+
+            // Sprint seguridad-avanzada: el access token ahora vive sólo
+            // 60 minutos (antes 7 días). Un 401 acá no necesariamente
+            // significa "sesión terminada" — casi siempre es sólo el
+            // access token vencido, así que probamos refrescarlo y
+            // reintentamos la llamada original UNA vez antes de rendirnos.
+            if (response.status === 401 && !options._isAuthRetry) {
+                response = await this._retryWithRefresh(endpoint, config, response);
+            }
 
             if (!response.ok) {
                 const error = await response.text();
@@ -59,6 +136,50 @@ class ApiClient {
             console.error('API Error:', error);
             throw error;
         }
+    }
+
+    // Maneja un 401 de `request()`: intenta refrescar el access token y
+    // reintenta la llamada original UNA vez. Si el 401 es por email no
+    // verificado, reintentar no cambia nada (es el mismo docente, sólo
+    // que no verificó su correo) — lo dejamos pasar tal cual para no
+    // gastar cuota de /api/auth/refresh sin necesidad. Si el refresh
+    // falla (refresh token vencido/inválido/ausente), cierra la sesión
+    // local y redirige a login.html.
+    async _retryWithRefresh(endpoint, config, response401) {
+        const bodyText = await response401.text();
+        let code = null;
+        try {
+            code = JSON.parse(bodyText)?.detail?.code;
+        } catch (_) {
+            // body no era JSON — seguimos, no es email_no_verificado
+        }
+
+        if (code === 'email_no_verificado') {
+            return new Response(bodyText, {
+                status: response401.status,
+                statusText: response401.statusText,
+                headers: response401.headers,
+            });
+        }
+
+        const refreshed = await this.refreshToken();
+        if (!refreshed) {
+            this._handleAuthFailure();
+            return new Response(bodyText, {
+                status: response401.status,
+                statusText: response401.statusText,
+                headers: response401.headers,
+            });
+        }
+
+        return fetch(`${this.baseUrl}${endpoint}`, {
+            ...config,
+            _isAuthRetry: true,
+            headers: {
+                ...config.headers,
+                Authorization: `Bearer ${this.getToken()}`,
+            },
+        });
     }
 
     // Sprint trial-7-dias: navega a la pantalla de bloqueo. No repite el
@@ -96,11 +217,12 @@ class ApiClient {
         
         const data = await response.json();
         this.setToken(data.access_token);
+        this.setRefreshToken(data.refresh_token);
         return data;
     }
-    
+
     async register(nombre, email, password, consentimientoDatos = false) {
-        return this.request('/api/auth/register', {
+        const data = await this.request('/api/auth/register', {
             method: 'POST',
             body: JSON.stringify({
                 nombre_completo: nombre,
@@ -109,6 +231,9 @@ class ApiClient {
                 consentimiento_datos: consentimientoDatos,
             })
         });
+        this.setToken(data.access_token);
+        this.setRefreshToken(data.refresh_token);
+        return data;
     }
 
     async getMe() {

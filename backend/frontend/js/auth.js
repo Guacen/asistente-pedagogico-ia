@@ -95,7 +95,31 @@ const Auth = {
     removeToken() {
         localStorage.removeItem('token');
     },
-    
+
+    /**
+     * Obtiene el refresh token (sprint seguridad-avanzada — vida larga,
+     * 30 días; sólo sirve para pedir un access_token nuevo).
+     * @returns {string|null} Refresh token o null
+     */
+    getRefreshToken() {
+        return localStorage.getItem('refresh_token');
+    },
+
+    /**
+     * Guarda el refresh token
+     * @param {string} token - Refresh token
+     */
+    setRefreshToken(token) {
+        if (token) localStorage.setItem('refresh_token', token);
+    },
+
+    /**
+     * Elimina el refresh token
+     */
+    removeRefreshToken() {
+        localStorage.removeItem('refresh_token');
+    },
+
     /**
      * Parsea un token JWT (sin verificar firma)
      * @param {string} token - Token JWT
@@ -218,10 +242,14 @@ const Auth = {
         try {
             // Llamar a API de login
             const response = await api.login(email, password);
-            
-            // Guardar token
+
+            // Guardar tokens — api.login() ya los guarda en localStorage
+            // (mismas keys 'token'/'refresh_token' que usa Auth), pero se
+            // repite acá explícitamente por claridad y porque Auth es la
+            // interfaz pública que usan las páginas.
             this.setToken(response.access_token);
-            
+            this.setRefreshToken(response.refresh_token);
+
             // Obtener y guardar usuario
             const user = await api.getMe();
             this.setUser(user);
@@ -244,9 +272,10 @@ const Auth = {
     logout(redirectTo = 'login.html') {
         // Obtener usuario antes de eliminar
         const user = this.getUser();
-        
+
         // Limpiar datos
         this.removeToken();
+        this.removeRefreshToken();
         this.removeUser();
         localStorage.removeItem('redirect_after_login');
         
@@ -265,6 +294,7 @@ const Auth = {
      */
     logoutSilent() {
         this.removeToken();
+        this.removeRefreshToken();
         this.removeUser();
         localStorage.removeItem('redirect_after_login');
     },
@@ -522,34 +552,40 @@ const Auth = {
     },
     
     /**
-     * Refresca el token (si el backend lo soporta)
+     * Refresca el access token usando el refresh token guardado.
+     * api.refreshToken() ya actualiza localStorage['token'] /
+     * ['refresh_token'] internamente (misma key que usa Auth), así que
+     * no hace falta sincronizar nada acá aparte de devolver el resultado.
      * @returns {Promise<boolean>} true si se refrescó correctamente
      */
     async refreshToken() {
         try {
-            // TODO: Implementar endpoint de refresh token
-            // const response = await api.refreshToken();
-            // this.setToken(response.access_token);
-            // return true;
-            
-            console.warn('Refresh token no implementado');
-            return false;
-            
+            return await api.refreshToken();
         } catch (error) {
             console.error('Error refrescando token:', error);
             return false;
         }
     },
-    
+
     /**
-     * Inicia un timer para refrescar token automáticamente
+     * Inicia un timer para refrescar token automáticamente. Complementa
+     * el refresh reactivo de api.js (que dispara ante un 401): esto
+     * refresca de forma PROACTIVA antes de que el access token expire,
+     * para que la mayoría de los docentes nunca lleguen a ver un 401.
+     * Si el refresh falla (refresh token también vencido/inválido), no
+     * fuerza logout acá — el próximo request real que reciba 401 lo hará
+     * a través de api.js (que sí sabe distinguir email_no_verificado y
+     * evita loops de redirección en páginas de guest).
      */
     startAutoRefresh() {
         // Verificar cada minuto
         setInterval(async () => {
             if (this.isTokenExpiringSoon()) {
                 console.log('Token próximo a expirar, refrescando...');
-                await this.refreshToken();
+                const ok = await this.refreshToken();
+                if (!ok) {
+                    console.warn('Auto-refresh falló — el próximo request forzará re-login.');
+                }
             }
         }, 60000); // 1 minuto
     }
@@ -570,6 +606,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (Auth.isAuthenticated()) {
         Auth.updateAuthUI();
         Auth.initLogoutButtons();
+        Auth.startAutoRefresh();
     }
 });
 
