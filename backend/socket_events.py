@@ -61,6 +61,13 @@ sio = socketio.AsyncServer(
 # Mapa sid → docente_id (para saber quién está conectado)
 _sesiones: dict = {}
 
+# Mapa sid → {"nombre": ..., "id_sesion": ...} — estudiantes SIN cuenta
+# conectados a una Presentación Interactiva (sprint
+# presentaciones-interactivas). Vive acá (no en presentacion_events.py)
+# para que connect()/disconnect() puedan limpiarlo sin generar un
+# import circular; presentacion_events.py lo importa y lo muta in-place.
+_estudiantes_presentacion: dict = {}
+
 
 # ============================================================
 # HELPERS
@@ -208,10 +215,20 @@ def _incrementar_uso(docente_id: str, db) -> None:
 
 @sio.event
 async def connect(sid, environ, auth):
-    """Valida el JWT al conectar."""
+    """
+    Valida el JWT si viene. Una conexión SIN token es válida — la usan
+    los estudiantes de Presentaciones Interactivas (sprint
+    presentaciones-interactivas), que no tienen cuenta ni JWT. No se
+    registran en `_sesiones` (eso es sólo para docentes autenticados);
+    quedan sin ningún acceso al resto de eventos del chat, que exigen
+    `_sesiones.get(sid)` para resolver el docente dueño del grupo — un
+    estudiante anónimo simplemente no tiene ese id y esas queries no
+    devuelven nada. Sólo se habilitan al emitir presentacion:unirse con
+    un código de sesión válido (ver presentacion_events.py).
+    """
     token = (auth or {}).get("token")
     if not token:
-        raise ConnectionRefusedError("Token requerido")
+        return
 
     db = SessionLocal()
     try:
@@ -227,6 +244,7 @@ async def connect(sid, environ, auth):
 @sio.event
 async def disconnect(sid):
     _sesiones.pop(sid, None)
+    _estudiantes_presentacion.pop(sid, None)
     print(f"🔴 Desconectado: sid={sid}")
 
 

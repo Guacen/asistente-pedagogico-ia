@@ -47,6 +47,10 @@
             class="flex items-center gap-2 px-3 py-2 rounded-lg border border-blue-600 text-blue-600 hover:bg-blue-50 text-sm font-semibold">
             <i class="fas fa-file-word"></i>Boletín grupo
           </button>
+          <button id="btn-crear-presentacion" onclick="abrirModalPresentacion()" title="Crear una presentación interactiva con IA"
+            class="flex items-center gap-2 px-3 py-2 rounded-lg text-white hover:opacity-90 text-sm font-semibold" style="background: var(--brand-primary);">
+            <i class="fas fa-gamepad"></i>Crear presentación
+          </button>
         </div>
       </div>
     </div>
@@ -187,6 +191,28 @@
 </div>
 
 <div id="toast-container" class="fixed bottom-6 right-6 z-50 space-y-2 pointer-events-none"></div>
+
+<!-- Modal: Crear presentación interactiva -->
+<div id="modal-presentacion" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" style="background: rgba(11,61,46,.55);">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+    <div class="flex items-center justify-between mb-1">
+      <h3 class="text-lg font-bold text-gray-900">Crear presentación interactiva</h3>
+      <button onclick="cerrarModalPresentacion()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-lg"></i></button>
+    </div>
+    <p class="text-sm text-gray-500 mb-4">La IA genera diapositivas de contenido y preguntas interactivas tipo Kahoot para tu grupo.</p>
+    <label for="modal-presentacion-tema" class="text-xs font-semibold text-gray-600 uppercase tracking-wide">Tema</label>
+    <input id="modal-presentacion-tema" type="text" maxlength="500" placeholder="Ej: La fotosíntesis, Fracciones equivalentes…"
+      class="w-full mt-1 mb-4 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-transparent"
+      style="--tw-ring-color: var(--brand-primary);">
+    <div class="flex justify-end gap-2">
+      <button onclick="cerrarModalPresentacion()" class="px-4 py-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 text-sm font-semibold">Cancelar</button>
+      <button id="btn-generar-presentacion-ia" onclick="generarPresentacionIA()"
+        class="px-4 py-2 rounded-lg text-white text-sm font-semibold hover:opacity-90" style="background: var(--brand-primary);">
+        <i class="fas fa-wand-magic-sparkles mr-1"></i>Generar con IA
+      </button>
+    </div>
+  </div>
+</div>
 
 <script src="js/config.js?v=20260803"></script>
 <script src="js/api.js?v=20260803"></script>
@@ -679,6 +705,34 @@ function escapeAttrMalla(s) {
 }
 
 cargar();
+
+function abrirModalPresentacion() {
+    document.getElementById('modal-presentacion-tema').value = '';
+    document.getElementById('modal-presentacion').classList.remove('hidden');
+}
+function cerrarModalPresentacion() {
+    document.getElementById('modal-presentacion').classList.add('hidden');
+}
+async function generarPresentacionIA() {
+    const tema = document.getElementById('modal-presentacion-tema').value.trim();
+    if (!tema) {
+        toast('Escribí un tema para generar la presentación', 'error');
+        return;
+    }
+    const btn = document.getElementById('btn-generar-presentacion-ia');
+    btn.disabled = true;
+    const original = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Generando…';
+    try {
+        const presentacion = await api.generarPresentacion(GP.grupoId, tema);
+        window.location.href = `presentacion-docente.html?id=${presentacion.id_presentacion}`;
+    } catch (err) {
+        console.error('[presentacion] error generando:', err);
+        toast('No se pudo generar la presentación — intentá de nuevo', 'error');
+        btn.disabled = false;
+        btn.innerHTML = original;
+    }
+}
 </script>
 </body>
 </html>

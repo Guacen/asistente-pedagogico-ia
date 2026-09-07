@@ -770,6 +770,47 @@ class ApiClient {
     async getEstadoPago(referencia) {
         return this.request(`/api/pagos/estado/${encodeURIComponent(referencia)}`);
     }
+
+    // ==========================================
+    // PRESENTACIONES INTERACTIVAS (sprint presentaciones-interactivas)
+    // ==========================================
+
+    async generarPresentacion(grupoId, tema, nSlidesContenido = 4) {
+        return this.request('/api/presentaciones/generar', {
+            method: 'POST',
+            body: JSON.stringify({
+                grupo_id: grupoId,
+                tema,
+                n_slides_contenido: nSlidesContenido,
+            }),
+        });
+    }
+
+    async listarPresentaciones() {
+        return this.request('/api/presentaciones/');
+    }
+
+    async obtenerPresentacion(presentacionId) {
+        return this.request(`/api/presentaciones/${presentacionId}`);
+    }
+
+    async iniciarSesionPresentacion(presentacionId) {
+        return this.request(`/api/presentaciones/${presentacionId}/iniciar`, {
+            method: 'POST',
+        });
+    }
+
+    // SIN autenticación — la usa join.html. Fetch directo (no this.request)
+    // porque no debe mandar Authorization ni pasar por el flujo de
+    // refresh de token (el estudiante nunca tiene uno).
+    async obtenerSesionPublica(codigo) {
+        const response = await fetch(`${this.baseUrl}/api/presentaciones/join/${encodeURIComponent(codigo)}`);
+        if (!response.ok) {
+            const error = await response.text();
+            throw new Error(error || `Error ${response.status}`);
+        }
+        return response.json();
+    }
 }
 
 // Crear instancia global

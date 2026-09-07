@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Unirse · Maestr.ia</title>
+    <link rel="icon" type="image/png" href="assets/icon.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/main.css?v=20260905">
+    <link rel="stylesheet" href="css/brand.css?v=20260905">
+    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+    <style>
+        body { background: var(--brand-dark); min-height: 100vh; }
+        .pantalla { display: none; }
+        .pantalla.activa { display: flex; }
+        .opcion-btn {
+            transition: transform .1s ease, filter .15s ease;
+        }
+        .opcion-btn:active { transform: scale(0.97); }
+        .opcion-btn:disabled { opacity: .55; }
+        @keyframes girar { to { transform: rotate(360deg); } }
+        .spinner { animation: girar 1s linear infinite; }
+        #barra-tiempo { transition: width 1s linear; }
+    </style>
+</head>
+<body class="text-white">
+
+<div class="min-h-screen flex items-center justify-center p-4">
+    <div class="w-full max-w-md">
+
+        <div class="text-center mb-6">
+            <img src="assets/logo-blanco.png" alt="Maestr.ia" class="h-9 mx-auto" onerror="this.style.display='none'">
+        </div>
+
+        <!-- ═══ 1. ENTRADA ═══ -->
+        <div id="pantalla-entrada" class="pantalla activa flex-col gap-4 bg-white text-gray-900 rounded-2xl shadow-2xl p-6">
+            <div class="text-center mb-2">
+                <div class="w-14 h-14 rounded-2xl mx-auto mb-3 flex items-center justify-center" style="background: var(--brand-mint);">
+                    <i class="fas fa-gamepad text-2xl" style="color: var(--brand-primary);"></i>
+                </div>
+                <h1 class="text-xl font-bold">Únete a la clase</h1>
+                <p class="text-sm text-gray-500">Ingresa el código que ves proyectado</p>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">Código de sesión</label>
+                <input id="input-codigo" type="text" maxlength="6" autocomplete="off" autocapitalize="characters"
+                    placeholder="ABC123"
+                    class="w-full text-center text-3xl font-bold tracking-[0.3em] uppercase py-3 rounded-xl border-2 border-gray-200 focus:border-[var(--brand-primary)] outline-none">
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">Tu nombre</label>
+                <input id="input-nombre" type="text" maxlength="40" autocomplete="off"
+                    placeholder="¿Cómo te llamas?"
+                    class="w-full text-lg py-3 px-4 rounded-xl border-2 border-gray-200 focus:border-[var(--brand-primary)] outline-none">
+            </div>
+
+            <p id="error-entrada" class="hidden text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2"></p>
+
+            <button id="btn-unirme" onclick="unirse()"
+                class="w-full py-3.5 rounded-xl font-bold text-white text-lg shadow-lg disabled:opacity-60"
+                style="background: var(--brand-primary);">
+                <span id="btn-unirme-texto">Unirme</span>
+                <i id="btn-unirme-spinner" class="fas fa-spinner spinner ml-2 hidden"></i>
+            </button>
+        </div>
+
+        <!-- ═══ 2. SALA DE ESPERA ═══ -->
+        <div id="pantalla-espera" class="pantalla flex-col items-center text-center gap-4 bg-white text-gray-900 rounded-2xl shadow-2xl p-8">
+            <i class="fas fa-circle-notch spinner text-4xl" style="color: var(--brand-primary);"></i>
+            <div>
+                <p class="text-lg font-bold">Conectado como <span id="espera-nombre" class="text-[var(--brand-primary)]"></span></p>
+                <p class="text-gray-500 mt-1">Esperando a que el docente inicie la pregunta…</p>
+            </div>
+        </div>
+
+        <!-- ═══ 3. PREGUNTA ACTIVA ═══ -->
+        <div id="pantalla-pregunta" class="pantalla flex-col gap-4">
+            <div class="bg-white text-gray-900 rounded-2xl shadow-2xl p-5">
+                <div class="flex items-center justify-between mb-2">
+                    <span id="pregunta-tipo-badge" class="text-xs font-bold uppercase tracking-wide px-2 py-1 rounded-full" style="background: var(--brand-mint); color: var(--brand-dark);"></span>
+                    <span id="pregunta-timer" class="hidden text-sm font-bold text-gray-500"></span>
+                </div>
+                <div id="barra-tiempo-track" class="hidden h-1.5 rounded-full bg-gray-100 mb-3 overflow-hidden">
+                    <div id="barra-tiempo" class="h-full" style="background: var(--brand-amber); width: 100%;"></div>
+                </div>
+                <p id="pregunta-texto" class="text-lg font-bold leading-snug"></p>
+            </div>
+
+            <!-- multiple / poll: botones -->
+            <div id="pregunta-opciones" class="grid grid-cols-2 gap-3"></div>
+
+            <!-- nube: texto libre -->
+            <div id="pregunta-nube" class="hidden bg-white text-gray-900 rounded-2xl shadow-2xl p-5 flex-col gap-3">
+                <input id="input-nube" type="text" maxlength="60" placeholder="Escribe una palabra…"
+                    class="w-full text-xl text-center py-3 px-4 rounded-xl border-2 border-gray-200 focus:border-[var(--brand-primary)] outline-none">
+                <button onclick="enviarNube()" class="w-full py-3 rounded-xl font-bold text-white" style="background: var(--brand-primary);">
+                    Enviar
+                </button>
+            </div>
+        </div>
+
+        <!-- ═══ 4. RESPUESTA ENVIADA (esperando cierre) ═══ -->
+        <div id="pantalla-enviada" class="pantalla flex-col items-center text-center gap-4 bg-white text-gray-900 rounded-2xl shadow-2xl p-8">
+            <div class="w-16 h-16 rounded-full flex items-center justify-center" style="background: var(--brand-mint);">
+                <i class="fas fa-check text-3xl" style="color: var(--brand-primary);"></i>
+            </div>
+            <div>
+                <p class="text-lg font-bold">¡Respuesta enviada!</p>
+                <p class="text-gray-500 mt-1">Esperando a que el docente cierre la pregunta…</p>
+            </div>
+        </div>
+
+        <!-- ═══ 5. RESULTADO REVELADO (y puente "entre slides") ═══ -->
+        <div id="pantalla-resultado" class="pantalla flex-col items-center text-center gap-3 bg-white text-gray-900 rounded-2xl shadow-2xl p-8">
+            <div id="resultado-icono" class="w-16 h-16 rounded-full flex items-center justify-center"></div>
+            <p id="resultado-titulo" class="text-xl font-bold"></p>
+            <p id="resultado-detalle" class="text-gray-500"></p>
+            <div class="w-full border-t border-gray-100 my-2"></div>
+            <p class="text-sm text-gray-400">
+                <i class="fas fa-chalkboard-teacher mr-1"></i>
+                El profe sigue explicando… prepárate para la próxima
+            </p>
+        </div>
+
+        <!-- ═══ 6. FINALIZADA ═══ -->
+        <div id="pantalla-fin" class="pantalla flex-col items-center text-center gap-4 bg-white text-gray-900 rounded-2xl shadow-2xl p-8">
+            <div class="w-16 h-16 rounded-full flex items-center justify-center" style="background: var(--brand-mint);">
+                <i class="fas fa-flag-checkered text-3xl" style="color: var(--brand-primary);"></i>
+            </div>
+            <p class="text-lg font-bold">¡La sesión terminó!</p>
+            <p class="text-gray-500">Gracias por participar 🎉</p>
+        </div>
+
+    </div>
+</div>
+
+<script src="js/config.js?v=20260905"></script>
+<script src="js/api.js?v=20260905"></script>
+
+<script>
+    let socket = null;
+    let nombreEstudiante = '';
+    let idSesionActual = null;
+    let slideActual = null;
+    let slideIndexActual = null;
+    let inicioSlideMs = null;
+    let timerInterval = null;
+
+    // ── Prellenar código desde la URL: /join/ABC123 o join.html?codigo=ABC123 ──
+    function codigoDesdeUrl() {
+        const partes = window.location.pathname.split('/').filter(Boolean);
+        const ultimaParte = partes[partes.length - 1];
+        if (ultimaParte && ultimaParte.toLowerCase() !== 'join.html') {
+            return ultimaParte.toUpperCase();
+        }
+        const qs = new URLSearchParams(window.location.search);
+        return (qs.get('codigo') || '').toUpperCase();
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const codigo = codigoDesdeUrl();
+        if (codigo) {
+            document.getElementById('input-codigo').value = codigo;
+            document.getElementById('input-nombre').focus();
+        }
+    });
+
+    function mostrarPantalla(id) {
+        document.querySelectorAll('.pantalla').forEach((p) => p.classList.remove('activa'));
+        document.getElementById(id).classList.add('activa');
+    }
+
+    function mostrarErrorEntrada(msg) {
+        const el = document.getElementById('error-entrada');
+        el.textContent = msg;
+        el.classList.remove('hidden');
+    }
+
+    function conectarSocket() {
+        if (socket) return socket;
+        // Estudiante SIN cuenta — se conecta sin token (ver
+        // socket_events.connect en el backend, que acepta conexiones
+        // anónimas específicamente para este flujo).
+        socket = io(window.APP_CONFIG.WS_URL);
+
+        socket.on('presentacion:unido', (data) => {
+            nombreEstudiante = data.nombre;
+            idSesionActual = data.sesion_id;
+            document.getElementById('espera-nombre').textContent = nombreEstudiante;
+            resetBotonUnirme();
+            mostrarPantalla('pantalla-espera');
+        });
+
+        socket.on('presentacion:error', (data) => {
+            resetBotonUnirme();
+            mostrarErrorEntrada(data.message || 'Ocurrió un error.');
+        });
+
+        socket.on('presentacion:slide_activo', (data) => {
+            slideActual = data.slide_data;
+            slideIndexActual = data.slide_index;
+            inicioSlideMs = Date.now();
+            renderPregunta(slideActual, data.tiempo_s);
+        });
+
+        socket.on('presentacion:respuesta_registrada', () => {
+            detenerTimer();
+            mostrarPantalla('pantalla-enviada');
+        });
+
+        socket.on('presentacion:resultado', (data) => {
+            renderResultado(data);
+        });
+
+        socket.on('presentacion:finalizada', () => {
+            detenerTimer();
+            mostrarPantalla('pantalla-fin');
+        });
+
+        return socket;
+    }
+
+    function resetBotonUnirme() {
+        document.getElementById('btn-unirme').disabled = false;
+        document.getElementById('btn-unirme-texto').textContent = 'Unirme';
+        document.getElementById('btn-unirme-spinner').classList.add('hidden');
+    }
+
+    function unirse() {
+        const codigo = document.getElementById('input-codigo').value.trim().toUpperCase();
+        const nombre = document.getElementById('input-nombre').value.trim();
+        document.getElementById('error-entrada').classList.add('hidden');
+
+        if (!codigo || codigo.length !== 6) {
+            mostrarErrorEntrada('Ingresa el código de 6 caracteres.');
+            return;
+        }
+        if (!nombre) {
+            mostrarErrorEntrada('Ingresa tu nombre.');
+            return;
+        }
+
+        document.getElementById('btn-unirme').disabled = true;
+        document.getElementById('btn-unirme-texto').textContent = 'Uniendo…';
+        document.getElementById('btn-unirme-spinner').classList.remove('hidden');
+
+        const s = conectarSocket();
+        const emitirUnirse = () => s.emit('presentacion:unirse', { codigo, nombre });
+        if (s.connected) {
+            emitirUnirse();
+        } else {
+            s.once('connect', emitirUnirse);
+        }
+    }
+
+    // ── Renderizar la pregunta activa ────────────────────────────
+    function renderPregunta(slide, tiempoS) {
+        detenerTimer();
+        document.getElementById('pregunta-opciones').innerHTML = '';
+        document.getElementById('pregunta-opciones').classList.remove('hidden');
+        document.getElementById('pregunta-nube').classList.add('hidden');
+        document.getElementById('pregunta-nube').classList.remove('flex');
+        document.getElementById('input-nube').value = '';
+
+        const badge = document.getElementById('pregunta-tipo-badge');
+        const etiquetas = { multiple: 'Opción múltiple', poll: 'Encuesta', nube: 'Nube de palabras' };
+        badge.textContent = etiquetas[slide.tipo] || slide.tipo;
+        document.getElementById('pregunta-texto').textContent = slide.pregunta || slide.instruccion || '';
+
+        const timerBadge = document.getElementById('pregunta-timer');
+        const barraTrack = document.getElementById('barra-tiempo-track');
+        const barra = document.getElementById('barra-tiempo');
+
+        if (slide.tipo === 'multiple' && tiempoS) {
+            timerBadge.classList.remove('hidden');
+            barraTrack.classList.remove('hidden');
+            barra.style.transition = 'none';
+            barra.style.width = '100%';
+            let restante = tiempoS;
+            timerBadge.textContent = `${restante}s`;
+            timerInterval = setInterval(() => {
+                restante -= 1;
+                timerBadge.textContent = `${Math.max(restante, 0)}s`;
+                requestAnimationFrame(() => {
+                    barra.style.transition = 'width 1s linear';
+                    barra.style.width = `${Math.max((restante / tiempoS) * 100, 0)}%`;
+                });
+                if (restante <= 0) detenerTimer();
+            }, 1000);
+        } else {
+            timerBadge.classList.add('hidden');
+            barraTrack.classList.add('hidden');
+        }
+
+        if (slide.tipo === 'nube') {
+            document.getElementById('pregunta-opciones').classList.add('hidden');
+            document.getElementById('pregunta-nube').classList.remove('hidden');
+            document.getElementById('pregunta-nube').classList.add('flex');
+        } else {
+            const colores = ['#E03131', '#1971C2', '#F08C00', '#2F9E44'];
+            const letras = ['A', 'B', 'C', 'D', 'E', 'F'];
+            const cont = document.getElementById('pregunta-opciones');
+            (slide.opciones || []).forEach((texto, i) => {
+                const btn = document.createElement('button');
+                btn.className = 'opcion-btn text-white font-bold text-lg rounded-2xl shadow-lg py-6 px-3 text-left flex items-center gap-3';
+                btn.style.background = colores[i % colores.length];
+                btn.innerHTML = `<span class="w-8 h-8 flex items-center justify-center rounded-full bg-white/25 text-base">${letras[i]}</span><span>${texto}</span>`;
+                btn.onclick = () => enviarRespuesta(String(i));
+                cont.appendChild(btn);
+            });
+        }
+
+        mostrarPantalla('pantalla-pregunta');
+    }
+
+    function detenerTimer() {
+        if (timerInterval) {
+            clearInterval(timerInterval);
+            timerInterval = null;
+        }
+    }
+
+    function enviarNube() {
+        const texto = document.getElementById('input-nube').value.trim();
+        if (!texto) return;
+        enviarRespuesta(texto);
+    }
+
+    function enviarRespuesta(respuesta) {
+        detenerTimer();
+        document.querySelectorAll('#pregunta-opciones button').forEach((b) => (b.disabled = true));
+        const tiempoMs = inicioSlideMs ? Date.now() - inicioSlideMs : null;
+        socket.emit('presentacion:responder', {
+            sesion_id: idSesionActual,
+            slide_index: slideIndexActual,
+            respuesta,
+            tiempo_respuesta_ms: tiempoMs,
+        });
+        mostrarPantalla('pantalla-enviada');
+    }
+
+    // ── Renderizar el resultado revelado ─────────────────────────
+    function renderResultado(data) {
+        const icono = document.getElementById('resultado-icono');
+        const titulo = document.getElementById('resultado-titulo');
+        const detalle = document.getElementById('resultado-detalle');
+
+        if (data.correcta !== null && data.correcta !== undefined && slideActual) {
+            const opciones = slideActual.opciones || [];
+            const textoCorrecta = opciones[data.correcta] ?? '';
+            const miRespuestaCorrecta = ultimaRespuestaFueCorrecta(data);
+            if (miRespuestaCorrecta) {
+                icono.style.background = '#DCFCE7';
+                icono.innerHTML = '<i class="fas fa-check text-3xl" style="color:#16A34A"></i>';
+                titulo.textContent = '¡Correcto! 🎉';
+                titulo.style.color = '#16A34A';
+            } else {
+                icono.style.background = '#FEE2E2';
+                icono.innerHTML = '<i class="fas fa-times text-3xl" style="color:#DC2626"></i>';
+                titulo.textContent = 'Incorrecto';
+                titulo.style.color = '#DC2626';
+            }
+            detalle.textContent = `La respuesta correcta era: ${textoCorrecta}`;
+        } else {
+            icono.style.background = 'var(--brand-mint)';
+            icono.innerHTML = '<i class="fas fa-chart-simple text-3xl" style="color: var(--brand-primary)"></i>';
+            titulo.textContent = '¡Gracias por responder!';
+            titulo.style.color = 'var(--brand-dark)';
+            detalle.textContent = `${data.total_respuestas || 0} compañeros respondieron.`;
+        }
+        mostrarPantalla('pantalla-resultado');
+    }
+
+    // No tenemos guardado localmente si acertamos — lo inferimos del
+    // botón que el estudiante presionó, guardado al enviar.
+    let miUltimaRespuesta = null;
+    function ultimaRespuestaFueCorrecta(data) {
+        return miUltimaRespuesta !== null && String(data.correcta) === miUltimaRespuesta;
+    }
+
+    const _enviarRespuestaOriginal = enviarRespuesta;
+    enviarRespuesta = function (respuesta) {
+        miUltimaRespuesta = respuesta;
+        _enviarRespuestaOriginal(respuesta);
+    };
+</script>
+</body>
+</html>

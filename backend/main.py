@@ -20,6 +20,7 @@ from pathlib import Path
 import socketio
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -42,11 +43,15 @@ import observaciones
 import pagos
 import perfil
 import piar
+import presentaciones
 import sesiones
 import suscripciones
 
 # Importar Socket.io (el objeto sio vive en socket_events)
 from socket_events import sio
+# Registra los handlers de Presentaciones Interactivas sobre `sio` — se
+# importa sólo por su efecto lateral, no se usa ningún símbolo suyo acá.
+import presentacion_events  # noqa: F401
 
 # Carpeta del frontend, dentro de /backend para que Railway la incluya
 # en el contenedor cuando el service tiene Root Directory=backend/.
@@ -186,8 +191,22 @@ app.include_router(malla.router)
 app.include_router(observaciones.router)
 app.include_router(pagos.router)
 app.include_router(perfil.router)
+app.include_router(presentaciones.router)
 app.include_router(sesiones.router)
 app.include_router(suscripciones.router)
+
+# ============================================================
+# LINK BONITO PARA ESTUDIANTES (/join/{codigo}) — Presentaciones
+# Interactivas. Sirve join.html directo; el código se resuelve del
+# lado del cliente leyendo window.location.pathname. Debe registrarse
+# ANTES del mount de StaticFiles en "/" (más abajo, catch-all) para que
+# esta ruta gane sobre el intento de servir un archivo literal
+# "join/ABC123" que no existe.
+# ============================================================
+
+@app.get("/join/{codigo}")
+def join_estudiante(codigo: str):
+    return FileResponse(FRONTEND_DIR / "join.html")
 
 # ============================================================
 # ARCHIVOS SUBIDOS (/uploads/...)

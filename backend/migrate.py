@@ -231,6 +231,16 @@ def apply_migrations():
         TokenBlacklist.__table__, AuditLog.__table__,
     ])
 
+    # ── Sprint presentaciones-interactivas ──
+    # 3 tablas nuevas, sin ALTER TABLE necesario — create_all idempotente.
+    # Se pasan juntas para que SQLAlchemy resuelva el orden de FKs
+    # (Presentacion antes que SesionPresentacion antes que
+    # RespuestaPresentacion).
+    from models import Presentacion, RespuestaPresentacion, SesionPresentacion  # noqa: F401
+    Base.metadata.create_all(bind=engine, tables=[
+        Presentacion.__table__, SesionPresentacion.__table__, RespuestaPresentacion.__table__,
+    ])
+
     # Backfill uni-personal: cada docente sin id_institucion recibe una
     # Institucion nueva a su nombre. Idempotente — si ya tiene, no toca.
     _backfill_instituciones_unipersonales()
@@ -259,6 +269,8 @@ def apply_migrations():
         print("✅ Migración: tabla 'token_blacklist' verificada/creada")
     if "audit_log" in inspector.get_table_names():
         print("✅ Migración: tabla 'audit_log' verificada/creada")
+    if "presentaciones" in inspector.get_table_names():
+        print("✅ Migración: tabla 'presentaciones' verificada/creada")
 
     print("✅ Migraciones aplicadas")
 
