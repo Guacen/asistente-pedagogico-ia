@@ -32,6 +32,7 @@ def test_registro_crea_docente_con_trial_7_dias(client_no_auth):
     assert docente["plan"] == "trial"
     assert docente["trial_ends_at"] is not None
     assert docente["dias_restantes"] == settings.TRIAL_DIAS
+    assert docente["es_admin"] is False
 
     vencimiento = datetime.fromisoformat(docente["trial_ends_at"])
     esperado = datetime.utcnow() + timedelta(days=settings.TRIAL_DIAS)
@@ -120,6 +121,27 @@ def test_endpoint_perfil_plan_funciona_incluso_con_trial_vencido(client, seed_do
     body = r.json()
     assert body["expirado"] is True
     assert body["dias_restantes"] == 0
+
+
+def test_es_admin_nunca_se_bloquea_aunque_trial_vencido(client, seed_docente, db_session):
+    """
+    docente.es_admin=True bypasea verify_trial_active por completo — ni
+    siquiera evalúa trial_vencido() — pensado para cuentas de
+    fundador/staff sin restricciones de plan.
+    """
+    docente = seed_docente["docente"]
+    docente.plan = "trial"
+    docente.trial_ends_at = datetime.utcnow() - timedelta(days=100)
+    docente.es_admin = True
+    db_session.commit()
+
+    r = client.get("/api/grupos")
+    assert r.status_code == 200
+
+    # Efecto lateral importante: al no llamar trial_vencido(), el plan
+    # NO se auto-flipea a 'expirado' pese a estar vencido.
+    db_session.refresh(docente)
+    assert docente.plan == "trial"
 
 
 def test_endpoint_suscripciones_no_se_bloquea_con_trial_vencido(client, seed_docente, db_session):

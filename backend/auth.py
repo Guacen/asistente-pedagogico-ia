@@ -203,7 +203,13 @@ def verify_trial_active(
 
     Con trial activo agrega el header X-Trial-Days-Left para que el
     frontend pueda mostrar el banner sin una llamada aparte.
+
+    docente.es_admin == True bypasea esta verificación por completo —
+    pensado para cuentas de fundador/staff que no deben depender del
+    estado de plan/trial.
     """
+    if docente.es_admin:
+        return docente
     if trial_vencido(docente, db):
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,

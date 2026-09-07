@@ -75,6 +75,7 @@ class DocenteOut(BaseModel):
     # ── Prueba gratuita 7 días — sprint trial-7-dias ──
     plan: str = "activo"
     trial_ends_at: Optional[datetime] = None
+    es_admin: bool = False
 
     model_config = {"from_attributes": True}
 
