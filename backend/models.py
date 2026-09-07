@@ -664,6 +664,94 @@ class MallaItem(Base):
     dba = relationship("DBA")
 
 
+class Presentacion(Base):
+    """
+    Presentación interactiva tipo Kahoot generada por IA — sprint
+    presentaciones-interactivas. `diapositivas` es un array ordenado que
+    alterna slides de "contenido" (texto para proyectar) con
+    "interacciones" (multiple/poll/nube) que los estudiantes responden
+    en vivo desde su celular sin necesidad de cuenta.
+
+    Estructura de cada elemento de `diapositivas` (validada y saneada
+    en presentaciones.py._validar_diapositivas antes de persistir):
+      {"tipo": "contenido", "titulo": str, "cuerpo": str, "notas_docente": str}
+      {"tipo": "multiple", "pregunta": str, "opciones": [str,...], "correcta": int, "tiempo_s": int, "puntos": int}
+      {"tipo": "poll", "pregunta": str, "opciones": [str,...]}
+      {"tipo": "nube", "instruccion": str}
+    """
+    __tablename__ = "presentaciones"
+
+    id_presentacion = Column(String(36), primary_key=True, default=new_uuid)
+    id_docente = Column(String(36), ForeignKey("docentes.id_docente"), nullable=False, index=True)
+    id_grupo = Column(String(36), ForeignKey("grupos.id_grupo"), nullable=False, index=True)
+    titulo = Column(String(200), nullable=False)
+    tema = Column(String(500), nullable=False)
+    diapositivas = Column(JSON, nullable=False, default=list)
+    creado_en = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    docente = relationship("Docente")
+    grupo = relationship("Grupo")
+    sesiones = relationship(
+        "SesionPresentacion", back_populates="presentacion", cascade="all, delete-orphan",
+    )
+
+
+class SesionPresentacion(Base):
+    """
+    Instancia en vivo de una Presentacion — se crea cuando el docente
+    hace clic en "Iniciar" y los estudiantes se unen con `codigo`.
+
+    `slide_abierto` es la fuente de verdad persistida de si el slide
+    actual todavía acepta respuestas (a diferencia del `_sesiones` sid→
+    docente_id de socket_events.py, que es sólo de conexión). Guardarlo
+    en DB —en vez de sólo en memoria del proceso de Socket.io— permite
+    que registrar_respuesta() sea una función pura testeable con
+    db_session directo, sin levantar una conexión de socket real (mismo
+    criterio que RateLimitCounter/PIAR en este proyecto).
+    """
+    __tablename__ = "sesiones_presentacion"
+
+    id_sesion = Column(String(36), primary_key=True, default=new_uuid)
+    id_presentacion = Column(
+        String(36), ForeignKey("presentaciones.id_presentacion"), nullable=False, index=True,
+    )
+    codigo = Column(String(6), unique=True, nullable=False, index=True)
+    estado = Column(String(20), nullable=False, default="esperando")  # esperando/activa/finalizada
+    slide_actual = Column(Integer, nullable=False, default=0)
+    slide_abierto = Column(Boolean, nullable=False, default=False)
+    iniciado_en = Column(DateTime, nullable=True)
+    finalizado_en = Column(DateTime, nullable=True)
+    creado_en = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    presentacion = relationship("Presentacion", back_populates="sesiones")
+    respuestas = relationship(
+        "RespuestaPresentacion", back_populates="sesion", cascade="all, delete-orphan",
+    )
+
+
+class RespuestaPresentacion(Base):
+    """
+    Respuesta individual de un estudiante SIN cuenta — se identifica
+    sólo por `nombre_estudiante` (texto libre sanitizado con bleach
+    antes de guardar, ver security_utils.sanitizar_texto — es el único
+    input de este proyecto que llega sin ningún JWT de por medio).
+    """
+    __tablename__ = "respuestas_presentacion"
+
+    id_respuesta = Column(String(36), primary_key=True, default=new_uuid)
+    id_sesion = Column(
+        String(36), ForeignKey("sesiones_presentacion.id_sesion"), nullable=False, index=True,
+    )
+    slide_index = Column(Integer, nullable=False)
+    nombre_estudiante = Column(String(100), nullable=False)
+    respuesta = Column(String(500), nullable=True)
+    es_correcta = Column(Boolean, nullable=True)  # NULL si es poll/nube
+    tiempo_respuesta_ms = Column(Integer, nullable=True)
+    creado_en = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    sesion = relationship("SesionPresentacion", back_populates="respuestas")
+
+
 class SeguimientoDBA(Base):
     """
     Registro de si un DBA quedó cubierto en un período dado, para un grupo.

@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Presentación en vivo · Maestr.ia</title>
+    <link rel="icon" type="image/png" href="assets/icon.png">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0B3D2E">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/main.css?v=20260905">
+    <link rel="stylesheet" href="css/brand.css?v=20260905">
+    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/wordcloud@1.2.2/src/wordcloud2.js"></script>
+    <style>
+        .pantalla { display: none; }
+        .pantalla.activa { display: flex; }
+        .barra-resultado > div { transition: width .6s ease; }
+    </style>
+</head>
+<body class="bg-gray-50">
+
+<!-- ═══ ELEGIR PRESENTACIÓN (sin ?id=) ═══ -->
+<div id="pantalla-elegir" class="pantalla min-h-screen flex-col">
+    <header class="bg-white shadow-sm">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 py-4 flex items-center gap-3">
+            <a href="dashboard.html" class="text-gray-600 hover:text-gray-900"><i class="fas fa-arrow-left text-xl"></i></a>
+            <div>
+                <p class="text-xs uppercase tracking-widest font-bold" style="color: var(--brand-primary);">Presentaciones Interactivas</p>
+                <h1 class="text-2xl font-bold text-gray-900">Tus presentaciones</h1>
+            </div>
+        </div>
+    </header>
+    <main class="max-w-5xl w-full mx-auto px-4 sm:px-6 py-8 flex-1">
+        <div id="lista-vacia" class="hidden text-center py-16 text-gray-500">
+            <i class="fas fa-gamepad text-4xl mb-3 opacity-40"></i>
+            <p class="font-semibold">Todavía no tienes presentaciones</p>
+            <p class="text-sm mt-1">Creá una desde el panel de un grupo — botón "Crear presentación".</p>
+        </div>
+        <div id="lista-presentaciones" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+    </main>
+</div>
+
+<!-- ═══ LOBBY (presentación elegida, sesión aún no iniciada / esperando) ═══ -->
+<div id="pantalla-lobby" class="pantalla min-h-screen flex-col items-center justify-center p-6" style="background: var(--brand-dark);">
+    <div class="w-full max-w-2xl bg-white rounded-2xl shadow-2xl p-8 text-center">
+        <p class="text-xs uppercase tracking-widest font-bold mb-1" style="color: var(--brand-primary);">Presentación Interactiva</p>
+        <h1 id="lobby-titulo" class="text-2xl font-bold text-gray-900 mb-6">—</h1>
+
+        <div id="lobby-pre-inicio">
+            <p class="text-gray-500 mb-5">Cuando estés listo, iniciá la sesión en vivo para que tus estudiantes se unan.</p>
+            <button onclick="iniciarSesionEnVivo()" class="px-6 py-3 rounded-xl font-bold text-white text-lg shadow-lg" style="background: var(--brand-primary);">
+                <i class="fas fa-play mr-2"></i>Iniciar sesión en vivo
+            </button>
+        </div>
+
+        <div id="lobby-post-inicio" class="hidden">
+            <div class="flex flex-col sm:flex-row items-center justify-center gap-6 mb-6">
+                <div id="qr-container" class="p-3 bg-white border-2 rounded-xl" style="border-color: var(--brand-mint);"></div>
+                <div class="text-left">
+                    <p class="text-sm text-gray-500 mb-1">Código de la sesión</p>
+                    <p id="lobby-codigo" class="text-5xl font-black tracking-widest" style="color: var(--brand-dark);">——————</p>
+                    <p class="text-sm text-gray-500 mt-2">o entrá a <span class="font-semibold">usemaestria.co/join</span></p>
+                </div>
+            </div>
+            <button onclick="comenzarPresentacion()" class="px-6 py-3 rounded-xl font-bold text-white text-lg shadow-lg" style="background: var(--brand-primary);">
+                Comenzar presentación <i class="fas fa-arrow-right ml-2"></i>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ EN VIVO (70/30) ═══ -->
+<div id="pantalla-vivo" class="pantalla min-h-screen">
+    <div class="flex flex-col lg:flex-row min-h-screen">
+
+        <!-- Izquierda 70% — proyectable -->
+        <section class="w-full lg:w-[70%] flex items-center justify-center p-8 lg:p-16" style="background: var(--brand-dark);">
+            <div id="slide-proyectable" class="w-full max-w-3xl text-white"></div>
+        </section>
+
+        <!-- Derecha 30% — control del docente -->
+        <aside class="w-full lg:w-[30%] bg-white p-6 flex flex-col gap-5 border-l border-gray-100">
+            <div class="flex items-center justify-between">
+                <span id="control-slide-pos" class="text-xs font-bold uppercase tracking-wide text-gray-400"></span>
+                <span id="control-codigo" class="text-xs font-mono bg-gray-100 px-2 py-1 rounded"></span>
+            </div>
+
+            <div id="control-contador" class="hidden bg-gray-50 rounded-xl p-4 text-center">
+                <p class="text-3xl font-black" style="color: var(--brand-primary);">
+                    <span id="contador-respondido">0</span><span class="text-gray-300">/</span><span id="contador-sala">0</span>
+                </p>
+                <p class="text-xs text-gray-500 mt-1">respondieron</p>
+            </div>
+
+            <div id="control-notas" class="hidden bg-amber-50 border border-amber-200 rounded-xl p-4">
+                <p class="text-xs font-bold uppercase tracking-wide text-amber-700 mb-1"><i class="fas fa-comment-dots mr-1"></i>Qué decir</p>
+                <p id="control-notas-texto" class="text-sm text-amber-900"></p>
+            </div>
+
+            <div class="mt-auto flex flex-col gap-2">
+                <button id="btn-iniciar-pregunta" onclick="iniciarPregunta()" class="hidden w-full py-3 rounded-xl font-bold text-white" style="background: var(--brand-amber); color: var(--brand-dark);">
+                    <i class="fas fa-play mr-2"></i>Iniciar pregunta
+                </button>
+                <button id="btn-revelar" onclick="revelarResultado()" class="hidden w-full py-3 rounded-xl font-bold text-white" style="background: var(--brand-dark);">
+                    <i class="fas fa-eye mr-2"></i>Revelar resultado
+                </button>
+                <button id="btn-siguiente" onclick="irSiguiente()" class="w-full py-3 rounded-xl font-bold text-white" style="background: var(--brand-primary);">
+                    Siguiente <i class="fas fa-arrow-right ml-2"></i>
+                </button>
+            </div>
+        </aside>
+    </div>
+</div>
+
+<!-- ═══ FINALIZADA ═══ -->
+<div id="pantalla-fin" class="pantalla min-h-screen flex-col items-center justify-center p-6" style="background: var(--brand-dark);">
+    <div class="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8 text-center">
+        <i class="fas fa-flag-checkered text-4xl mb-3" style="color: var(--brand-primary);"></i>
+        <h1 class="text-xl font-bold text-gray-900 mb-4">¡Presentación finalizada!</h1>
+        <div id="fin-ranking" class="space-y-2 text-left mb-6"></div>
+        <a href="presentacion-docente.html" class="inline-block px-5 py-2.5 rounded-xl font-semibold text-white" style="background: var(--brand-primary);">
+            Volver a mis presentaciones
+        </a>
+    </div>
+</div>
+
+<script src="js/config.js?v=20260905"></script>
+<script src="js/api.js?v=20260905"></script>
+<script src="js/auth.js?v=20260905"></script>
+
+<script>
+    Auth.requireAuth();
+
+    const PD = {
+        presentacionId: null,
+        presentacion: null,
+        sesionId: null,
+        socket: null,
+        slideIndex: -1,
+        slideAbierta: false,
+        ultimoRanking: [],
+    };
+
+    function mostrarPantalla(id) {
+        document.querySelectorAll('.pantalla').forEach((p) => p.classList.remove('activa'));
+        document.getElementById(id).classList.add('activa');
+    }
+
+    function qs(name) {
+        return new URLSearchParams(window.location.search).get(name);
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        PD.presentacionId = qs('id');
+        if (!PD.presentacionId) {
+            await cargarListaPresentaciones();
+            mostrarPantalla('pantalla-elegir');
+            return;
+        }
+        try {
+            PD.presentacion = await api.obtenerPresentacion(PD.presentacionId);
+        } catch (err) {
+            alert('No se pudo cargar la presentación: ' + (err.message || err));
+            window.location.href = 'presentacion-docente.html';
+            return;
+        }
+        document.getElementById('lobby-titulo').textContent = PD.presentacion.titulo;
+        conectarSocket();
+        mostrarPantalla('pantalla-lobby');
+    });
+
+    // ── Pantalla "elegir" ─────────────────────────────────────────
+    async function cargarListaPresentaciones() {
+        const cont = document.getElementById('lista-presentaciones');
+        try {
+            const presentaciones = await api.listarPresentaciones();
+            if (!presentaciones.length) {
+                document.getElementById('lista-vacia').classList.remove('hidden');
+                return;
+            }
+            cont.innerHTML = presentaciones.map((p) => `
+                <a href="presentacion-docente.html?id=${p.id_presentacion}"
+                   class="block bg-white p-5 rounded-xl shadow-sm border border-gray-100 hover:shadow-md hover:border-[var(--brand-primary)] transition-all">
+                    <div class="w-10 h-10 rounded-lg flex items-center justify-center mb-3" style="background: var(--brand-mint);">
+                        <i class="fas fa-gamepad" style="color: var(--brand-primary);"></i>
+                    </div>
+                    <h3 class="font-semibold text-gray-900 mb-1">${p.titulo}</h3>
+                    <p class="text-gray-500 text-sm">${p.n_slides} diapositivas · ${p.sesiones.length} sesión(es) previas</p>
+                </a>
+            `).join('');
+        } catch (err) {
+            cont.innerHTML = `<p class="text-red-600">Error cargando presentaciones: ${err.message || err}</p>`;
+        }
+    }
+
+    // ── Socket ────────────────────────────────────────────────────
+    function conectarSocket() {
+        PD.socket = io(window.APP_CONFIG.WS_URL, { auth: { token: api.getToken() } });
+
+        PD.socket.on('presentacion:slide_activo', (data) => {
+            if (data.slide_index !== PD.slideIndex) return;
+            PD.slideAbierta = true;
+            actualizarControles();
+        });
+
+        PD.socket.on('presentacion:resultado', (data) => {
+            PD.ultimoRanking = data.ranking_top5 || [];
+            renderResultado(data);
+        });
+
+        PD.socket.on('presentacion:nueva_respuesta', (data) => {
+            document.getElementById('contador-respondido').textContent = data.total_respondido;
+            document.getElementById('contador-sala').textContent = data.total_sala;
+        });
+
+        PD.socket.on('presentacion:finalizada', () => {
+            renderRankingFinal();
+            mostrarPantalla('pantalla-fin');
+        });
+    }
+
+    // ── Lobby ─────────────────────────────────────────────────────
+    async function iniciarSesionEnVivo() {
+        try {
+            const r = await api.iniciarSesionPresentacion(PD.presentacionId);
+            PD.sesionId = r.sesion_id;
+            document.getElementById('lobby-codigo').textContent = r.codigo;
+            document.getElementById('control-codigo').textContent = r.codigo;
+            document.getElementById('lobby-pre-inicio').classList.add('hidden');
+            document.getElementById('lobby-post-inicio').classList.remove('hidden');
+            document.getElementById('qr-container').innerHTML = '';
+            // eslint-disable-next-line no-undef
+            new QRCode(document.getElementById('qr-container'), {
+                text: r.url_estudiante, width: 180, height: 180,
+            });
+        } catch (err) {
+            alert('No se pudo iniciar la sesión: ' + (err.message || err));
+        }
+    }
+
+    function comenzarPresentacion() {
+        mostrarPantalla('pantalla-vivo');
+        irASlide(0);
+    }
+
+    // ── Navegación de slides ─────────────────────────────────────
+    function irASlide(index) {
+        if (index >= PD.presentacion.diapositivas.length) {
+            PD.socket.emit('presentacion:finalizar', { sesion_id: PD.sesionId });
+            return;
+        }
+        PD.slideIndex = index;
+        PD.slideAbierta = false;
+        renderSlideActual();
+    }
+
+    function irSiguiente() {
+        irASlide(PD.slideIndex + 1);
+    }
+
+    function slideActualEsInteraccion() {
+        const slide = PD.presentacion.diapositivas[PD.slideIndex];
+        return slide && slide.tipo !== 'contenido';
+    }
+
+    function renderSlideActual() {
+        const slide = PD.presentacion.diapositivas[PD.slideIndex];
+        const total = PD.presentacion.diapositivas.length;
+        document.getElementById('control-slide-pos').textContent = `Diapositiva ${PD.slideIndex + 1} / ${total}`;
+
+        const proy = document.getElementById('slide-proyectable');
+        const notas = document.getElementById('control-notas');
+        const notasTexto = document.getElementById('control-notas-texto');
+
+        if (slide.tipo === 'contenido') {
+            proy.innerHTML = `
+                <p class="text-sm uppercase tracking-widest opacity-70 mb-3">Contenido</p>
+                <h2 class="text-3xl lg:text-4xl font-bold mb-6">${slide.titulo}</h2>
+                <div class="text-lg lg:text-xl opacity-90 leading-relaxed whitespace-pre-line">${slide.cuerpo}</div>
+            `;
+            notas.classList.remove('hidden');
+            notasTexto.textContent = slide.notas_docente || '';
+        } else {
+            const etiquetas = { multiple: 'Opción múltiple', poll: 'Encuesta', nube: 'Nube de palabras' };
+            proy.innerHTML = `
+                <p class="text-sm uppercase tracking-widest opacity-70 mb-3">${etiquetas[slide.tipo] || slide.tipo}</p>
+                <h2 class="text-2xl lg:text-3xl font-bold mb-6">${slide.pregunta || slide.instruccion}</h2>
+                <div id="slide-opciones-proyeccion" class="grid grid-cols-2 gap-3"></div>
+                <div id="slide-resultado-proyeccion" class="hidden mt-2"></div>
+            `;
+            if (slide.opciones) {
+                const colores = ['#E03131', '#1971C2', '#F08C00', '#2F9E44', '#9C36B5', '#0CA678'];
+                const letras = ['A', 'B', 'C', 'D', 'E', 'F'];
+                document.getElementById('slide-opciones-proyeccion').innerHTML = slide.opciones.map((o, i) => `
+                    <div class="rounded-xl px-4 py-3 font-semibold flex items-center gap-2" style="background:${colores[i % colores.length]}">
+                        <span class="w-6 h-6 flex items-center justify-center rounded-full bg-white/25 text-sm">${letras[i]}</span>${o}
+                    </div>
+                `).join('');
+            }
+            notas.classList.add('hidden');
+        }
+        actualizarControles();
+    }
+
+    function actualizarControles() {
+        const esInteraccion = slideActualEsInteraccion();
+        const btnIniciar = document.getElementById('btn-iniciar-pregunta');
+        const btnRevelar = document.getElementById('btn-revelar');
+        const btnSiguiente = document.getElementById('btn-siguiente');
+        const contador = document.getElementById('control-contador');
+
+        btnIniciar.classList.toggle('hidden', !(esInteraccion && !PD.slideAbierta));
+        btnRevelar.classList.toggle('hidden', !(esInteraccion && PD.slideAbierta));
+        btnSiguiente.classList.toggle('hidden', esInteraccion && !PD.slideAbierta);
+        contador.classList.toggle('hidden', !esInteraccion);
+        if (esInteraccion) {
+            document.getElementById('contador-respondido').textContent = '0';
+            document.getElementById('contador-sala').textContent = '0';
+        }
+    }
+
+    function iniciarPregunta() {
+        PD.socket.emit('presentacion:iniciar_slide', {
+            sesion_id: PD.sesionId, slide_index: PD.slideIndex,
+        });
+    }
+
+    function revelarResultado() {
+        PD.socket.emit('presentacion:cerrar_slide', { sesion_id: PD.sesionId });
+    }
+
+    // ── Resultado ─────────────────────────────────────────────────
+    function renderResultado(data) {
+        const slide = PD.presentacion.diapositivas[PD.slideIndex];
+        const cont = document.getElementById('slide-resultado-proyeccion');
+        if (!cont) return;
+        cont.classList.remove('hidden');
+
+        if (slide.tipo === 'nube') {
+            cont.innerHTML = '<canvas id="wordcloud-canvas" width="700" height="300" class="w-full"></canvas>';
+            const entradas = Object.entries(data.conteos || {});
+            if (entradas.length && window.WordCloud) {
+                WordCloud(document.getElementById('wordcloud-canvas'), {
+                    list: entradas,
+                    weightFactor: 14,
+                    color: () => ['#1D9E75', '#F5B731', '#2ECC71', '#E1F5EE'][Math.floor(Math.random() * 4)],
+                    backgroundColor: 'transparent',
+                    fontFamily: 'Nunito, sans-serif',
+                });
+            }
+        } else {
+            const opciones = slide.opciones || [];
+            const total = Object.values(data.conteos || {}).reduce((a, b) => a + b, 0) || 1;
+            cont.innerHTML = `<div class="space-y-2 barra-resultado">` + opciones.map((o, i) => {
+                const n = (data.conteos && data.conteos[String(i)]) || 0;
+                const pct = Math.round((n / total) * 100);
+                const esCorrecta = data.correcta === i;
+                return `
+                    <div>
+                        <div class="flex justify-between text-sm mb-1">
+                            <span>${o}${esCorrecta ? ' <i class="fas fa-check-circle"></i>' : ''}</span>
+                            <span>${n} (${pct}%)</span>
+                        </div>
+                        <div class="h-3 rounded-full bg-white/10 overflow-hidden">
+                            <div class="h-full rounded-full" style="width:${pct}%; background:${esCorrecta ? '#2ECC71' : '#F5B731'}"></div>
+                        </div>
+                    </div>`;
+            }).join('') + `</div>`;
+        }
+    }
+
+    function renderRankingFinal() {
+        const cont = document.getElementById('fin-ranking');
+        if (!PD.ultimoRanking.length) {
+            cont.innerHTML = '<p class="text-gray-500 text-center">Sin puntajes registrados.</p>';
+            return;
+        }
+        const medallas = ['🥇', '🥈', '🥉', '🏅', '🏅'];
+        cont.innerHTML = PD.ultimoRanking.map((r, i) => `
+            <div class="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
+                <span>${medallas[i] || '🏅'} ${r.nombre}</span>
+                <span class="font-bold" style="color: var(--brand-primary);">${r.puntos} pts</span>
+            </div>
+        `).join('');
+    }
+</script>
+</body>
+</html>

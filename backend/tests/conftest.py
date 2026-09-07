@@ -37,8 +37,9 @@ def test_engine():
         Archivo, AuditLog, Calificacion, ChatSesion, DBA, Docente,
         EmailVerification, Estudiante, EvaluacionColumna, Grupo, Institucion,
         MallaCurricular, MallaItem, Mensaje, Nota, Observacion, PIAR,
-        PasswordResetToken, RateLimitCounter, SeguimientoDBA, Suscripcion,
-        TokenBlacklist, TransaccionPago, UsoMensual,
+        PasswordResetToken, Presentacion, RateLimitCounter, RespuestaPresentacion,
+        SeguimientoDBA, SesionPresentacion, Suscripcion, TokenBlacklist,
+        TransaccionPago, UsoMensual,
     )
     Base.metadata.create_all(bind=engine)
     yield engine
