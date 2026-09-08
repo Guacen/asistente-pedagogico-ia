@@ -18,6 +18,7 @@ testeables directo con el fixture `db_session` (mismo criterio que
 from __future__ import annotations
 
 import json
+import logging
 import re
 import secrets
 from datetime import datetime
@@ -34,6 +35,7 @@ from rate_limiter import limiter
 from security_utils import sanitizar_texto
 
 router = APIRouter(prefix="/api/presentaciones", tags=["presentaciones"])
+logger = logging.getLogger(__name__)
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -175,9 +177,22 @@ async def _generar_diapositivas_ia(grupo: Grupo, tema: str, n_slides_contenido: 
     try:
         bruto = json.loads(raw)
     except Exception:
+        logger.error(
+            "LLM devolvió una respuesta no parseable como JSON al generar "
+            "presentación (grupo=%s, tema=%r). Primeros 500 chars: %r",
+            grupo.id_grupo, tema, raw[:500],
+        )
         bruto = []
 
-    return _validar_diapositivas(bruto)
+    diapositivas = _validar_diapositivas(bruto)
+    if bruto and not diapositivas:
+        logger.error(
+            "El LLM devolvió JSON válido pero _validar_diapositivas rechazó "
+            "todos los elementos al generar presentación (grupo=%s, tema=%r). "
+            "bruto=%r",
+            grupo.id_grupo, tema, bruto,
+        )
+    return diapositivas
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -463,6 +478,10 @@ async def generar_presentacion(
     try:
         diapositivas = await _generar_diapositivas_ia(grupo, body.tema, body.n_slides_contenido)
     except Exception:
+        logger.exception(
+            "Error generando presentación IA (docente=%s, grupo=%s, tema=%r)",
+            docente.id_docente, grupo.id_grupo, body.tema,
+        )
         diapositivas = []
     if not diapositivas:
         raise HTTPException(
