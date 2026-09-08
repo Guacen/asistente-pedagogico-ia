@@ -1,10 +1,13 @@
 // Service worker de Maestr.ia — estrategia cache-first para assets estáticos.
 // Las peticiones a /api/* NUNCA se cachean: siempre van a red.
 
-// v2: bump forzado por el reemplazo de logo.png/icon.png (brand kit oficial)
-// — el precache es por URL, así que el contenido viejo se habría quedado
-// servido desde caché para visitantes recurrentes sin este bump.
-const CACHE_NAME = 'maestria-v2';
+// v3: bump forzado — api.js, dashboard.html y grupo-panel.html cambiaron
+// (presentaciones interactivas, es_admin, eliminar grupo) desde el último
+// bump (v2, Ago 7) y el fetch handler es cache-first: sin este bump,
+// cualquier navegador con el service worker ya instalado seguiría sirviendo
+// esos archivos desde el caché viejo indefinidamente — mismo problema que
+// motivó el bump a v2.
+const CACHE_NAME = 'maestria-v3';
 
 // Páginas principales + CSS/JS/assets locales. El resto de los HTML
 // (verificar-email, recuperar-password, nueva-password, politica-datos,
