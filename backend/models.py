@@ -325,6 +325,16 @@ class Grupo(Base):
     calificaciones = relationship("Calificacion", back_populates="grupo", cascade="all, delete")
     columnas = relationship("EvaluacionColumna", back_populates="grupo", cascade="all, delete")
     mallas = relationship("MallaCurricular", back_populates="grupo", cascade="all, delete")
+    # DELETE /api/grupos/{id}: estas 5 no tenían cascade declarado acá pese a
+    # tener FK a grupos.id_grupo — sin esto, borrar un grupo con chat_sesiones/
+    # piar/observaciones/presentaciones/seguimiento_dbas existentes fallaba con
+    # IntegrityError en Postgres (violación de FK) al intentar el DELETE del
+    # padre con hijos huérfanos.
+    chat_sesiones = relationship("ChatSesion", back_populates="grupo", cascade="all, delete")
+    piars = relationship("PIAR", back_populates="grupo", cascade="all, delete")
+    observaciones = relationship("Observacion", back_populates="grupo", cascade="all, delete")
+    presentaciones = relationship("Presentacion", back_populates="grupo", cascade="all, delete")
+    seguimientos_dba = relationship("SeguimientoDBA", back_populates="grupo", cascade="all, delete")
 
 
 class Estudiante(Base):
@@ -374,6 +384,8 @@ class ChatSesion(Base):
     creado_en = Column(DateTime, default=datetime.utcnow, nullable=False)
     ultimo_mensaje_en = Column(DateTime, default=datetime.utcnow, nullable=False)
     archivada = Column(Boolean, nullable=False, default=False, index=True)
+
+    grupo = relationship("Grupo", back_populates="chat_sesiones")
 
 
 class Mensaje(Base):
@@ -538,6 +550,8 @@ class PIAR(Base):
     creado_en = Column(DateTime, default=datetime.utcnow, nullable=False)
     aprobado_en = Column(DateTime, nullable=True)
 
+    grupo = relationship("Grupo", back_populates="piars")
+
 
 class Observacion(Base):
     """
@@ -588,6 +602,8 @@ class Observacion(Base):
     fecha_seguimiento = Column(Date, nullable=True)
     estado = Column(String(20), nullable=False, default="abierta", index=True)
     creado_en = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    grupo = relationship("Grupo", back_populates="observaciones")
 
 
 class DBA(Base):
@@ -690,7 +706,7 @@ class Presentacion(Base):
     creado_en = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     docente = relationship("Docente")
-    grupo = relationship("Grupo")
+    grupo = relationship("Grupo", back_populates="presentaciones")
     sesiones = relationship(
         "SesionPresentacion", back_populates="presentacion", cascade="all, delete-orphan",
     )
@@ -775,5 +791,5 @@ class SeguimientoDBA(Base):
     fecha_cubierto = Column(DateTime, nullable=True)
     plan_clase_referencia = Column(Text, nullable=True)
 
-    grupo = relationship("Grupo")
+    grupo = relationship("Grupo", back_populates="seguimientos_dba")
     dba = relationship("DBA")

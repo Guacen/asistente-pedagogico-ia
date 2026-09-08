@@ -687,6 +687,11 @@
                         <h3 class="font-semibold text-gray-900 truncate leading-tight">${g.nombre_grupo}</h3>
                         <p class="text-xs text-gray-500 mt-0.5 truncate">${g.grado} · ${g.asignatura}</p>
                     </div>
+                    <button onclick="eliminarGrupoDashboard('${g.id_grupo}', '${escapeAttrGrupo(g.nombre_grupo)}')"
+                        title="Eliminar grupo"
+                        class="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg text-gray-300 hover:text-red-600 hover:bg-red-50 transition-colors">
+                        <i class="fas fa-trash text-sm"></i>
+                    </button>
                 </div>
                 <div class="flex flex-wrap items-center gap-2 text-xs text-gray-500">
                     <span class="flex items-center gap-1">
@@ -754,6 +759,21 @@
     }
 
     function filtrarGrupos(query) { renderGrupos(query); }
+
+    function escapeAttrGrupo(s) {
+        return String(s == null ? '' : s).replace(/'/g, '&#39;').replace(/"/g, '&quot;');
+    }
+
+    async function eliminarGrupoDashboard(grupoId, nombreGrupo) {
+        if (!confirm(`¿Eliminar el grupo "${nombreGrupo}"? Esta acción no se puede deshacer.`)) return;
+        try {
+            await api.deleteGrupo(grupoId);
+            dashGrupos = dashGrupos.filter(g => g.id_grupo !== grupoId);
+            renderGrupos(document.getElementById('search-grupos')?.value || '');
+        } catch (err) {
+            alert('Error al eliminar grupo: ' + err.message);
+        }
+    }
 
     function limpiarBusqueda() {
         const inp = document.getElementById('search-grupos');
