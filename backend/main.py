@@ -122,12 +122,14 @@ app.add_middleware(
 # ya carga hoy (auditado con grep sobre frontend/*.html) — un CSP que
 # sólo cubriera 'self' + checkout.wompi.co habría roto el sitio entero
 # en el primer request real:
-#   script-src: cdn.socket.io (chat en vivo), cdn.tailwindcss.com
-#     (Tailwind vía CDN, usado en casi todas las páginas), cdn.jsdelivr.net
-#     (marked.js, parser de Markdown del chat), cdnjs.cloudflare.com
+#   script-src: cdn.socket.io (chat en vivo + presentaciones interactivas),
+#     cdn.tailwindcss.com (Tailwind vía CDN, usado en casi todas las
+#     páginas), cdn.jsdelivr.net (marked.js del chat; qrcode.js y
+#     wordcloud2.js de presentacion-docente.html), cdnjs.cloudflare.com
 #     (Font Awesome), checkout.wompi.co (widget de pago).
 #   style-src / font-src: cdnjs.cloudflare.com (CSS + webfonts de Font
-#     Awesome, cargados por <link>/@font-face).
+#     Awesome, cargados por <link>/@font-face); fonts.googleapis.com /
+#     fonts.gstatic.com (Google Fonts, @import en index.html/precios.html).
 #   connect-src / frame-src: checkout.wompi.co (el checkout de Wompi se
 #     embebe/redirige desde precios.html/cuenta.html).
 # ============================================================
@@ -146,8 +148,10 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "https://checkout.wompi.co https://cdn.socket.io "
             "https://cdn.tailwindcss.com https://cdn.jsdelivr.net "
             "https://cdnjs.cloudflare.com; "
-            "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; "
-            "font-src 'self' data: https://cdnjs.cloudflare.com; "
+            "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com "
+            "https://fonts.googleapis.com; "
+            "font-src 'self' data: https://cdnjs.cloudflare.com "
+            "https://fonts.gstatic.com; "
             "img-src 'self' data: https:; "
             "connect-src 'self' https://checkout.wompi.co; "
             "frame-src https://checkout.wompi.co;"
