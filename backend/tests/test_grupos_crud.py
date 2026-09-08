@@ -124,6 +124,59 @@ def test_delete_grupo_inexistente_404(client):
     assert r.status_code == 404
 
 
+def test_delete_grupo_elimina_en_cascada_hijos_del_grupo(client, seed_docente, db_session):
+    """
+    Borrar un grupo debe arrastrar TODO lo que cuelga de él — no sólo
+    estudiantes/mensajes/notas (que ya cascadeaban), sino también
+    chat_sesiones, piar, observaciones, presentaciones y seguimiento_dbas,
+    que antes de este fix no tenían cascade declarado en el modelo Grupo
+    y hubieran roto el DELETE con un IntegrityError de FK en Postgres.
+    """
+    from models import (
+        ChatSesion, Estudiante, Mensaje, Observacion, PIAR, Presentacion,
+    )
+
+    docente = seed_docente["docente"]
+    grupo = seed_docente["grupo"]
+    gid = grupo.id_grupo
+
+    estudiante = Estudiante(
+        id_grupo=gid, codigo_estudiante="EST-001", genero="F",
+    )
+    db_session.add(estudiante)
+    db_session.flush()
+
+    db_session.add(Mensaje(
+        id_grupo=gid, remitente="docente", contenido="hola", modo="planeacion",
+    ))
+    db_session.add(ChatSesion(
+        id_grupo=gid, id_docente=docente.id_docente, modo="planeacion",
+    ))
+    db_session.add(PIAR(
+        id_estudiante=estudiante.id_estudiante, id_grupo=gid,
+        id_docente=docente.id_docente, periodo=1, anio=2026, contenido={},
+    ))
+    db_session.add(Observacion(
+        id_docente=docente.id_docente, id_grupo=gid, tipo="academica",
+        situacion_descrita="x",
+    ))
+    db_session.add(Presentacion(
+        id_docente=docente.id_docente, id_grupo=gid, titulo="t", tema="t",
+        diapositivas=[],
+    ))
+    db_session.commit()
+
+    r = client.delete(f"/api/grupos/{gid}")
+    assert r.status_code == 204, r.text
+
+    assert db_session.query(ChatSesion).filter_by(id_grupo=gid).count() == 0
+    assert db_session.query(PIAR).filter_by(id_grupo=gid).count() == 0
+    assert db_session.query(Observacion).filter_by(id_grupo=gid).count() == 0
+    assert db_session.query(Presentacion).filter_by(id_grupo=gid).count() == 0
+    assert db_session.query(Estudiante).filter_by(id_grupo=gid).count() == 0
+    assert db_session.query(Mensaje).filter_by(id_grupo=gid).count() == 0
+
+
 # ═══════════════════════════════════════════════════════════════
 # POST /api/grupos con estudiantes iniciales (fix del wizard)
 # ═══════════════════════════════════════════════════════════════

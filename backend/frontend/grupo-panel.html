@@ -51,6 +51,10 @@
             class="flex items-center gap-2 px-3 py-2 rounded-lg text-white hover:opacity-90 text-sm font-semibold" style="background: var(--brand-primary);">
             <i class="fas fa-gamepad"></i>Crear presentación
           </button>
+          <button id="btn-eliminar-grupo" onclick="eliminarGrupoPanel()" title="Eliminar este grupo"
+            class="flex items-center gap-2 px-3 py-2 rounded-lg border border-red-300 text-red-600 hover:bg-red-50 text-sm font-semibold">
+            <i class="fas fa-trash"></i>Eliminar grupo
+          </button>
         </div>
       </div>
     </div>
@@ -462,6 +466,20 @@ async function descargarBoletinGrupoPanel() {
     } finally {
         btn.disabled = false;
         btn.innerHTML = original;
+    }
+}
+
+async function eliminarGrupoPanel() {
+    if (!GP.grupoId || !GP.grupo) return;
+    if (!confirm(`¿Eliminar el grupo "${GP.grupo.nombre_grupo}"? Esta acción no se puede deshacer.`)) return;
+    const btn = document.getElementById('btn-eliminar-grupo');
+    btn.disabled = true;
+    try {
+        await api.deleteGrupo(GP.grupoId);
+        window.location.href = 'dashboard.html';
+    } catch (err) {
+        alert('No se pudo eliminar el grupo: ' + (err.message || err));
+        btn.disabled = false;
     }
 }
 
