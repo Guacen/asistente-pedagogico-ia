@@ -126,7 +126,10 @@ app.add_middleware(
 #     cdn.tailwindcss.com (Tailwind vía CDN, usado en casi todas las
 #     páginas), cdn.jsdelivr.net (marked.js del chat; qrcode.js y
 #     wordcloud2.js de presentacion-docente.html), cdnjs.cloudflare.com
-#     (Font Awesome), checkout.wompi.co (widget de pago).
+#     (Font Awesome), checkout.wompi.co (widget de pago),
+#     static.cloudflareinsights.com (beacon de Cloudflare Browser
+#     Insights — inyectado por el propio Cloudflare a nivel de edge en
+#     páginas servidas a navegadores reales, no visible con curl).
 #   style-src / font-src: cdnjs.cloudflare.com (CSS + webfonts de Font
 #     Awesome, cargados por <link>/@font-face); fonts.googleapis.com /
 #     fonts.gstatic.com (Google Fonts, @import en index.html/precios.html).
@@ -147,7 +150,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "script-src 'self' 'unsafe-inline' "
             "https://checkout.wompi.co https://cdn.socket.io "
             "https://cdn.tailwindcss.com https://cdn.jsdelivr.net "
-            "https://cdnjs.cloudflare.com; "
+            "https://cdnjs.cloudflare.com https://static.cloudflareinsights.com; "
             "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com "
             "https://fonts.googleapis.com; "
             "font-src 'self' data: https://cdnjs.cloudflare.com "
