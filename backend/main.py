@@ -133,8 +133,16 @@ app.add_middleware(
 #   style-src / font-src: cdnjs.cloudflare.com (CSS + webfonts de Font
 #     Awesome, cargados por <link>/@font-face); fonts.googleapis.com /
 #     fonts.gstatic.com (Google Fonts, @import en index.html/precios.html).
-#   connect-src / frame-src: checkout.wompi.co (el checkout de Wompi se
-#     embebe/redirige desde precios.html/cuenta.html).
+#   connect-src: checkout.wompi.co (el checkout de Wompi se embebe/
+#     redirige desde precios.html/cuenta.html); static.cloudflareinsights.com
+#     (el beacon de Browser Insights reporta analítica vía fetch/XHR
+#     después de cargar, eso SÍ es connect-src — a diferencia de
+#     cdn.tailwindcss.com/cdnjs.cloudflare.com/fonts.googleapis.com/
+#     fonts.gstatic.com más abajo, que sólo cargan como <script>/<link>/
+#     @font-face y ya están cubiertos por script-src/style-src/font-src;
+#     se agregaron igual por pedido explícito, son inofensivos aunque
+#     redundantes para esos 4 orígenes).
+#   frame-src: checkout.wompi.co.
 # ============================================================
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -156,7 +164,10 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "font-src 'self' data: https://cdnjs.cloudflare.com "
             "https://fonts.gstatic.com; "
             "img-src 'self' data: https:; "
-            "connect-src 'self' https://checkout.wompi.co; "
+            "connect-src 'self' https://checkout.wompi.co "
+            "https://cdn.tailwindcss.com https://cdnjs.cloudflare.com "
+            "https://fonts.googleapis.com https://fonts.gstatic.com "
+            "https://static.cloudflareinsights.com; "
             "frame-src https://checkout.wompi.co;"
         )
         return response
