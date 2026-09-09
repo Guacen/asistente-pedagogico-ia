@@ -73,6 +73,20 @@ def test_csp_connect_src_permite_cloudflare_insights(client_no_auth):
     assert "https://checkout.wompi.co" in connect_src
 
 
+def test_csp_connect_src_permite_websocket_del_mismo_origen(client_no_auth):
+    """
+    BUG 2 (SPRINT 1 presentaciones, reportado en clase real): el
+    estudiante quedaba colgado en "Uniendo…" al unirse a una sesión en
+    vivo. Safari/WebKit no deriva conexiones wss:// del mismo origen a
+    partir de 'self' de forma confiable (a diferencia de Chrome/
+    Firefox) — se agrega wss://usemaestria.co explícito a connect-src
+    para que el WebSocket de Socket.io no quede bloqueado ahí.
+    """
+    csp = _csp(client_no_auth)
+    connect_src = _directiva(csp, "connect-src")
+    assert "wss://usemaestria.co" in connect_src
+
+
 def test_csp_permite_cloudflare_insights(client_no_auth):
     """
     Cloudflare inyecta el beacon de Browser Insights (static.cloudflareinsights.com)

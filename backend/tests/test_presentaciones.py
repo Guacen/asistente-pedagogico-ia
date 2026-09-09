@@ -350,3 +350,101 @@ def test_nombre_estudiante_se_sanitiza(db_session, seed_docente):
     assert resultado is not None
     assert "<script>" not in resultado.nombre_estudiante
     assert "Juan" in resultado.nombre_estudiante
+
+
+# ─── 7. BUG 1 (SPRINT 1) — _validar_diapositivas normaliza `cuerpo` ──
+# El prompt pide "cuerpo: explicación en máx 4 puntos concisos", lo que
+# empuja a la IA a devolver un array en vez de un párrafo. Antes de este
+# fix, str(lista) guardaba literalmente "['a', 'b']" en la DB — bug
+# reportado en clase real (corchetes y comillas visibles en pantalla).
+
+def test_validar_diapositivas_cuerpo_como_array_se_preserva_como_lista():
+    from presentaciones import _validar_diapositivas
+
+    bruto = [{
+        "tipo": "contenido",
+        "titulo": "Diagrama de cuerpo libre",
+        "cuerpo": [
+            "Es un dibujo simplificado que muestra TODAS las fuerzas que actúan sobre un objeto",
+            "El objeto se representa como un punto o forma simple",
+        ],
+        "notas_docente": "Dibujar un ejemplo en el tablero.",
+    }]
+    limpias = _validar_diapositivas(bruto)
+    assert len(limpias) == 1
+    cuerpo = limpias[0]["cuerpo"]
+    assert isinstance(cuerpo, list)
+    assert cuerpo == [
+        "Es un dibujo simplificado que muestra TODAS las fuerzas que actúan sobre un objeto",
+        "El objeto se representa como un punto o forma simple",
+    ]
+
+
+def test_validar_diapositivas_cuerpo_como_string_se_preserva_como_string():
+    from presentaciones import _validar_diapositivas
+
+    bruto = [{
+        "tipo": "contenido",
+        "titulo": "Título normal",
+        "cuerpo": "Un párrafo normal de una sola pieza.",
+        "notas_docente": "x",
+    }]
+    limpias = _validar_diapositivas(bruto)
+    assert limpias[0]["cuerpo"] == "Un párrafo normal de una sola pieza."
+    assert isinstance(limpias[0]["cuerpo"], str)
+
+
+def test_validar_diapositivas_cuerpo_como_string_json_se_parsea_a_lista():
+    from presentaciones import _validar_diapositivas
+
+    bruto = [{
+        "tipo": "contenido",
+        "titulo": "Título normal",
+        "cuerpo": '["Primer punto", "Segundo punto"]',
+        "notas_docente": "x",
+    }]
+    limpias = _validar_diapositivas(bruto)
+    assert limpias[0]["cuerpo"] == ["Primer punto", "Segundo punto"]
+
+
+def test_validar_diapositivas_titulo_como_array_se_une_en_un_string():
+    """titulo/pregunta/instruccion/notas_docente siempre deben quedar
+    como string plano (nunca lista) — a diferencia de cuerpo."""
+    from presentaciones import _validar_diapositivas
+
+    bruto = [{
+        "tipo": "contenido",
+        "titulo": ["Diagrama", "de", "cuerpo libre"],
+        "cuerpo": "Cuerpo normal.",
+        "notas_docente": "x",
+    }]
+    limpias = _validar_diapositivas(bruto)
+    assert limpias[0]["titulo"] == "Diagrama de cuerpo libre"
+    assert isinstance(limpias[0]["titulo"], str)
+
+
+def test_validar_diapositivas_pregunta_como_array_se_une_en_un_string():
+    from presentaciones import _validar_diapositivas
+
+    bruto = [{
+        "tipo": "multiple",
+        "pregunta": ["¿Cuál", "es la fuerza neta?"],
+        "opciones": ["A", "B"],
+        "correcta": 0,
+    }]
+    limpias = _validar_diapositivas(bruto)
+    assert limpias[0]["pregunta"] == "¿Cuál es la fuerza neta?"
+
+
+def test_validar_diapositivas_opcion_como_array_se_une_en_un_string():
+    from presentaciones import _validar_diapositivas
+
+    bruto = [{
+        "tipo": "multiple",
+        "pregunta": "¿Cuál es correcta?",
+        "opciones": [["2", "/", "4"], "1/3"],
+        "correcta": 0,
+    }]
+    limpias = _validar_diapositivas(bruto)
+    assert limpias[0]["opciones"][0] == "2 / 4"
+    assert limpias[0]["opciones"][1] == "1/3"

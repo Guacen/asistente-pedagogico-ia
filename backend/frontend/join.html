@@ -148,6 +148,12 @@
     let slideIndexActual = null;
     let inicioSlideMs = null;
     let timerInterval = null;
+    // Timeout de "Uniendo…" y el listener 'connect' pendiente de un
+    // intento en curso — sin esto, el botón podía quedarse colgado para
+    // siempre si el socket nunca lograba conectar (bug reportado en
+    // clase real: CSP bloqueando el WebSocket en Safari).
+    let joinTimeoutId = null;
+    let pendingEmitirUnirse = null;
 
     // ── Prellenar código desde la URL: /join/ABC123 o join.html?codigo=ABC123 ──
     function codigoDesdeUrl() {
@@ -179,6 +185,17 @@
         el.classList.remove('hidden');
     }
 
+    function limpiarTimeoutUnion() {
+        if (joinTimeoutId) {
+            clearTimeout(joinTimeoutId);
+            joinTimeoutId = null;
+        }
+        if (pendingEmitirUnirse && socket) {
+            socket.off('connect', pendingEmitirUnirse);
+            pendingEmitirUnirse = null;
+        }
+    }
+
     function conectarSocket() {
         if (socket) return socket;
         // Estudiante SIN cuenta — se conecta sin token (ver
@@ -187,6 +204,7 @@
         socket = io(window.APP_CONFIG.WS_URL);
 
         socket.on('presentacion:unido', (data) => {
+            limpiarTimeoutUnion();
             nombreEstudiante = data.nombre;
             idSesionActual = data.sesion_id;
             document.getElementById('espera-nombre').textContent = nombreEstudiante;
@@ -195,8 +213,29 @@
         });
 
         socket.on('presentacion:error', (data) => {
+            limpiarTimeoutUnion();
             resetBotonUnirme();
             mostrarErrorEntrada(data.message || 'Ocurrió un error.');
+        });
+
+        // Fallo al establecer la conexión (transporte bloqueado por CSP,
+        // servidor inalcanzable, etc.) — sin esto, el botón se quedaba en
+        // "Uniendo…" para siempre porque nunca llegaba ni 'connect' ni
+        // ningún evento de presentación (bug reportado en clase real).
+        socket.on('connect_error', (err) => {
+            console.error('[join] connect_error:', err);
+            limpiarTimeoutUnion();
+            resetBotonUnirme();
+            mostrarErrorEntrada('No se pudo conectar al servidor. Verificá tu conexión e intentá de nuevo.');
+        });
+
+        // Error genérico del socket (ya conectado) — caso menos común,
+        // pero también debe salir de "Uniendo…" en vez de quedarse colgado.
+        socket.on('error', (err) => {
+            console.error('[join] socket error:', err);
+            limpiarTimeoutUnion();
+            resetBotonUnirme();
+            mostrarErrorEntrada('Ocurrió un error de conexión. Intentá de nuevo.');
         });
 
         socket.on('presentacion:slide_activo', (data) => {
@@ -248,10 +287,34 @@
         document.getElementById('btn-unirme-spinner').classList.remove('hidden');
 
         const s = conectarSocket();
-        const emitirUnirse = () => s.emit('presentacion:unirse', { codigo, nombre });
+
+        // Limpia cualquier intento anterior en curso (reintento manual del
+        // mismo botón "Unirme" tras un timeout/error previo).
+        limpiarTimeoutUnion();
+
+        // CRÍTICO: el botón nunca debe quedarse colgado en "Uniendo…". Si
+        // en 10s no llegó ni 'connect' ni presentacion:unido/error ni
+        // connect_error, mostramos un error real y reactivamos el botón
+        // para que el usuario pueda reintentar.
+        joinTimeoutId = setTimeout(() => {
+            joinTimeoutId = null;
+            if (pendingEmitirUnirse && socket) {
+                socket.off('connect', pendingEmitirUnirse);
+                pendingEmitirUnirse = null;
+            }
+            console.error('[join] timeout de 10s esperando unirse — código:', codigo);
+            resetBotonUnirme();
+            mostrarErrorEntrada('La conexión está tardando demasiado. Verificá tu internet e intentá de nuevo.');
+        }, 10000);
+
+        const emitirUnirse = () => {
+            pendingEmitirUnirse = null;
+            s.emit('presentacion:unirse', { codigo, nombre });
+        };
         if (s.connected) {
             emitirUnirse();
         } else {
+            pendingEmitirUnirse = emitirUnirse;
             s.once('connect', emitirUnirse);
         }
     }

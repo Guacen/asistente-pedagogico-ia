@@ -46,6 +46,50 @@ TIPOS_INTERACCION = frozenset({"multiple", "poll", "nube"})
 TIPOS_VALIDOS = frozenset({"contenido"}) | TIPOS_INTERACCION
 
 
+def _texto_seguro(valor, max_len: int) -> str:
+    """
+    Coerciona cualquier valor a un string sanitizado de una sola línea/
+    párrafo (título, pregunta, instrucción, notas). Si el LLM devuelve una
+    lista donde se esperaba texto plano, la une con espacios en vez de
+    dejar que str(lista) produzca literalmente "['a', 'b']" en pantalla
+    (bug reportado en clase real — corchetes y comillas visibles).
+    """
+    if isinstance(valor, list):
+        valor = " ".join(str(v) for v in valor if v is not None)
+    return sanitizar_texto(str(valor or "").strip(), max_len) or ""
+
+
+def _texto_o_lista(valor, max_len_item: int, max_items: int = 8):
+    """
+    Normaliza un campo que el LLM a veces devuelve como string y a veces
+    como lista de strings (viñetas) — el prompt pide "cuerpo: explicación
+    en máx 4 puntos concisos", lo cual empuja al modelo a responder con
+    un array en vez de un párrafo. Sin esto, str(lista) guardaba
+    literalmente "['a', 'b']" en la DB (bug reportado en clase real: el
+    docente veía corchetes y comillas en la diapositiva proyectada).
+
+    Devuelve una lista de strings sanitizados si `valor` ya es lista, o
+    si es un string que en realidad serializa un array JSON válido
+    (defensa extra por si el LLM anida el array como string); o un
+    string sanitizado en cualquier otro caso. El frontend decide cómo
+    renderizar según el tipo (viñetas vs párrafo).
+    """
+    if isinstance(valor, str):
+        texto = valor.strip()
+        if texto.startswith("[") and texto.endswith("]"):
+            try:
+                parseado = json.loads(texto)
+            except Exception:
+                parseado = None
+            if isinstance(parseado, list):
+                valor = parseado
+
+    if isinstance(valor, list):
+        items = [sanitizar_texto(str(v), max_len_item) or "" for v in valor if v is not None]
+        return [i for i in items if i][:max_items]
+    return sanitizar_texto(str(valor or "").strip(), max_len_item) or ""
+
+
 def _validar_diapositivas(bruto) -> list[dict]:
     """
     Filtra y normaliza el array crudo devuelto por el LLM. Descarta
@@ -68,23 +112,23 @@ def _validar_diapositivas(bruto) -> list[dict]:
             continue
 
         if tipo == "contenido":
-            titulo = sanitizar_texto(str(item.get("titulo") or "").strip(), 200)
-            cuerpo = sanitizar_texto(str(item.get("cuerpo") or "").strip(), 2000)
+            titulo = _texto_seguro(item.get("titulo"), 200)
+            cuerpo = _texto_o_lista(item.get("cuerpo"), 400, 8)
             if not titulo or not cuerpo:
                 continue
             limpias.append({
                 "tipo": "contenido",
                 "titulo": titulo,
                 "cuerpo": cuerpo,
-                "notas_docente": sanitizar_texto(str(item.get("notas_docente") or "").strip(), 1000) or "",
+                "notas_docente": _texto_seguro(item.get("notas_docente"), 1000),
             })
 
         elif tipo == "multiple":
-            pregunta = sanitizar_texto(str(item.get("pregunta") or "").strip(), 500)
+            pregunta = _texto_seguro(item.get("pregunta"), 500)
             opciones_raw = item.get("opciones")
             if not pregunta or not isinstance(opciones_raw, list) or len(opciones_raw) < 2:
                 continue
-            opciones = [sanitizar_texto(str(o), 200) or "" for o in opciones_raw][:6]
+            opciones = [_texto_seguro(o, 200) for o in opciones_raw][:6]
             correcta = item.get("correcta")
             if not isinstance(correcta, int) or not (0 <= correcta < len(opciones)):
                 correcta = 0
@@ -102,18 +146,18 @@ def _validar_diapositivas(bruto) -> list[dict]:
             })
 
         elif tipo == "poll":
-            pregunta = sanitizar_texto(str(item.get("pregunta") or "").strip(), 500)
+            pregunta = _texto_seguro(item.get("pregunta"), 500)
             opciones_raw = item.get("opciones")
             if not pregunta or not isinstance(opciones_raw, list) or len(opciones_raw) < 2:
                 continue
             limpias.append({
                 "tipo": "poll",
                 "pregunta": pregunta,
-                "opciones": [sanitizar_texto(str(o), 200) or "" for o in opciones_raw][:6],
+                "opciones": [_texto_seguro(o, 200) for o in opciones_raw][:6],
             })
 
         elif tipo == "nube":
-            instruccion = sanitizar_texto(str(item.get("instruccion") or "").strip(), 500)
+            instruccion = _texto_seguro(item.get("instruccion"), 500)
             if not instruccion:
                 continue
             limpias.append({"tipo": "nube", "instruccion": instruccion})

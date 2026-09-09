@@ -266,6 +266,55 @@
         return slide && slide.tipo !== 'contenido';
     }
 
+    // ── Render defensivo de campos de texto de la diapositiva ──────
+    // La IA a veces devuelve `cuerpo` como array (viñetas) en vez de
+    // string — sin este manejo, la interpolación directa mostraba
+    // literalmente "['a', 'b']" en pantalla (bug reportado en clase
+    // real). También cubre el caso legacy de un string que en realidad
+    // es un array serializado como JSON.
+    function escapeHtmlPD(s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function normalizarCampoLista(valor) {
+        if (Array.isArray(valor)) {
+            return valor.filter((v) => v != null && String(v).trim() !== '');
+        }
+        if (typeof valor === 'string') {
+            const t = valor.trim();
+            if (t.startsWith('[') && t.endsWith(']')) {
+                try {
+                    const parsed = JSON.parse(t);
+                    if (Array.isArray(parsed)) {
+                        return parsed.filter((v) => v != null && String(v).trim() !== '');
+                    }
+                } catch (_) {
+                    // no era JSON válido — se trata como texto plano abajo
+                }
+            }
+        }
+        return null;
+    }
+
+    // Campos de una sola línea (título, pregunta, instrucción, notas):
+    // si llegan como lista (o string-JSON de lista), se unen en un texto.
+    function textoSeguroPD(valor) {
+        const lista = normalizarCampoLista(valor);
+        if (lista) return lista.join(' ');
+        return valor == null ? '' : String(valor);
+    }
+
+    // `cuerpo`: si es lista (o string-JSON de lista) renderiza viñetas;
+    // si no, párrafo plano.
+    function renderCuerpoPD(valor) {
+        const lista = normalizarCampoLista(valor);
+        if (lista && lista.length) {
+            return `<ul class="list-disc pl-6 space-y-1">${lista.map((item) => `<li>${escapeHtmlPD(item)}</li>`).join('')}</ul>`;
+        }
+        return `<p class="whitespace-pre-line">${escapeHtmlPD(textoSeguroPD(valor))}</p>`;
+    }
+
     function renderSlideActual() {
         const slide = PD.presentacion.diapositivas[PD.slideIndex];
         const total = PD.presentacion.diapositivas.length;
@@ -278,16 +327,16 @@
         if (slide.tipo === 'contenido') {
             proy.innerHTML = `
                 <p class="text-sm uppercase tracking-widest opacity-70 mb-3">Contenido</p>
-                <h2 class="text-3xl lg:text-4xl font-bold mb-6">${slide.titulo}</h2>
-                <div class="text-lg lg:text-xl opacity-90 leading-relaxed whitespace-pre-line">${slide.cuerpo}</div>
+                <h2 class="text-3xl lg:text-4xl font-bold mb-6">${escapeHtmlPD(textoSeguroPD(slide.titulo))}</h2>
+                <div class="text-lg lg:text-xl opacity-90 leading-relaxed">${renderCuerpoPD(slide.cuerpo)}</div>
             `;
             notas.classList.remove('hidden');
-            notasTexto.textContent = slide.notas_docente || '';
+            notasTexto.textContent = textoSeguroPD(slide.notas_docente);
         } else {
             const etiquetas = { multiple: 'Opción múltiple', poll: 'Encuesta', nube: 'Nube de palabras' };
             proy.innerHTML = `
                 <p class="text-sm uppercase tracking-widest opacity-70 mb-3">${etiquetas[slide.tipo] || slide.tipo}</p>
-                <h2 class="text-2xl lg:text-3xl font-bold mb-6">${slide.pregunta || slide.instruccion}</h2>
+                <h2 class="text-2xl lg:text-3xl font-bold mb-6">${escapeHtmlPD(textoSeguroPD(slide.pregunta || slide.instruccion))}</h2>
                 <div id="slide-opciones-proyeccion" class="grid grid-cols-2 gap-3"></div>
                 <div id="slide-resultado-proyeccion" class="hidden mt-2"></div>
             `;
@@ -296,7 +345,7 @@
                 const letras = ['A', 'B', 'C', 'D', 'E', 'F'];
                 document.getElementById('slide-opciones-proyeccion').innerHTML = slide.opciones.map((o, i) => `
                     <div class="rounded-xl px-4 py-3 font-semibold flex items-center gap-2" style="background:${colores[i % colores.length]}">
-                        <span class="w-6 h-6 flex items-center justify-center rounded-full bg-white/25 text-sm">${letras[i]}</span>${o}
+                        <span class="w-6 h-6 flex items-center justify-center rounded-full bg-white/25 text-sm">${letras[i]}</span>${escapeHtmlPD(textoSeguroPD(o))}
                     </div>
                 `).join('');
             }
