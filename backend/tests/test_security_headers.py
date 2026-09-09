@@ -49,6 +49,16 @@ def test_csp_permite_wompi(client_no_auth):
     assert "https://checkout.wompi.co" in csp
 
 
+def test_csp_permite_cloudflare_insights(client_no_auth):
+    """
+    Cloudflare inyecta el beacon de Browser Insights (static.cloudflareinsights.com)
+    a nivel de edge en páginas servidas a navegadores reales — no visible con
+    curl/TestClient, pero el script-src debe permitirlo igual.
+    """
+    csp = _csp(client_no_auth)
+    assert "https://static.cloudflareinsights.com" in csp
+
+
 def test_csp_tambien_presente_en_endpoints_api(client_no_auth):
     """El header se inyecta globalmente — también debe estar en /api/*."""
     r = client_no_auth.get("/health")
