@@ -7,8 +7,8 @@
     <link rel="icon" type="image/png" href="assets/icon.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="css/main.css?v=20260905">
-    <link rel="stylesheet" href="css/brand.css?v=20260905">
+    <link rel="stylesheet" href="css/main.css?v=20260909">
+    <link rel="stylesheet" href="css/brand.css?v=20260909">
     <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
     <style>
         body { background: var(--brand-dark); min-height: 100vh; }
@@ -137,8 +137,8 @@
     </div>
 </div>
 
-<script src="js/config.js?v=20260905"></script>
-<script src="js/api.js?v=20260905"></script>
+<script src="js/config.js?v=20260909"></script>
+<script src="js/api.js?v=20260909"></script>
 
 <script>
     let socket = null;
@@ -329,7 +329,7 @@
         document.getElementById('input-nube').value = '';
 
         const badge = document.getElementById('pregunta-tipo-badge');
-        const etiquetas = { multiple: 'Opción múltiple', poll: 'Encuesta', nube: 'Nube de palabras' };
+        const etiquetas = { multiple: 'Opción múltiple', verdadero_falso: 'Verdadero o Falso', poll: 'Encuesta', nube: 'Nube de palabras' };
         badge.textContent = etiquetas[slide.tipo] || slide.tipo;
         document.getElementById('pregunta-texto').textContent = slide.pregunta || slide.instruccion || '';
 

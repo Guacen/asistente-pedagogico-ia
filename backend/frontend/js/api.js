@@ -775,13 +775,20 @@ class ApiClient {
     // PRESENTACIONES INTERACTIVAS (sprint presentaciones-interactivas)
     // ==========================================
 
-    async generarPresentacion(grupoId, tema, nSlidesContenido = 4) {
+    async generarPresentacion(grupoId, tema, opciones = {}) {
+        const {
+            nSlidesContenido = 8,
+            nPreguntas = 4,
+            tiposPregunta = ['multiple', 'verdadero_falso'],
+        } = opciones;
         return this.request('/api/presentaciones/generar', {
             method: 'POST',
             body: JSON.stringify({
                 grupo_id: grupoId,
                 tema,
                 n_slides_contenido: nSlidesContenido,
+                n_preguntas: nPreguntas,
+                tipos_pregunta: tiposPregunta,
             }),
         });
     }

@@ -96,7 +96,7 @@ def test_generar_presentacion(client, seed_docente):
     r = client.post("/api/presentaciones/generar", json={
         "grupo_id": seed_docente["grupo"].id_grupo,
         "tema": "Media aritmética",
-        "n_slides_contenido": 2,
+        "n_slides_contenido": 4,
     })
     assert r.status_code == 201, r.text
     body = r.json()
@@ -448,3 +448,264 @@ def test_validar_diapositivas_opcion_como_array_se_une_en_un_string():
     limpias = _validar_diapositivas(bruto)
     assert limpias[0]["opciones"][0] == "2 / 4"
     assert limpias[0]["opciones"][1] == "1/3"
+
+
+# ═══════════════════════════════════════════════════════════════
+# 8. SPRINT 2 — conteo de generación (contenido/preguntas) + reintento
+# ═══════════════════════════════════════════════════════════════
+
+def _slide_contenido(titulo="T"):
+    return {"tipo": "contenido", "titulo": titulo, "cuerpo": "x", "notas_docente": "x"}
+
+
+def _slide_pregunta(tipo="multiple"):
+    if tipo == "verdadero_falso":
+        return {
+            "tipo": "verdadero_falso", "pregunta": "¿Es correcto?",
+            "opciones": ["Verdadero", "Falso"], "correcta": 0,
+        }
+    return {"tipo": "multiple", "pregunta": "¿Cuál?", "opciones": ["A", "B"], "correcta": 0}
+
+
+def test_conteo_coincide_true_cuando_cantidades_exactas():
+    from presentaciones import _conteo_coincide
+    diapositivas = [_slide_contenido(), _slide_pregunta(), _slide_contenido(), _slide_pregunta("verdadero_falso")]
+    assert _conteo_coincide(diapositivas, n_slides_contenido=2, n_preguntas=2) is True
+
+
+def test_conteo_coincide_false_cuando_faltan_preguntas():
+    from presentaciones import _conteo_coincide
+    diapositivas = [_slide_contenido(), _slide_contenido(), _slide_pregunta()]
+    assert _conteo_coincide(diapositivas, n_slides_contenido=2, n_preguntas=2) is False
+
+
+def test_conteo_coincide_false_con_lista_vacia():
+    from presentaciones import _conteo_coincide
+    assert _conteo_coincide([], n_slides_contenido=2, n_preguntas=2) is False
+
+
+def test_generar_presentacion_endpoint_502_si_conteo_nunca_coincide(client, seed_docente, monkeypatch):
+    """Extremo a extremo por el endpoint: si _generar_diapositivas_ia
+    devuelve [] (conteo nunca coincidió tras el reintento), el docente
+    recibe un 502 explícito, no una presentación incompleta."""
+    import presentaciones as presentaciones_module
+    monkeypatch.setattr(
+        presentaciones_module, "_generar_diapositivas_ia", AsyncMock(return_value=[]),
+    )
+    r = client.post("/api/presentaciones/generar", json={
+        "grupo_id": seed_docente["grupo"].id_grupo,
+        "tema": "Tema random",
+        "n_slides_contenido": 8,
+        "n_preguntas": 4,
+    })
+    assert r.status_code == 502
+
+
+def test_generar_presentacion_rechaza_rango_invalido_de_conteos(client, seed_docente):
+    r = client.post("/api/presentaciones/generar", json={
+        "grupo_id": seed_docente["grupo"].id_grupo,
+        "tema": "Tema random",
+        "n_slides_contenido": 2,  # por debajo del mínimo (4)
+    })
+    assert r.status_code == 422
+
+
+def test_generar_presentacion_rechaza_tipos_pregunta_vacios(client, seed_docente):
+    r = client.post("/api/presentaciones/generar", json={
+        "grupo_id": seed_docente["grupo"].id_grupo,
+        "tema": "Tema random",
+        "tipos_pregunta": [],
+    })
+    assert r.status_code == 422
+
+
+# ═══════════════════════════════════════════════════════════════
+# 9. SPRINT 2 — validación del catálogo cerrado de diagramas SVG
+# ═══════════════════════════════════════════════════════════════
+
+def test_validar_diagrama_fuerzas_valido():
+    from presentaciones import _validar_diagrama
+    raw = {"tipo": "fuerzas", "datos": {
+        "objeto": "Caja",
+        "fuerzas": [
+            {"nombre": "Peso", "direccion": "abajo", "magnitud": 3},
+            {"nombre": "Normal", "direccion": "arriba", "magnitud": 3},
+        ],
+    }}
+    out = _validar_diagrama(raw)
+    assert out["tipo"] == "fuerzas"
+    assert out["datos"]["objeto"] == "Caja"
+    assert len(out["datos"]["fuerzas"]) == 2
+
+
+def test_validar_diagrama_ciclo_valido():
+    from presentaciones import _validar_diagrama
+    raw = {"tipo": "ciclo", "datos": {"pasos": ["Uno", "Dos", "Tres"]}}
+    out = _validar_diagrama(raw)
+    assert out["datos"]["pasos"] == ["Uno", "Dos", "Tres"]
+
+
+def test_validar_diagrama_ciclo_invalido_con_menos_de_3_pasos():
+    from presentaciones import _validar_diagrama
+    raw = {"tipo": "ciclo", "datos": {"pasos": ["Uno", "Dos"]}}
+    assert _validar_diagrama(raw) is None
+
+
+def test_validar_diagrama_linea_tiempo_valido():
+    from presentaciones import _validar_diagrama
+    raw = {"tipo": "linea_tiempo", "datos": {"eventos": [
+        {"etiqueta": "1810", "texto": "Independencia"},
+        {"etiqueta": "1819", "texto": "Boyacá"},
+    ]}}
+    out = _validar_diagrama(raw)
+    assert len(out["datos"]["eventos"]) == 2
+
+
+def test_validar_diagrama_comparacion_valido():
+    from presentaciones import _validar_diagrama
+    raw = {"tipo": "comparacion", "datos": {
+        "titulo_izquierda": "Mitosis", "items_izquierda": ["1 división"],
+        "titulo_derecha": "Meiosis", "items_derecha": ["2 divisiones"],
+    }}
+    out = _validar_diagrama(raw)
+    assert out["datos"]["titulo_izquierda"] == "Mitosis"
+
+
+def test_validar_diagrama_jerarquia_valido():
+    from presentaciones import _validar_diagrama
+    raw = {"tipo": "jerarquia", "datos": {"raiz": "Reino Animal", "hijos": ["Vertebrados", "Invertebrados"]}}
+    out = _validar_diagrama(raw)
+    assert out["datos"]["raiz"] == "Reino Animal"
+    assert len(out["datos"]["hijos"]) == 2
+
+
+def test_validar_diagrama_proceso_valido():
+    from presentaciones import _validar_diagrama
+    raw = {"tipo": "proceso", "datos": {"pasos": ["Paso 1", "Paso 2"]}}
+    out = _validar_diagrama(raw)
+    assert out["datos"]["pasos"] == ["Paso 1", "Paso 2"]
+
+
+@pytest.mark.parametrize("raw", [
+    None,
+    "no es un dict",
+    123,
+    [],
+    {"tipo": "tipo_inventado", "datos": {}},
+    {"tipo": "fuerzas"},  # sin "datos"
+    {"tipo": "fuerzas", "datos": "no es un dict"},
+    {"tipo": "fuerzas", "datos": {"objeto": "Caja", "fuerzas": "no es lista"}},
+    {"tipo": "fuerzas", "datos": {"objeto": "Caja", "fuerzas": [{"nombre": "Peso", "direccion": "diagonal"}]}},
+    {"tipo": "jerarquia", "datos": {"raiz": "x", "hijos": ["solo uno"]}},
+    {"tipo": "comparacion", "datos": {"titulo_izquierda": "A", "items_izquierda": [], "titulo_derecha": "B", "items_derecha": ["x"]}},
+    {"tipo": "proceso", "datos": {"pasos": ["solo uno"]}},
+])
+def test_validar_diagrama_nunca_revienta_con_datos_malformados(raw):
+    """Cualquier forma inesperada devuelve None — nunca levanta
+    excepción y nunca rompe la diapositiva que lo contiene."""
+    from presentaciones import _validar_diagrama
+    assert _validar_diagrama(raw) is None
+
+
+def test_validar_diapositivas_contenido_con_diagrama_valido_lo_incluye():
+    from presentaciones import _validar_diapositivas
+    bruto = [{
+        "tipo": "contenido", "titulo": "T", "cuerpo": "x", "notas_docente": "x",
+        "diagrama": {"tipo": "proceso", "datos": {"pasos": ["Paso 1", "Paso 2"]}},
+    }]
+    limpias = _validar_diapositivas(bruto)
+    assert "diagrama" in limpias[0]
+    assert limpias[0]["diagrama"]["tipo"] == "proceso"
+
+
+def test_validar_diapositivas_contenido_con_diagrama_invalido_lo_omite_sin_romper_slide():
+    """VERIFICACIÓN OBLIGATORIA #3: una respuesta de IA malformada (acá,
+    un diagrama con forma inválida) no rompe la presentación — la
+    diapositiva de contenido se valida igual, sólo sin la clave
+    'diagrama'."""
+    from presentaciones import _validar_diapositivas
+    bruto = [{
+        "tipo": "contenido", "titulo": "T", "cuerpo": "x", "notas_docente": "x",
+        "diagrama": {"tipo": "no_existe", "datos": {"quien_sabe": 1}},
+    }]
+    limpias = _validar_diapositivas(bruto)
+    assert len(limpias) == 1
+    assert "diagrama" not in limpias[0]
+    assert limpias[0]["titulo"] == "T"
+
+
+def test_validar_diapositivas_sin_diagrama_no_incluye_la_clave():
+    from presentaciones import _validar_diapositivas
+    bruto = [{"tipo": "contenido", "titulo": "T", "cuerpo": "x", "notas_docente": "x"}]
+    limpias = _validar_diapositivas(bruto)
+    assert "diagrama" not in limpias[0]
+
+
+# ═══════════════════════════════════════════════════════════════
+# 10. SPRINT 2 — respuesta de IA totalmente malformada nunca rompe nada
+# ═══════════════════════════════════════════════════════════════
+
+@pytest.mark.parametrize("bruto", [
+    None,
+    "no es un array",
+    123,
+    {},
+    [None, 123, "texto", []],
+    [{"tipo": "contenido"}],  # sin titulo/cuerpo
+    [{"tipo": "verdadero_falso"}],  # sin pregunta
+    [{"sin_tipo": True}],
+    [{"tipo": "contenido", "titulo": None, "cuerpo": None}],
+])
+def test_validar_diapositivas_nunca_revienta_con_bruto_malformado(bruto):
+    from presentaciones import _validar_diapositivas
+    resultado = _validar_diapositivas(bruto)
+    assert isinstance(resultado, list)
+
+
+# ═══════════════════════════════════════════════════════════════
+# 11. SPRINT 2 — verdadero_falso se puntúa y cuenta igual que multiple
+# ═══════════════════════════════════════════════════════════════
+
+def test_registrar_respuesta_verdadero_falso_marca_correcta(db_session, seed_docente):
+    from presentaciones import iniciar_slide, registrar_respuesta
+
+    diapositivas = [_slide_pregunta("verdadero_falso")]
+    diapositivas[0]["puntos"] = 100
+    diapositivas[0]["tiempo_s"] = 15
+    presentacion = _crear_presentacion(db_session, seed_docente["docente"], seed_docente["grupo"], diapositivas)
+    sesion = _crear_sesion(db_session, presentacion)
+    iniciar_slide(db_session, sesion, 0)
+
+    correcta = registrar_respuesta(db_session, sesion, presentacion, 0, "Ana", "0", 1000)
+    incorrecta = registrar_respuesta(db_session, sesion, presentacion, 0, "Beto", "1", 1000)
+
+    assert correcta.es_correcta is True
+    assert incorrecta.es_correcta is False
+
+
+def test_calcular_resultado_verdadero_falso_expone_correcta_y_conteos(db_session, seed_docente):
+    from presentaciones import iniciar_slide, registrar_respuesta, calcular_resultado
+
+    diapositivas = [_slide_pregunta("verdadero_falso")]
+    presentacion = _crear_presentacion(db_session, seed_docente["docente"], seed_docente["grupo"], diapositivas)
+    sesion = _crear_sesion(db_session, presentacion)
+    iniciar_slide(db_session, sesion, 0)
+    registrar_respuesta(db_session, sesion, presentacion, 0, "Ana", "0", 1000)
+
+    resultado = calcular_resultado(db_session, sesion, presentacion)
+    assert resultado["correcta"] == 0
+    assert resultado["conteos"] == {"0": 1, "1": 0}
+
+
+def test_calcular_resultado_verdadero_falso_cuenta_en_ranking(db_session, seed_docente):
+    from presentaciones import iniciar_slide, registrar_respuesta, calcular_resultado
+
+    diapositivas = [_slide_pregunta("verdadero_falso")]
+    presentacion = _crear_presentacion(db_session, seed_docente["docente"], seed_docente["grupo"], diapositivas)
+    sesion = _crear_sesion(db_session, presentacion)
+    iniciar_slide(db_session, sesion, 0)
+    registrar_respuesta(db_session, sesion, presentacion, 0, "Ana", "0", 1000)
+
+    resultado = calcular_resultado(db_session, sesion, presentacion)
+    ranking = {r["nombre"]: r["puntos"] for r in resultado["ranking_top5"]}
+    assert ranking.get("Ana", 0) > 0

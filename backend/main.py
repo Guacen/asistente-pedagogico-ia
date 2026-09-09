@@ -181,21 +181,36 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 app.add_middleware(SecurityHeadersMiddleware)
 
 # ============================================================
-# CACHE-CONTROL — assets/ y css/ (logo, icon, brand.css, main.css)
-# Cloudflare cachea estáticos por extensión con su propio Edge Cache TTL
-# (vimos un logo.png viejo servido desde caché 30min después de un
-# deploy que ya tenía el archivo nuevo). "no-cache" (no "no-store") a
-# propósito: Cloudflare/el navegador SIGUEN pudiendo cachear el byte,
-# pero deben revalidar con el origen (ETag/Last-Modified, que
-# StaticFiles ya calcula) antes de servir la copia cacheada — no
-# implica re-descargar el archivo entero en cada request.
+# CACHE-CONTROL — HTML, assets/ y css/
+#
+# assets/ y css/ (logo, icon, brand.css, main.css): Cloudflare cachea
+# estáticos por extensión con su propio Edge Cache TTL (vimos un
+# logo.png viejo servido desde caché 30min después de un deploy que ya
+# tenía el archivo nuevo). "no-cache" (no "no-store") a propósito:
+# Cloudflare/el navegador SIGUEN pudiendo cachear el byte, pero deben
+# revalidar con el origen (ETag/Last-Modified, que StaticFiles ya
+# calcula) antes de servir la copia cacheada.
+#
+# HTML (TODAS las páginas, no sólo presentaciones): mismo problema pero
+# sin el cache-buster ?v= que sí tienen /js/ y /css/ — un estudiante
+# entrando a join.html podía recibir una copia vieja cacheada por
+# Cloudflare/el navegador (bug real: colgaba en "Uniendo…" con JS
+# desactualizado sin ningún indicio de por qué). Se detecta por
+# Content-Type en vez de por extensión de path — cubre StaticFiles
+# (html=True), "/", y la ruta explícita /join/{codigo} por igual.
+# "must-revalidate" además de "no-cache": una vez vencida cualquier
+# frescura implícita, el cliente NO puede usar la copia stale ni
+# siquiera en modo offline/error de red — debe ir al origen sí o sí.
 # ============================================================
 
 @app.middleware("http")
-async def no_cache_para_assets_estaticos(request: Request, call_next):
+async def no_cache_para_html_y_assets_estaticos(request: Request, call_next):
     response = await call_next(request)
     path = request.url.path
-    if path.startswith("/assets/") or path.startswith("/css/"):
+    content_type = response.headers.get("content-type", "")
+    if content_type.startswith("text/html"):
+        response.headers["Cache-Control"] = "no-cache, must-revalidate"
+    elif path.startswith("/assets/") or path.startswith("/css/"):
         response.headers["Cache-Control"] = "no-cache"
     return response
 
