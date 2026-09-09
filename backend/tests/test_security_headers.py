@@ -18,6 +18,18 @@ def _csp(client_no_auth) -> str:
     return csp
 
 
+def _directiva(csp: str, nombre: str) -> str:
+    """Extrae el valor de una directiva puntual (ej. 'connect-src') del
+    string completo del CSP — necesario para no confundir un origen
+    presente en OTRA directiva (ej. script-src) con que esté en la que
+    realmente importa."""
+    for parte in csp.split(";"):
+        parte = parte.strip()
+        if parte.startswith(nombre + " "):
+            return parte
+    raise AssertionError(f"Directiva {nombre!r} ausente en CSP: {csp!r}")
+
+
 def test_csp_permite_tailwind_y_fontawesome(client_no_auth):
     csp = _csp(client_no_auth)
     assert "https://cdn.tailwindcss.com" in csp
@@ -47,6 +59,18 @@ def test_csp_permite_google_fonts(client_no_auth):
 def test_csp_permite_wompi(client_no_auth):
     csp = _csp(client_no_auth)
     assert "https://checkout.wompi.co" in csp
+
+
+def test_csp_connect_src_permite_cloudflare_insights(client_no_auth):
+    """
+    A diferencia de script/style/font-src, connect-src SÍ importa acá: el
+    beacon de Cloudflare Browser Insights reporta analítica vía fetch/XHR
+    después de cargar — eso es un request "connect", no un <script>/<link>.
+    """
+    csp = _csp(client_no_auth)
+    connect_src = _directiva(csp, "connect-src")
+    assert "https://static.cloudflareinsights.com" in connect_src
+    assert "https://checkout.wompi.co" in connect_src
 
 
 def test_csp_permite_cloudflare_insights(client_no_auth):
