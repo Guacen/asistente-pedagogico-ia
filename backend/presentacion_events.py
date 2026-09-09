@@ -20,6 +20,8 @@ leen el evento, llaman al helper, emiten el resultado.
 """
 from __future__ import annotations
 
+import logging
+
 from database import SessionLocal
 from models import RespuestaPresentacion, SesionPresentacion
 from presentaciones import (
@@ -32,6 +34,8 @@ from presentaciones import (
 from security_utils import sanitizar_texto
 from socket_events import _estudiantes_presentacion as _estudiantes
 from socket_events import sio
+
+logger = logging.getLogger(__name__)
 
 
 def _sala(id_sesion: str) -> str:
@@ -65,6 +69,10 @@ async def presentacion_unirse(sid, data):
     nombre = (data.get("nombre") or "").strip()
 
     if not codigo or not nombre:
+        logger.info(
+            "presentacion:unirse rechazado — código/nombre faltante (sid=%s, codigo=%r, nombre=%r)",
+            sid, codigo, nombre,
+        )
         await sio.emit(
             "presentacion:error",
             {"message": "Código y nombre son obligatorios."},
@@ -76,6 +84,10 @@ async def presentacion_unirse(sid, data):
     try:
         sesion = db.query(SesionPresentacion).filter(SesionPresentacion.codigo == codigo).first()
         if not sesion:
+            logger.info(
+                "presentacion:unirse — código no encontrado (codigo=%s, nombre=%r, sid=%s)",
+                codigo, nombre, sid,
+            )
             await sio.emit(
                 "presentacion:error",
                 {"message": "Código de sesión no encontrado."},
@@ -83,6 +95,10 @@ async def presentacion_unirse(sid, data):
             )
             return
         if sesion.estado == "finalizada":
+            logger.info(
+                "presentacion:unirse — sesión ya finalizada (codigo=%s, nombre=%r, sesion_id=%s, sid=%s)",
+                codigo, nombre, sesion.id_sesion, sid,
+            )
             await sio.emit(
                 "presentacion:error",
                 {"message": "Esta sesión ya finalizó."},
@@ -98,6 +114,10 @@ async def presentacion_unirse(sid, data):
             "presentacion:unido",
             {"nombre": nombre_limpio, "estado": sesion.estado, "sesion_id": sesion.id_sesion},
             to=sid,
+        )
+        logger.info(
+            "presentacion:unirse OK (codigo=%s, nombre=%r, sesion_id=%s, sid=%s)",
+            codigo, nombre_limpio, sesion.id_sesion, sid,
         )
 
         # Si el estudiante se une tarde y ya hay un slide abierto, lo
@@ -126,6 +146,19 @@ async def presentacion_unirse(sid, data):
                 "total_sala": _contar_estudiantes_sala(sesion.id_sesion),
             },
             room=_sala(sesion.id_sesion),
+        )
+    except Exception:
+        # Sin esto, una falla inesperada acá (DB, etc.) no le llega al
+        # estudiante — el botón se queda en "Uniendo…" para siempre porque
+        # nunca recibe ni presentacion:unido ni presentacion:error.
+        logger.exception(
+            "Error inesperado en presentacion:unirse (codigo=%s, nombre=%r, sid=%s)",
+            codigo, nombre, sid,
+        )
+        await sio.emit(
+            "presentacion:error",
+            {"message": "Ocurrió un error al unirte — intenta de nuevo."},
+            to=sid,
         )
     finally:
         db.close()

@@ -141,7 +141,12 @@ app.add_middleware(
 #     fonts.gstatic.com más abajo, que sólo cargan como <script>/<link>/
 #     @font-face y ya están cubiertos por script-src/style-src/font-src;
 #     se agregaron igual por pedido explícito, son inofensivos aunque
-#     redundantes para esos 4 orígenes).
+#     redundantes para esos 4 orígenes); wss://usemaestria.co — Safari/
+#     WebKit no deriva conexiones wss:// del mismo origen a partir de
+#     'self' de forma confiable (a diferencia de Chrome/Firefox), así
+#     que se agrega explícito para que el WebSocket de Socket.io
+#     (estudiantes uniéndose a una presentación en vivo) no quede
+#     bloqueado en esos navegadores.
 #   frame-src: checkout.wompi.co.
 # ============================================================
 
@@ -167,7 +172,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "connect-src 'self' https://checkout.wompi.co "
             "https://cdn.tailwindcss.com https://cdnjs.cloudflare.com "
             "https://fonts.googleapis.com https://fonts.gstatic.com "
-            "https://static.cloudflareinsights.com; "
+            "https://static.cloudflareinsights.com wss://usemaestria.co; "
             "frame-src https://checkout.wompi.co;"
         )
         return response
