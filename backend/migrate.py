@@ -241,6 +241,26 @@ def apply_migrations():
         Presentacion.__table__, SesionPresentacion.__table__, RespuestaPresentacion.__table__,
     ])
 
+    # ── SPRINT 4 — generación asíncrona de presentaciones ──
+    # estado/error_generacion en presentaciones: POST /generar ya no
+    # bloquea el request esperando a la IA (causaba 502 de Cloudflare
+    # con generaciones grandes) — crea la fila con estado='generando' y
+    # la actualiza en background.
+    cols_pres = [c["name"] for c in inspect(engine).get_columns("presentaciones")]
+    with engine.connect() as conn:
+        if "estado" not in cols_pres:
+            conn.execute(text(
+                "ALTER TABLE presentaciones ADD COLUMN estado VARCHAR(20) NOT NULL DEFAULT 'lista'"
+            ))
+            conn.commit()
+            print("✅ Migración: columna 'estado' agregada a 'presentaciones' (default 'lista')")
+        if "error_generacion" not in cols_pres:
+            conn.execute(text(
+                "ALTER TABLE presentaciones ADD COLUMN error_generacion TEXT"
+            ))
+            conn.commit()
+            print("✅ Migración: columna 'error_generacion' agregada a 'presentaciones'")
+
     # Backfill uni-personal: cada docente sin id_institucion recibe una
     # Institucion nueva a su nombre. Idempotente — si ya tiene, no toca.
     _backfill_instituciones_unipersonales()

@@ -56,13 +56,28 @@ def _slides_canned() -> list[dict]:
 
 
 @pytest.fixture(autouse=True)
-def _mock_generacion_ia(monkeypatch):
+def _mock_generacion_ia(monkeypatch, test_engine):
     """Reemplaza la llamada a la IA por un mock async con slides canned,
     en TODOS los tests de este archivo — POST /generar nunca golpea la
-    API real."""
+    API real.
+
+    SPRINT 4: la generación real ahora corre en background
+    (asyncio.create_task) y abre su PROPIA sesión de DB vía
+    presentaciones.SessionLocal() — bajo TestClient esa task sí llega a
+    ejecutarse dentro del ciclo de vida del request (confirmado
+    empíricamente), pero SessionLocal() por default apunta a la DB real
+    de dev, no al test_engine efímero. Sin este patch, el background
+    nunca encuentra el grupo/presentación recién creados y todo termina
+    en estado='error' con "el grupo ya no existe".
+    """
     import presentaciones as presentaciones_module
+    from sqlalchemy.orm import sessionmaker
+
     mock = AsyncMock(return_value=_slides_canned())
     monkeypatch.setattr(presentaciones_module, "_generar_diapositivas_ia", mock)
+
+    TestSession = sessionmaker(bind=test_engine, autocommit=False, autoflush=False)
+    monkeypatch.setattr(presentaciones_module, "SessionLocal", TestSession)
     return mock
 
 
@@ -91,6 +106,11 @@ def _crear_sesion(db_session, presentacion, codigo="ABC234"):
 
 
 # ─── 1. POST /generar produce slides con tipos válidos ─────────────
+# SPRINT 4: el endpoint responde 202 con estado='generando' de inmediato
+# — la generación real corre en background. Bajo TestClient esa task
+# efectivamente corre y termina dentro del ciclo del propio request
+# (confirmado empíricamente en este archivo), así que el resultado final
+# ya está disponible en un GET inmediatamente después.
 
 def test_generar_presentacion(client, seed_docente):
     r = client.post("/api/presentaciones/generar", json={
@@ -98,11 +118,19 @@ def test_generar_presentacion(client, seed_docente):
         "tema": "Media aritmética",
         "n_slides_contenido": 4,
     })
-    assert r.status_code == 201, r.text
+    assert r.status_code == 202, r.text
     body = r.json()
     assert body["titulo"]
     assert body["tema"] == "Media aritmética"
-    tipos = [d["tipo"] for d in body["diapositivas"]]
+    assert body["estado"] == "generando"
+    assert body["diapositivas"] == []
+    pid = body["id_presentacion"]
+
+    r2 = client.get(f"/api/presentaciones/{pid}")
+    assert r2.status_code == 200, r2.text
+    body2 = r2.json()
+    assert body2["estado"] == "lista"
+    tipos = [d["tipo"] for d in body2["diapositivas"]]
     assert tipos == ["contenido", "multiple", "contenido", "poll"]
     assert all(t in {"contenido", "multiple", "poll", "nube"} for t in tipos)
 
@@ -116,7 +144,13 @@ def test_generar_presentacion_grupo_ajeno_devuelve_404(client, seed_docente_b):
     assert r.status_code == 404
 
 
-def test_generar_presentacion_sin_slides_validas_devuelve_502(client, seed_docente, monkeypatch):
+def test_generar_presentacion_sin_slides_validas_deja_estado_error(client, seed_docente, monkeypatch):
+    """
+    SPRINT 4: el endpoint YA NO devuelve 502 síncrono — siempre responde
+    202 de inmediato. Si la IA no produce slides válidas, la fila queda
+    en estado='error' (consultable vía GET /{id}/estado), nunca colgada
+    en 'generando'.
+    """
     import presentaciones as presentaciones_module
     monkeypatch.setattr(
         presentaciones_module, "_generar_diapositivas_ia", AsyncMock(return_value=[]),
@@ -125,12 +159,25 @@ def test_generar_presentacion_sin_slides_validas_devuelve_502(client, seed_docen
         "grupo_id": seed_docente["grupo"].id_grupo,
         "tema": "Tema random",
     })
-    assert r.status_code == 502
+    assert r.status_code == 202
+    pid = r.json()["id_presentacion"]
+
+    r2 = client.get(f"/api/presentaciones/{pid}/estado")
+    assert r2.status_code == 200
+    body2 = r2.json()
+    assert body2["estado"] == "error"
+    assert body2["error_generacion"]
 
 
-def test_generar_presentacion_error_proveedor_ia_devuelve_502(client, seed_docente, monkeypatch):
-    """Si el proveedor de IA falla (sin API key, timeout, etc.) el docente recibe un 502
-    limpio, no un 500 con stack trace."""
+def test_generar_presentacion_error_proveedor_ia_deja_estado_error_con_mensaje_real(
+    client, seed_docente, monkeypatch,
+):
+    """
+    Si el proveedor de IA falla (sin API key, timeout, etc.) la
+    presentación queda en estado='error' con el MENSAJE REAL de la
+    excepción guardado — para poder diagnosticar sin depender de los
+    logs de Railway (SPRINT 4, Parte B).
+    """
     import presentaciones as presentaciones_module
     monkeypatch.setattr(
         presentaciones_module, "_generar_diapositivas_ia",
@@ -140,7 +187,14 @@ def test_generar_presentacion_error_proveedor_ia_devuelve_502(client, seed_docen
         "grupo_id": seed_docente["grupo"].id_grupo,
         "tema": "Tema random",
     })
-    assert r.status_code == 502
+    assert r.status_code == 202
+    pid = r.json()["id_presentacion"]
+
+    r2 = client.get(f"/api/presentaciones/{pid}/estado")
+    assert r2.status_code == 200
+    body2 = r2.json()
+    assert body2["estado"] == "error"
+    assert "proveedor no configurado" in body2["error_generacion"]
 
 
 # ─── 2. GET /join/{codigo} inválido → 404 ──────────────────────────
@@ -180,7 +234,7 @@ def test_iniciar_sesion_presentacion_ajena_devuelve_404(client_two_docentes):
         "grupo_id": grupo_a.id_grupo,
         "tema": "Media aritmética",
     })
-    assert r_gen.status_code == 201, r_gen.text
+    assert r_gen.status_code == 202, r_gen.text
     presentacion_id = r_gen.json()["id_presentacion"]
 
     client_two_docentes["as_b"]()
@@ -484,10 +538,10 @@ def test_conteo_coincide_false_con_lista_vacia():
     assert _conteo_coincide([], n_slides_contenido=2, n_preguntas=2) is False
 
 
-def test_generar_presentacion_endpoint_502_si_conteo_nunca_coincide(client, seed_docente, monkeypatch):
+def test_generar_presentacion_deja_estado_error_si_conteo_nunca_coincide(client, seed_docente, monkeypatch):
     """Extremo a extremo por el endpoint: si _generar_diapositivas_ia
-    devuelve [] (conteo nunca coincidió tras el reintento), el docente
-    recibe un 502 explícito, no una presentación incompleta."""
+    devuelve [] (conteo nunca coincidió tras el reintento), la fila
+    queda en estado='error' — no una presentación incompleta ni un 500."""
     import presentaciones as presentaciones_module
     monkeypatch.setattr(
         presentaciones_module, "_generar_diapositivas_ia", AsyncMock(return_value=[]),
@@ -498,7 +552,10 @@ def test_generar_presentacion_endpoint_502_si_conteo_nunca_coincide(client, seed
         "n_slides_contenido": 8,
         "n_preguntas": 4,
     })
-    assert r.status_code == 502
+    assert r.status_code == 202
+    pid = r.json()["id_presentacion"]
+    r2 = client.get(f"/api/presentaciones/{pid}/estado")
+    assert r2.json()["estado"] == "error"
 
 
 def test_generar_presentacion_rechaza_rango_invalido_de_conteos(client, seed_docente):

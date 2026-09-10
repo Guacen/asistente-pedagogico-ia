@@ -236,6 +236,11 @@ async def connect(sid, environ, auth):
         if not docente:
             raise ConnectionRefusedError("Token inválido")
         _sesiones[sid] = docente.id_docente
+        # SPRINT 4: sala personal del docente — permite emitirle eventos
+        # (ej. presentacion:generada cuando termina una generación en
+        # background) sin depender de una sala de sesión en vivo, que
+        # sólo existe una vez que arrancó una presentación.
+        await sio.enter_room(sid, f"docente_{docente.id_docente}")
         print(f"🟢 Conectado: {docente.email} (sid={sid})")
     finally:
         db.close()

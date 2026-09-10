@@ -807,7 +807,17 @@ async function generarPresentacionIA() {
     btn.disabled = true;
     const original = btn.innerHTML;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Generando…';
+    // SPRINT 4: se guardan los parámetros originales para que
+    // presentacion-docente.html pueda ofrecer un "Reintentar" real si la
+    // generación (que ahora corre en background) termina en error —
+    // sin esto no hay forma de reintentar sin volver a llenar el modal.
+    sessionStorage.setItem('ultimaGeneracionPresentacion', JSON.stringify({
+        grupoId: GP.grupoId, tema, nSlidesContenido, nPreguntas, tiposPregunta,
+    }));
     try {
+        // POST /generar ahora responde 202 casi al instante (la IA corre
+        // en background) — el spinner de este botón apenas se nota;
+        // el progreso real se muestra en presentacion-docente.html.
         const presentacion = await api.generarPresentacion(GP.grupoId, tema, {
             nSlidesContenido, nPreguntas, tiposPregunta,
         });

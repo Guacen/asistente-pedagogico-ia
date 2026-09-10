@@ -17,6 +17,7 @@ testeables directo con el fixture `db_session` (mismo criterio que
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import re
@@ -29,7 +30,7 @@ from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 
 from auth import verify_trial_active
-from database import get_db
+from database import SessionLocal, get_db
 from models import Docente, Grupo, Presentacion, RespuestaPresentacion, SesionPresentacion
 from rate_limiter import limiter
 from security_utils import sanitizar_texto
@@ -369,18 +370,35 @@ def _conteo_coincide(diapositivas: list[dict], n_slides_contenido: int, n_pregun
     return n_contenido_real == n_slides_contenido and n_preguntas_real == n_preguntas
 
 
+# SPRINT 4, Parte D — límites defensivos.
+# max_tokens: con hasta 25 diapositivas + diagramas, 4096 tokens (el
+# límite original, pensado para 4 diapositivas) puede truncar el JSON a
+# mitad de una diapositiva — eso es "respuesta malformada" tanto como
+# un error de red. 8192 da margen real sin ser excesivo.
+# timeout_s: límite explícito para la llamada HTTP — sin esto, una
+# generación grande podía tardar más que el timeout de proxy de
+# Cloudflare (~100s) y el origen ni siquiera se enteraba de que la
+# conexión ya se había cortado del otro lado.
+_MAX_TOKENS_GENERACION = 8192
+_TIMEOUT_GENERACION_S = 60.0
+
+
 async def _un_intento_generacion_ia(
     grupo: Grupo, tema: str, n_slides_contenido: int, n_preguntas: int, tipos_pregunta: list[str],
 ) -> list[dict]:
     """Un único llamado al LLM + parseo + validación. _generar_diapositivas_ia
-    (abajo) lo envuelve con el reintento por conteo incorrecto."""
+    (abajo) lo envuelve con el reintento por conteo incorrecto (que
+    también cubre el caso de respuesta malformada — un JSON que no
+    parsea o que valida a 0 diapositivas jamás "coincide" con el conteo
+    pedido, así que dispara el mismo reintento)."""
     prompt = _construir_prompt(grupo, tema, n_slides_contenido, n_preguntas, tipos_pregunta)
 
     import llm
     raw = (await llm.respuesta_completa(
         system_prompt=prompt,
         messages=[{"role": "user", "content": "Generá la presentación ahora."}],
-        max_tokens=4096,
+        max_tokens=_MAX_TOKENS_GENERACION,
+        timeout_s=_TIMEOUT_GENERACION_S,
     )).strip()
 
     # Robustez: si el modelo envuelve el JSON en ```json ... ```
@@ -447,6 +465,138 @@ async def _generar_diapositivas_ia(
             sum(1 for d in diapositivas if d.get("tipo") in TIPOS_PREGUNTA_SOPORTADOS),
         )
     return []
+
+
+# ═══════════════════════════════════════════════════════════════
+# GENERACIÓN EN BACKGROUND (SPRINT 4)
+#
+# POST /generar respondía 502 desde Cloudflare con generaciones grandes
+# (hasta 25 diapositivas + hasta 2 llamadas a la IA por el reintento de
+# conteo) — el origen tardaba más que el timeout de proxy porque
+# esperaba a Claude DENTRO del request HTTP. La fila se crea con
+# estado='generando' y se responde 202 de inmediato; la generación real
+# corre en background y deja la fila en 'lista' o 'error'.
+#
+# asyncio.create_task (no FastAPI BackgroundTasks) a propósito:
+# BackgroundTasks sigue ejecutándose como parte del mismo ciclo de
+# Starlette antes de que la conexión quede libre — no evita el problema
+# real. create_task programa la corutina en el event loop y retorna de
+# inmediato; Cloudflare recibe el 202 sin esperar nada de esto.
+# ═══════════════════════════════════════════════════════════════
+
+# Referencias vivas a las tasks en curso — sin esto, asyncio puede
+# recolectar la task a mitad de ejecución (ver docs de asyncio: "Save a
+# reference to the result of this function, to avoid a task disappearing
+# mid-execution").
+_tareas_generacion_en_curso: set = set()
+
+
+def _lanzar_generacion_en_background(
+    presentacion_id: str,
+    grupo_id: str,
+    tema: str,
+    n_slides_contenido: int,
+    n_preguntas: int,
+    tipos_pregunta: List[str],
+    docente_id: str,
+) -> None:
+    task = asyncio.create_task(_ejecutar_generacion_en_background(
+        presentacion_id, grupo_id, tema, n_slides_contenido, n_preguntas,
+        tipos_pregunta, docente_id,
+    ))
+    _tareas_generacion_en_curso.add(task)
+    task.add_done_callback(_tareas_generacion_en_curso.discard)
+
+
+async def _ejecutar_generacion_en_background(
+    presentacion_id: str,
+    grupo_id: str,
+    tema: str,
+    n_slides_contenido: int,
+    n_preguntas: int,
+    tipos_pregunta: List[str],
+    docente_id: str,
+) -> None:
+    """
+    Corre fuera del ciclo request/response — abre su propia sesión de DB
+    (la del request original ya se cerró para cuando esto se ejecuta,
+    mismo patrón que los handlers de Socket.io en presentacion_events.py).
+
+    Contrato: SIEMPRE deja la fila en estado='lista' (con diapositivas)
+    o estado='error' (con error_generacion con un mensaje real) — nunca
+    la deja colgada en 'generando' para siempre, ni aunque algo explote
+    de forma completamente inesperada (por eso el try/except amplio).
+    """
+    from socket_events import sio  # import diferido — evita ciclo de imports a nivel de módulo
+
+    db = SessionLocal()
+    try:
+        grupo = db.query(Grupo).filter(Grupo.id_grupo == grupo_id).first()
+        if not grupo:
+            logger.error(
+                "Generación en background abortada — el grupo ya no existe "
+                "(presentacion_id=%s, grupo_id=%s)", presentacion_id, grupo_id,
+            )
+            diapositivas: list[dict] = []
+            error_msg = "El grupo ya no existe."
+        else:
+            try:
+                diapositivas = await _generar_diapositivas_ia(
+                    grupo, tema, n_slides_contenido, n_preguntas, tipos_pregunta,
+                )
+                error_msg = None if diapositivas else (
+                    "La IA no devolvió una presentación válida después de "
+                    "reintentar. Intenta de nuevo."
+                )
+            except Exception as exc:
+                logger.exception(
+                    "Error inesperado en generación en background "
+                    "(presentacion_id=%s, grupo=%s, tema=%r)",
+                    presentacion_id, grupo_id, tema,
+                )
+                diapositivas = []
+                error_msg = f"Error generando la presentación: {exc}"
+
+        presentacion = db.query(Presentacion).filter(
+            Presentacion.id_presentacion == presentacion_id,
+        ).first()
+        if not presentacion:
+            logger.warning(
+                "Generación en background terminó pero la presentación ya "
+                "no existe (presentacion_id=%s) — probablemente se borró "
+                "mientras generaba.", presentacion_id,
+            )
+            return
+
+        if diapositivas:
+            presentacion.diapositivas = diapositivas
+            presentacion.estado = "lista"
+            presentacion.error_generacion = None
+        else:
+            presentacion.estado = "error"
+            presentacion.error_generacion = error_msg
+        db.commit()
+
+        try:
+            await sio.emit(
+                "presentacion:generada",
+                {
+                    "id_presentacion": presentacion_id,
+                    "estado": presentacion.estado,
+                    "error": presentacion.error_generacion,
+                },
+                room=f"docente_{docente_id}",
+            )
+        except Exception:
+            # El docente igual puede enterarse vía GET /{id}/estado — no
+            # queremos que un fallo de socket.io tumbe la generación ya
+            # persistida.
+            logger.exception(
+                "No se pudo emitir presentacion:generada (presentacion_id=%s, docente=%s)",
+                presentacion_id, docente_id,
+            )
+    finally:
+        db.close()
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -666,7 +816,19 @@ class PresentacionOut(BaseModel):
     titulo: str
     tema: str
     diapositivas: list
+    estado: str
+    error_generacion: Optional[str] = None
     creado_en: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class PresentacionEstadoOut(BaseModel):
+    """Respuesta liviana para el polling de respaldo (GET /{id}/estado)
+    — no trae diapositivas, sólo lo necesario para saber si ya terminó."""
+    id_presentacion: str
+    estado: str
+    error_generacion: Optional[str] = None
 
     model_config = {"from_attributes": True}
 
@@ -687,6 +849,8 @@ class PresentacionListItemOut(BaseModel):
     id_grupo: str
     creado_en: datetime
     n_slides: int
+    estado: str
+    error_generacion: Optional[str] = None
     sesiones: List[SesionResumenOut]
 
 
@@ -732,47 +896,63 @@ def _presentacion_del_docente_o_404(presentacion_id: str, docente_id: str, db: S
 # ENDPOINTS
 # ═══════════════════════════════════════════════════════════════
 
-@router.post("/generar", response_model=PresentacionOut, status_code=201)
+@router.post("/generar", response_model=PresentacionOut, status_code=202)
 async def generar_presentacion(
     body: GenerarPresentacionRequest,
     docente: Docente = Depends(verify_trial_active),
     db: Session = Depends(get_db),
 ):
     """
-    Genera una presentación completa vía IA (diapositivas de contenido
-    intercaladas con interacciones) para el grupo y tema indicados, y la
-    persiste. El docente todavía no la está proyectando — eso ocurre en
-    POST /{id}/iniciar.
+    SPRINT 4: responde 202 de inmediato con estado='generando' — NUNCA
+    espera a la IA dentro del request HTTP. Generaciones grandes (hasta
+    25 diapositivas + hasta 2 llamadas a la IA por el reintento de
+    conteo) tardaban más que el timeout de proxy de Cloudflare, que
+    devolvía 502 aunque el servidor siguiera vivo.
+
+    La generación real corre en background (ver
+    _ejecutar_generacion_en_background) y dejará esta misma fila en
+    estado='lista' o 'error', emitiendo presentacion:generada por
+    socket.io al docente. GET /{id}/estado sirve de respaldo si el
+    socket no llega.
     """
     grupo = _grupo_del_docente_o_404(body.grupo_id, docente.id_docente, db)
-
-    try:
-        diapositivas = await _generar_diapositivas_ia(
-            grupo, body.tema, body.n_slides_contenido, body.n_preguntas, body.tipos_pregunta,
-        )
-    except Exception:
-        logger.exception(
-            "Error generando presentación IA (docente=%s, grupo=%s, tema=%r)",
-            docente.id_docente, grupo.id_grupo, body.tema,
-        )
-        diapositivas = []
-    if not diapositivas:
-        raise HTTPException(
-            status_code=502,
-            detail="No se pudo generar la presentación — intenta de nuevo.",
-        )
 
     presentacion = Presentacion(
         id_docente=docente.id_docente,
         id_grupo=grupo.id_grupo,
         titulo=body.tema[:200],
         tema=body.tema,
-        diapositivas=diapositivas,
+        diapositivas=[],
+        estado="generando",
     )
     db.add(presentacion)
     db.commit()
     db.refresh(presentacion)
+
+    _lanzar_generacion_en_background(
+        presentacion.id_presentacion,
+        grupo.id_grupo,
+        body.tema,
+        body.n_slides_contenido,
+        body.n_preguntas,
+        body.tipos_pregunta,
+        docente.id_docente,
+    )
     return presentacion
+
+
+@router.get("/{presentacion_id}/estado", response_model=PresentacionEstadoOut)
+def obtener_estado_presentacion(
+    presentacion_id: str,
+    docente: Docente = Depends(verify_trial_active),
+    db: Session = Depends(get_db),
+):
+    """
+    Respaldo de polling para cuando el evento presentacion:generada no
+    llega por socket (pestaña en background, reconexión, etc.) — el
+    frontend puede consultar esto mientras estado == 'generando'.
+    """
+    return _presentacion_del_docente_o_404(presentacion_id, docente.id_docente, db)
 
 
 @router.get("/", response_model=List[PresentacionListItemOut])
@@ -794,6 +974,8 @@ def listar_presentaciones(
             id_grupo=p.id_grupo,
             creado_en=p.creado_en,
             n_slides=len(p.diapositivas or []),
+            estado=p.estado,
+            error_generacion=p.error_generacion,
             sesiones=[SesionResumenOut.model_validate(s) for s in p.sesiones],
         )
         for p in presentaciones

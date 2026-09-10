@@ -694,6 +694,15 @@ class Presentacion(Base):
       {"tipo": "multiple", "pregunta": str, "opciones": [str,...], "correcta": int, "tiempo_s": int, "puntos": int}
       {"tipo": "poll", "pregunta": str, "opciones": [str,...]}
       {"tipo": "nube", "instruccion": str}
+
+    SPRINT 4 (generación asíncrona): `estado` — 'generando' (recién
+    creada, la IA todavía está trabajando en background), 'lista'
+    (diapositivas pobladas, lista para usarse) o 'error' (la generación
+    falló; `error_generacion` trae el mensaje real para diagnosticar sin
+    depender de los logs de Railway). POST /generar responde 202 con
+    estado='generando' de inmediato — nunca bloquea el request HTTP
+    esperando a la IA (eso fue lo que causó 502 de Cloudflare en
+    producción con generaciones grandes).
     """
     __tablename__ = "presentaciones"
 
@@ -703,6 +712,8 @@ class Presentacion(Base):
     titulo = Column(String(200), nullable=False)
     tema = Column(String(500), nullable=False)
     diapositivas = Column(JSON, nullable=False, default=list)
+    estado = Column(String(20), nullable=False, default="lista")
+    error_generacion = Column(Text, nullable=True)
     creado_en = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     docente = relationship("Docente")

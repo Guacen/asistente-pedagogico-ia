@@ -136,13 +136,18 @@ async def _completa_claude(
     messages: List[dict],
     max_tokens: int,
     model: Optional[str],
+    timeout_s: Optional[float] = None,
 ) -> str:
     client = _get_claude_client()
+    kwargs = {}
+    if timeout_s is not None:
+        kwargs["timeout"] = timeout_s
     response = await client.messages.create(
         model=model or settings.CLAUDE_MODEL,
         max_tokens=max_tokens,
         system=system_prompt,
         messages=messages,
+        **kwargs,
     )
     return response.content[0].text
 
@@ -167,11 +172,13 @@ def _mensajes_a_gemini(messages: List[dict]):
     ]
 
 
-def _gemini_config(system_prompt: str, max_tokens: int):
+def _gemini_config(system_prompt: str, max_tokens: int, timeout_s: Optional[float] = None):
     from google.genai import types
+    http_options = types.HttpOptions(timeout=int(timeout_s * 1000)) if timeout_s is not None else None
     return types.GenerateContentConfig(
         system_instruction=system_prompt,
         max_output_tokens=max_tokens,
+        http_options=http_options,
     )
 
 
@@ -210,13 +217,14 @@ async def _completa_gemini(
     messages: List[dict],
     max_tokens: int,
     model: Optional[str],
+    timeout_s: Optional[float] = None,
 ) -> str:
     client = _get_gemini_client()
     contenido = _mensajes_a_gemini(messages)
     response = await client.aio.models.generate_content(
         model=model or settings.GEMINI_MODEL,
         contents=contenido,
-        config=_gemini_config(system_prompt, max_tokens),
+        config=_gemini_config(system_prompt, max_tokens, timeout_s),
     )
     return response.text
 
@@ -246,9 +254,18 @@ async def respuesta_completa(
     *,
     max_tokens: int = 4096,
     model: Optional[str] = None,
+    timeout_s: Optional[float] = None,
 ) -> str:
-    """Single-shot, sin streaming. Levanta ProveedorNoConfiguradoError."""
+    """
+    Single-shot, sin streaming. Levanta ProveedorNoConfiguradoError.
+
+    timeout_s (SPRINT 4): límite explícito para la llamada HTTP al
+    proveedor — por default (None) usa el timeout default del SDK, que
+    puede ser bastante largo. Generaciones grandes sin este límite son
+    justamente lo que causó 502 de Cloudflare (el origen quedaba
+    esperando a Claude sin ningún tope propio).
+    """
     p = _asegurar_proveedor()
     if p == "claude":
-        return await _completa_claude(system_prompt, messages, max_tokens, model)
-    return await _completa_gemini(system_prompt, messages, max_tokens, model)
+        return await _completa_claude(system_prompt, messages, max_tokens, model, timeout_s)
+    return await _completa_gemini(system_prompt, messages, max_tokens, model, timeout_s)
