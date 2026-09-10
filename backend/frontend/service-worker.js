@@ -10,5 +10,19 @@
 // skipWaiting()/clients.claim() se mantienen para que este cambio llegue
 // a pestañas ya abiertas sin que el usuario cierre el navegador.
 self.addEventListener('install', () => self.skipWaiting());
-self.addEventListener('activate', event => event.waitUntil(clients.claim()));
+
+// SPRINT 3: dispositivos que todavía no habían actualizado a esta versión
+// pueden tener cachés huérfanas de versiones cache-first muy anteriores
+// (maestria-v2/v3/v4) sentadas en Cache Storage — nada las lee ya (este SW
+// no tiene fetch handler), pero tampoco nadie las había borrado nunca.
+// Al activar, se borran TODAS sin excepción — no hay ningún caché que
+// este SW necesite conservar.
+self.addEventListener('activate', (event) => {
+    event.waitUntil(
+        Promise.all([
+            caches.keys().then((nombres) => Promise.all(nombres.map((n) => caches.delete(n)))),
+            clients.claim(),
+        ])
+    );
+});
 // Sin fetch handler — el navegador maneja todo directamente.
