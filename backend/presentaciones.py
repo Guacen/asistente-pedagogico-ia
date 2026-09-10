@@ -42,8 +42,24 @@ logger = logging.getLogger(__name__)
 # VALIDACIÓN DE DIAPOSITIVAS
 # ═══════════════════════════════════════════════════════════════
 
-TIPOS_INTERACCION = frozenset({"multiple", "poll", "nube"})
+TIPOS_INTERACCION = frozenset({"multiple", "poll", "nube", "verdadero_falso"})
 TIPOS_VALIDOS = frozenset({"contenido"}) | TIPOS_INTERACCION
+
+# "Preguntas" (SPRINT 2) = interacciones con respuesta correcta que cuentan
+# para el conteo n_preguntas que el docente configura. "poll"/"nube" siguen
+# soportados (presentaciones viejas ya guardadas pueden tenerlos) pero el
+# prompt de generación ya no los pide — sólo se estructura de datos queda
+# preparada para sumar "respuesta_corta"/"ordenar_emparejar" más adelante,
+# sin implementarlos todavía.
+TIPOS_PREGUNTA_SOPORTADOS = frozenset({"multiple", "verdadero_falso"})
+
+# Catálogo cerrado de diagramas SVG (SPRINT 2, Parte C) — la IA elige uno
+# de estos tipos para una diapositiva de contenido; cualquier otro valor
+# (o datos con forma inesperada) se descarta sin romper la diapositiva.
+CATALOGO_DIAGRAMAS = frozenset({
+    "fuerzas", "ciclo", "linea_tiempo", "comparacion", "jerarquia", "proceso",
+})
+_DIRECCIONES_FUERZA = frozenset({"arriba", "abajo", "izquierda", "derecha"})
 
 
 def _texto_seguro(valor, max_len: int) -> str:
@@ -90,6 +106,103 @@ def _texto_o_lista(valor, max_len_item: int, max_items: int = 8):
     return sanitizar_texto(str(valor or "").strip(), max_len_item) or ""
 
 
+def _validar_diagrama(raw) -> Optional[dict]:
+    """
+    Valida el diagrama SVG opcional de una diapositiva de contenido
+    (SPRINT 2, Parte C) contra el catálogo cerrado. Nunca levanta
+    excepción — cualquier forma inesperada (tipo desconocido, datos
+    incompletos, tipos de dato incorrectos) devuelve None y la
+    diapositiva simplemente se muestra sin gráfico. La IA nunca debe
+    poder romper la presentación por proponer un diagrama malformado.
+    """
+    try:
+        if not isinstance(raw, dict):
+            return None
+        tipo = raw.get("tipo")
+        if tipo not in CATALOGO_DIAGRAMAS:
+            return None
+        datos = raw.get("datos")
+        if not isinstance(datos, dict):
+            return None
+
+        if tipo == "fuerzas":
+            objeto = _texto_seguro(datos.get("objeto"), 100)
+            fuerzas_raw = datos.get("fuerzas")
+            if not objeto or not isinstance(fuerzas_raw, list):
+                return None
+            fuerzas = []
+            for f in fuerzas_raw:
+                if not isinstance(f, dict):
+                    continue
+                nombre = _texto_seguro(f.get("nombre"), 50)
+                direccion = f.get("direccion")
+                if not nombre or direccion not in _DIRECCIONES_FUERZA:
+                    continue
+                magnitud = f.get("magnitud")
+                magnitud = int(magnitud) if isinstance(magnitud, (int, float)) else 3
+                magnitud = max(1, min(5, magnitud))
+                fuerzas.append({"nombre": nombre, "direccion": direccion, "magnitud": magnitud})
+            if not fuerzas:
+                return None
+            return {"tipo": "fuerzas", "datos": {"objeto": objeto, "fuerzas": fuerzas[:6]}}
+
+        if tipo == "ciclo":
+            pasos = [p for p in (_texto_seguro(p, 80) for p in (datos.get("pasos") or []) if p is not None) if p][:6]
+            if len(pasos) < 3:
+                return None
+            return {"tipo": "ciclo", "datos": {"pasos": pasos}}
+
+        if tipo == "linea_tiempo":
+            eventos_raw = datos.get("eventos")
+            if not isinstance(eventos_raw, list):
+                return None
+            eventos = []
+            for e in eventos_raw:
+                if not isinstance(e, dict):
+                    continue
+                etiqueta = _texto_seguro(e.get("etiqueta"), 40)
+                texto = _texto_seguro(e.get("texto"), 120)
+                if not etiqueta or not texto:
+                    continue
+                eventos.append({"etiqueta": etiqueta, "texto": texto})
+            if len(eventos) < 2:
+                return None
+            return {"tipo": "linea_tiempo", "datos": {"eventos": eventos[:6]}}
+
+        if tipo == "comparacion":
+            titulo_izq = _texto_seguro(datos.get("titulo_izquierda"), 60)
+            titulo_der = _texto_seguro(datos.get("titulo_derecha"), 60)
+            items_izq = [i for i in (_texto_seguro(i, 100) for i in (datos.get("items_izquierda") or []) if i is not None) if i][:5]
+            items_der = [i for i in (_texto_seguro(i, 100) for i in (datos.get("items_derecha") or []) if i is not None) if i][:5]
+            if not titulo_izq or not titulo_der or not items_izq or not items_der:
+                return None
+            return {
+                "tipo": "comparacion",
+                "datos": {
+                    "titulo_izquierda": titulo_izq, "items_izquierda": items_izq,
+                    "titulo_derecha": titulo_der, "items_derecha": items_der,
+                },
+            }
+
+        if tipo == "jerarquia":
+            raiz = _texto_seguro(datos.get("raiz"), 80)
+            hijos = [h for h in (_texto_seguro(h, 60) for h in (datos.get("hijos") or []) if h is not None) if h][:6]
+            if not raiz or len(hijos) < 2:
+                return None
+            return {"tipo": "jerarquia", "datos": {"raiz": raiz, "hijos": hijos}}
+
+        if tipo == "proceso":
+            pasos = [p for p in (_texto_seguro(p, 80) for p in (datos.get("pasos") or []) if p is not None) if p][:6]
+            if len(pasos) < 2:
+                return None
+            return {"tipo": "proceso", "datos": {"pasos": pasos}}
+    except Exception:
+        logger.warning("Error inesperado validando diagrama — se descarta.", exc_info=True)
+        return None
+
+    return None
+
+
 def _validar_diapositivas(bruto) -> list[dict]:
     """
     Filtra y normaliza el array crudo devuelto por el LLM. Descarta
@@ -116,11 +229,37 @@ def _validar_diapositivas(bruto) -> list[dict]:
             cuerpo = _texto_o_lista(item.get("cuerpo"), 400, 8)
             if not titulo or not cuerpo:
                 continue
-            limpias.append({
+            slide = {
                 "tipo": "contenido",
                 "titulo": titulo,
                 "cuerpo": cuerpo,
                 "notas_docente": _texto_seguro(item.get("notas_docente"), 1000),
+            }
+            diagrama = _validar_diagrama(item.get("diagrama"))
+            if diagrama is not None:
+                slide["diagrama"] = diagrama
+            limpias.append(slide)
+
+        elif tipo == "verdadero_falso":
+            pregunta = _texto_seguro(item.get("pregunta"), 500)
+            if not pregunta:
+                continue
+            correcta = item.get("correcta")
+            if not isinstance(correcta, int) or correcta not in (0, 1):
+                correcta = 0
+            tiempo_s = item.get("tiempo_s")
+            tiempo_s = int(tiempo_s) if isinstance(tiempo_s, (int, float)) and tiempo_s > 0 else 15
+            puntos = item.get("puntos")
+            puntos = int(puntos) if isinstance(puntos, (int, float)) and puntos > 0 else 100
+            limpias.append({
+                "tipo": "verdadero_falso",
+                "pregunta": pregunta,
+                # Fijo a propósito — nunca confiar en que la IA mande
+                # exactamente estas dos opciones en el orden correcto.
+                "opciones": ["Verdadero", "Falso"],
+                "correcta": correcta,
+                "tiempo_s": tiempo_s,
+                "puntos": puntos,
             })
 
         elif tipo == "multiple":
@@ -169,42 +308,73 @@ def _validar_diapositivas(bruto) -> list[dict]:
 # GENERACIÓN CON IA
 # ═══════════════════════════════════════════════════════════════
 
+_CATALOGO_DIAGRAMAS_DESC = """- "fuerzas": {"objeto": "nombre del objeto", "fuerzas": [{"nombre": str, "direccion": "arriba"|"abajo"|"izquierda"|"derecha", "magnitud": 1-5}, ...]} (2 a 6 fuerzas)
+- "ciclo": {"pasos": [str, ...]} (3 a 6 pasos en un ciclo circular)
+- "linea_tiempo": {"eventos": [{"etiqueta": str, "texto": str}, ...]} (2 a 6 eventos)
+- "comparacion": {"titulo_izquierda": str, "items_izquierda": [str, ...], "titulo_derecha": str, "items_derecha": [str, ...]} (2 a 5 items por lado)
+- "jerarquia": {"raiz": str, "hijos": [str, ...]} (2 a 6 hijos)
+- "proceso": {"pasos": [str, ...]} (2 a 6 pasos en secuencia lineal, no circular)"""
+
+_TIPOS_PREGUNTA_DESC = {
+    "multiple": '- "multiple": "opciones" con 4 alternativas, "correcta" = índice (0-3) de la correcta, "tiempo_s" 15-25, "puntos" (usualmente 100)',
+    "verdadero_falso": '- "verdadero_falso": "correcta" = 0 (verdadero) o 1 (falso) — NO incluyas "opciones", se generan automáticamente. "tiempo_s" 10-15, "puntos" (usualmente 100)',
+}
+
 _PROMPT_TEMPLATE = """Eres un experto en pedagogía colombiana. Crea una presentación interactiva para:
 - Docente: {asignatura}, grado {grado}
 - Tema: {tema}
 - Estudiantes: {n_estudiantes} estudiantes
 
-Genera exactamente {n_slides} diapositivas de contenido, cada una seguida de UNA pregunta/interacción.
-Alterna: contenido → interacción → contenido → interacción...
+Genera EXACTAMENTE {n_slides_contenido} diapositivas de tipo "contenido" y EXACTAMENTE {n_preguntas} diapositivas de pregunta, para un total de {n_total} diapositivas. Estas cantidades son un requisito estricto, no una sugerencia.
+Intercala las preguntas de manera pareja a lo largo de toda la presentación — no las agrupes todas al inicio ni al final.
 
-Para cada diapositiva de CONTENIDO incluye:
+Para cada diapositiva de tipo "contenido" incluye:
 - titulo: título claro (máx 8 palabras)
-- cuerpo: explicación en máx 4 puntos concisos
+- cuerpo: explicación en máx 4 puntos concisos (array de strings, uno por punto)
 - notas_docente: qué decir al proyectar (2-3 líneas)
+- diagrama (OPCIONAL — inclúyelo sólo si de verdad ayuda a entender el tema, no todas las diapositivas necesitan uno): un objeto {{"tipo": "...", "datos": {{...}}}} eligiendo UNO de este catálogo cerrado (no inventes otros tipos ni otros campos):
+{catalogo_diagramas}
 
-Para cada INTERACCIÓN, elige el tipo más pedagógico:
-- "multiple": 4 opciones, marca cuál es correcta (índice 0-3), tiempo 15-25s
-- "poll": opinión sin respuesta correcta, 2-4 opciones
-- "nube": palabra libre asociada al concepto
+Para cada diapositiva de PREGUNTA, usa ÚNICAMENTE estos tipos (no uses ningún otro):
+{tipos_pregunta_desc}
+Cada pregunta debe incluir "pregunta" (el enunciado) además de lo indicado arriba.
 
 Responde SOLO con un array JSON válido de diapositivas, sin texto adicional."""
 
 
-async def _generar_diapositivas_ia(grupo: Grupo, tema: str, n_slides_contenido: int) -> list[dict]:
-    """
-    Llama al proveedor de IA activo (Claude/Gemini vía llm.py) y devuelve
-    las diapositivas ya validadas. Nombre y firma pensados para ser
-    monkeypatcheados en tests (mismo patrón que
-    piar._sintetizar_conversacion_a_json) — nunca se llama a Claude real
-    en la suite.
-    """
-    prompt = _PROMPT_TEMPLATE.format(
+def _construir_prompt(
+    grupo: Grupo, tema: str, n_slides_contenido: int, n_preguntas: int, tipos_pregunta: list[str],
+) -> str:
+    tipos_desc = "\n".join(
+        _TIPOS_PREGUNTA_DESC[t] for t in tipos_pregunta if t in _TIPOS_PREGUNTA_DESC
+    ) or _TIPOS_PREGUNTA_DESC["multiple"]
+    return _PROMPT_TEMPLATE.format(
         asignatura=grupo.asignatura,
         grado=grupo.grado,
         tema=tema,
         n_estudiantes=grupo.cantidad_estudiantes,
-        n_slides=n_slides_contenido,
+        n_slides_contenido=n_slides_contenido,
+        n_preguntas=n_preguntas,
+        n_total=n_slides_contenido + n_preguntas,
+        catalogo_diagramas=_CATALOGO_DIAGRAMAS_DESC,
+        tipos_pregunta_desc=tipos_desc,
     )
+
+
+def _conteo_coincide(diapositivas: list[dict], n_slides_contenido: int, n_preguntas: int) -> bool:
+    if not diapositivas:
+        return False
+    n_contenido_real = sum(1 for d in diapositivas if d.get("tipo") == "contenido")
+    n_preguntas_real = sum(1 for d in diapositivas if d.get("tipo") in TIPOS_PREGUNTA_SOPORTADOS)
+    return n_contenido_real == n_slides_contenido and n_preguntas_real == n_preguntas
+
+
+async def _un_intento_generacion_ia(
+    grupo: Grupo, tema: str, n_slides_contenido: int, n_preguntas: int, tipos_pregunta: list[str],
+) -> list[dict]:
+    """Un único llamado al LLM + parseo + validación. _generar_diapositivas_ia
+    (abajo) lo envuelve con el reintento por conteo incorrecto."""
+    prompt = _construir_prompt(grupo, tema, n_slides_contenido, n_preguntas, tipos_pregunta)
 
     import llm
     raw = (await llm.respuesta_completa(
@@ -237,6 +407,46 @@ async def _generar_diapositivas_ia(grupo: Grupo, tema: str, n_slides_contenido: 
             grupo.id_grupo, tema, bruto,
         )
     return diapositivas
+
+
+async def _generar_diapositivas_ia(
+    grupo: Grupo,
+    tema: str,
+    n_slides_contenido: int,
+    n_preguntas: int = 4,
+    tipos_pregunta: Optional[list[str]] = None,
+) -> list[dict]:
+    """
+    Llama al proveedor de IA activo (Claude/Gemini vía llm.py) y devuelve
+    las diapositivas ya validadas. Nombre y firma pensados para ser
+    monkeypatcheados en tests (mismo patrón que
+    piar._sintetizar_conversacion_a_json) — nunca se llama a Claude real
+    en la suite.
+
+    Valida que el conteo de diapositivas de contenido/pregunta coincida
+    EXACTO con lo pedido; si no, reintenta una vez (un docente que pidió
+    8 diapositivas de contenido y 4 preguntas espera exactamente eso, no
+    "lo que la IA decidió mandar"). Si tras el reintento el conteo sigue
+    sin coincidir, devuelve [] — el endpoint lo trata como fallo (502)
+    en vez de aceptar una presentación incompleta en silencio.
+    """
+    tipos_pregunta = tipos_pregunta or ["multiple", "verdadero_falso"]
+    diapositivas: list[dict] = []
+    for intento in (1, 2):
+        diapositivas = await _un_intento_generacion_ia(
+            grupo, tema, n_slides_contenido, n_preguntas, tipos_pregunta,
+        )
+        if _conteo_coincide(diapositivas, n_slides_contenido, n_preguntas):
+            return diapositivas
+        logger.warning(
+            "Intento %d/2: conteo de diapositivas no coincide con lo pedido "
+            "(grupo=%s, tema=%r, pedido=%d contenido/%d preguntas, "
+            "obtenido=%d contenido/%d preguntas)",
+            intento, grupo.id_grupo, tema, n_slides_contenido, n_preguntas,
+            sum(1 for d in diapositivas if d.get("tipo") == "contenido"),
+            sum(1 for d in diapositivas if d.get("tipo") in TIPOS_PREGUNTA_SOPORTADOS),
+        )
+    return []
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -317,7 +527,7 @@ def registrar_respuesta(
 
     slide = presentacion.diapositivas[slide_index]
     es_correcta = None
-    if slide.get("tipo") == "multiple":
+    if slide.get("tipo") in TIPOS_PREGUNTA_SOPORTADOS:
         es_correcta = respuesta_limpia == str(slide.get("correcta"))
 
     respuesta = RespuestaPresentacion(
@@ -353,9 +563,10 @@ def _puntos_por_respuesta(slide: dict, es_correcta: Optional[bool], tiempo_ms: O
 
 def calcular_resultado(db: Session, sesion: SesionPresentacion, presentacion: Presentacion) -> dict:
     """
-    Conteos por opción (multiple/poll) o por palabra (nube) del slide
-    ACTUAL, más un ranking acumulado de toda la sesión (sólo cuenta
-    puntos de slides tipo "multiple", igual que Kahoot).
+    Conteos por opción (multiple/verdadero_falso/poll) o por palabra
+    (nube) del slide ACTUAL, más un ranking acumulado de toda la sesión
+    (sólo cuenta puntos de slides "pregunta" — TIPOS_PREGUNTA_SOPORTADOS
+    — igual que Kahoot; "poll"/"nube" no tienen respuesta correcta).
     """
     diapositivas = presentacion.diapositivas or []
     if sesion.slide_actual < 0 or sesion.slide_actual >= len(diapositivas):
@@ -371,13 +582,13 @@ def calcular_resultado(db: Session, sesion: SesionPresentacion, presentacion: Pr
     conteos: dict = {}
     correcta = None
 
-    if tipo in ("multiple", "poll"):
+    if tipo in TIPOS_PREGUNTA_SOPORTADOS or tipo == "poll":
         opciones = slide.get("opciones") or []
         conteos = {str(i): 0 for i in range(len(opciones))}
         for r in respuestas_slide:
             if r.respuesta in conteos:
                 conteos[r.respuesta] += 1
-        if tipo == "multiple":
+        if tipo in TIPOS_PREGUNTA_SOPORTADOS:
             correcta = slide.get("correcta")
     elif tipo == "nube":
         for r in respuestas_slide:
@@ -393,7 +604,7 @@ def calcular_resultado(db: Session, sesion: SesionPresentacion, presentacion: Pr
         if r.slide_index < 0 or r.slide_index >= len(diapositivas):
             continue
         s = diapositivas[r.slide_index]
-        if s.get("tipo") != "multiple":
+        if s.get("tipo") not in TIPOS_PREGUNTA_SOPORTADOS:
             continue
         puntos_por_nombre[r.nombre_estudiante] = (
             puntos_por_nombre.get(r.nombre_estudiante, 0)
@@ -421,7 +632,9 @@ def calcular_resultado(db: Session, sesion: SesionPresentacion, presentacion: Pr
 class GenerarPresentacionRequest(BaseModel):
     grupo_id: str
     tema: str = Field(min_length=1, max_length=500)
-    n_slides_contenido: int = Field(default=4, ge=1, le=10)
+    n_slides_contenido: int = Field(default=8, ge=4, le=15)
+    n_preguntas: int = Field(default=4, ge=2, le=10)
+    tipos_pregunta: List[str] = Field(default_factory=lambda: ["multiple", "verdadero_falso"])
 
     @field_validator("tema")
     @classmethod
@@ -430,6 +643,20 @@ class GenerarPresentacionRequest(BaseModel):
         if not limpio:
             raise ValueError("El tema no puede estar vacío.")
         return limpio
+
+    @field_validator("tipos_pregunta")
+    @classmethod
+    def _validar_tipos_pregunta(cls, v: List[str]) -> List[str]:
+        vistos: List[str] = []
+        for t in v:
+            if t in TIPOS_PREGUNTA_SOPORTADOS and t not in vistos:
+                vistos.append(t)
+        if not vistos:
+            raise ValueError(
+                "Debes habilitar al menos un tipo de pregunta soportado "
+                "(multiple, verdadero_falso)."
+            )
+        return vistos
 
 
 class PresentacionOut(BaseModel):
@@ -520,7 +747,9 @@ async def generar_presentacion(
     grupo = _grupo_del_docente_o_404(body.grupo_id, docente.id_docente, db)
 
     try:
-        diapositivas = await _generar_diapositivas_ia(grupo, body.tema, body.n_slides_contenido)
+        diapositivas = await _generar_diapositivas_ia(
+            grupo, body.tema, body.n_slides_contenido, body.n_preguntas, body.tipos_pregunta,
+        )
     except Exception:
         logger.exception(
             "Error generando presentación IA (docente=%s, grupo=%s, tema=%r)",

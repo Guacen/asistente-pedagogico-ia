@@ -33,9 +33,9 @@ const contexto = {};
 vm.createContext(contexto);
 vm.runInContext(`
     ${snippet}
-    globalThis.__exports = { escapeHtmlPD, normalizarCampoLista, textoSeguroPD, renderCuerpoPD };
+    globalThis.__exports = { escapeHtmlPD, normalizarCampoLista, textoSeguroPD, renderCuerpoPD, renderDiagramaPD };
 `, contexto);
-const { normalizarCampoLista, textoSeguroPD, renderCuerpoPD } = contexto.__exports;
+const { normalizarCampoLista, textoSeguroPD, renderCuerpoPD, renderDiagramaPD } = contexto.__exports;
 
 let pasados = 0;
 function ok(desc, fn) {
@@ -100,6 +100,55 @@ console.log('normalizarCampoLista — string que PARECE lista pero no es JSON v�
 ok('no revienta y cae a null (texto plano) en vez de tirar excepción', () => {
     // str(['a', 'b']) en Python produce esto — NO es JSON válido (comillas simples).
     assert.equal(normalizarCampoLista("['a', 'b']"), null);
+});
+
+console.log('\nrenderDiagramaPD — SPRINT 2 Parte C: catálogo cerrado de diagramas SVG');
+
+const CASOS_VALIDOS = {
+    fuerzas: { objeto: 'Caja', fuerzas: [
+        { nombre: 'Peso', direccion: 'abajo', magnitud: 3 },
+        { nombre: 'Normal', direccion: 'arriba', magnitud: 3 },
+    ] },
+    ciclo: { pasos: ['Paso 1', 'Paso 2', 'Paso 3', 'Paso 4'] },
+    linea_tiempo: { eventos: [
+        { etiqueta: '1810', texto: 'Independencia' },
+        { etiqueta: '1819', texto: 'Batalla de Boyacá' },
+    ] },
+    comparacion: {
+        titulo_izquierda: 'Mitosis', items_izquierda: ['1 división', '2 células'],
+        titulo_derecha: 'Meiosis', items_derecha: ['2 divisiones', '4 células'],
+    },
+    jerarquia: { raiz: 'Reino Animal', hijos: ['Vertebrados', 'Invertebrados'] },
+    proceso: { pasos: ['Paso 1', 'Paso 2', 'Paso 3'] },
+};
+
+for (const [tipo, datos] of Object.entries(CASOS_VALIDOS)) {
+    ok(`"${tipo}" renderiza un <svg> sin lanzar excepción con datos de ejemplo`, () => {
+        const html = renderDiagramaPD({ tipo, datos });
+        assert.match(html, /<svg/, `"${tipo}" debería producir un <svg>`);
+    });
+}
+
+ok('un tipo fuera del catálogo cerrado no rompe — devuelve string vacío', () => {
+    assert.equal(renderDiagramaPD({ tipo: 'no_existe_en_el_catalogo', datos: {} }), '');
+});
+
+ok('diagrama null no rompe — devuelve string vacío', () => {
+    assert.equal(renderDiagramaPD(null), '');
+});
+
+ok('diagrama con datos incompletos (fuerzas sin fuerzas) no rompe — devuelve string vacío', () => {
+    assert.equal(renderDiagramaPD({ tipo: 'fuerzas', datos: {} }), '');
+});
+
+ok('un tipo válido con datos.pasos ausente no rompe (ciclo)', () => {
+    assert.equal(renderDiagramaPD({ tipo: 'ciclo', datos: {} }), '');
+});
+
+ok('texto de un diagrama queda escapado contra XSS', () => {
+    const html = renderDiagramaPD({ tipo: 'proceso', datos: { pasos: ['<script>alert(1)</script>', 'Paso 2'] } });
+    assert.doesNotMatch(html, /<script>alert/);
+    assert.match(html, /&lt;script&gt;/);
 });
 
 console.log(`\n${pasados} aserciones OK` + (process.exitCode ? ' — HUBO FALLAS ARRIBA' : ''));
