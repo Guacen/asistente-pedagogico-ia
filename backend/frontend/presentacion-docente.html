@@ -63,7 +63,8 @@
             </div>
             <h1 class="text-xl font-bold text-gray-900 mb-1">Generando diapositivas…</h1>
             <p class="text-gray-500 mb-1">La IA está armando el contenido y las preguntas.</p>
-            <p class="text-sm text-gray-400">Tiempo transcurrido: <span id="generando-tiempo" class="font-mono font-semibold">0s</span></p>
+            <p class="text-sm text-gray-400 mb-3">Tiempo transcurrido: <span id="generando-tiempo" class="font-mono font-semibold">0s</span></p>
+            <ul id="generando-indice" class="text-left text-sm text-gray-600 space-y-1.5 max-h-56 overflow-y-auto"></ul>
         </div>
         <div id="generando-error" class="hidden">
             <div class="w-14 h-14 rounded-full mx-auto mb-4 flex items-center justify-center" style="background: #FEE2E2;">
@@ -234,11 +235,39 @@
         document.getElementById('generando-en-progreso').classList.remove('hidden');
         document.getElementById('generando-error').classList.add('hidden');
         mostrarPantalla('pantalla-generando');
+        // SPRINT 5: si la página se cargó/recargó a mitad de la
+        // generación, el esqueleto ya puede estar persistido en
+        // PD.presentacion.diapositivas — mostrarlo de una vez en vez de
+        // esperar al primer evento de socket.
+        renderIndiceGenerando(PD.presentacion.diapositivas);
 
         _generandoInicioMs = Date.now();
         actualizarTiempoGenerando();
         _generandoTickerId = setInterval(actualizarTiempoGenerando, 1000);
         _generandoPollId = setInterval(sondearEstadoGeneracion, 5000);
+    }
+
+    // SPRINT 5, Parte C: índice progresivo dentro de la pantalla
+    // "generando" — cada posición pasa de spinner (pendiente) a check
+    // (lista) o triángulo de alerta (esa diapositiva puntual falló,
+    // pero la generación general sigue). Nunca un spinner mudo.
+    function renderIndiceGenerando(diapositivas) {
+        const ul = document.getElementById('generando-indice');
+        if (!ul) return;
+        if (!Array.isArray(diapositivas) || !diapositivas.length) {
+            ul.innerHTML = '';
+            return;
+        }
+        ul.innerHTML = diapositivas.map((d) => {
+            const titulo = escapeHtmlPD(textoSeguroPD(d.titulo || d.pregunta || 'Diapositiva'));
+            if (d.tipo === 'pendiente') {
+                return `<li class="flex items-center gap-2"><i class="fas fa-spinner fa-spin text-gray-400 w-4"></i><span>${titulo}</span></li>`;
+            }
+            if (d.tipo === 'error') {
+                return `<li class="flex items-center gap-2 text-red-600"><i class="fas fa-triangle-exclamation w-4"></i><span>${titulo}</span></li>`;
+            }
+            return `<li class="flex items-center gap-2 text-green-700"><i class="fas fa-circle-check w-4"></i><span>${titulo}</span></li>`;
+        }).join('');
     }
 
     function actualizarTiempoGenerando() {
@@ -365,6 +394,25 @@
         PD.socket.on('presentacion:generada', (data) => {
             if (data.id_presentacion !== PD.presentacionId) return;
             procesarEstadoGeneracion({ estado: data.estado, error_generacion: data.error });
+        });
+
+        // SPRINT 5, Parte B/C: fase 1 (esqueleto) — el docente ve el
+        // índice completo apenas la IA lo planea, antes de que ninguna
+        // diapositiva tenga contenido real todavía.
+        PD.socket.on('presentacion:esqueleto', (data) => {
+            if (data.id_presentacion !== PD.presentacionId) return;
+            PD.presentacion.diapositivas = data.esqueleto;
+            renderIndiceGenerando(PD.presentacion.diapositivas);
+        });
+
+        // Fase 2 — cada diapositiva se rellena en paralelo; el índice se
+        // va completando posición por posición en vez de saltar de golpe
+        // de "nada" a "todo listo".
+        PD.socket.on('presentacion:slide_lista', (data) => {
+            if (data.id_presentacion !== PD.presentacionId) return;
+            if (!Array.isArray(PD.presentacion.diapositivas)) return;
+            PD.presentacion.diapositivas[data.index] = data.slide;
+            renderIndiceGenerando(PD.presentacion.diapositivas);
         });
 
         PD.socket.on('presentacion:slide_activo', (data) => {

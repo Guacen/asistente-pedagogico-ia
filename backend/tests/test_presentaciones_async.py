@@ -76,6 +76,29 @@ def test_generar_presentacion_responde_202_en_menos_de_1_segundo(client, seed_do
     assert len(llamadas) == 1, "el endpoint debe delegar la generación real, no ejecutarla inline"
 
 
+def _mock_generacion_dos_fases(monkeypatch, slides):
+    """Mockea las dos fases de generación para que produzcan `slides`
+    (una lista de diapositivas YA RELLENAS) — el esqueleto se deriva
+    de sus tipos/títulos y el relleno de cada una devuelve el slide
+    completo tal cual, sin llamar a la IA real."""
+    esqueleto = [
+        {"tipo": "contenido" if s["tipo"] == "contenido" else "pregunta", "titulo": s.get("titulo") or s.get("pregunta")}
+        for s in slides
+    ]
+    monkeypatch.setattr(
+        presentaciones_module, "_generar_esqueleto_ia", AsyncMock(return_value=esqueleto),
+    )
+
+    async def _contenido(grupo, tema, titulo, posicion, total):
+        return next(s for s in slides if s["tipo"] == "contenido" and s["titulo"] == titulo)
+
+    async def _pregunta(grupo, tema, titulo, posicion, total, tipos_pregunta):
+        return next(s for s in slides if s["tipo"] != "contenido" and s["pregunta"] == titulo)
+
+    monkeypatch.setattr(presentaciones_module, "_generar_relleno_contenido_ia", _contenido)
+    monkeypatch.setattr(presentaciones_module, "_generar_relleno_pregunta_ia", _pregunta)
+
+
 def test_generar_presentacion_no_bloquea_aunque_la_ia_sea_lenta(client, seed_docente, monkeypatch, test_engine):
     """
     Variante más realista de la #1: la generación real SÍ está
@@ -85,10 +108,9 @@ def test_generar_presentacion_no_bloquea_aunque_la_ia_sea_lenta(client, seed_doc
     la fila y quedó en background.
     """
     _patch_session_local(monkeypatch, test_engine)
-    monkeypatch.setattr(
-        presentaciones_module, "_generar_diapositivas_ia",
-        AsyncMock(return_value=[{"tipo": "contenido", "titulo": "T", "cuerpo": "x", "notas_docente": "x"}]),
-    )
+    _mock_generacion_dos_fases(monkeypatch, [
+        {"tipo": "contenido", "titulo": "T", "cuerpo": "x", "notas_docente": "x"},
+    ])
     t0 = time.monotonic()
     r = client.post("/api/presentaciones/generar", json={
         "grupo_id": seed_docente["grupo"].id_grupo,
@@ -116,7 +138,7 @@ def test_ejecutar_generacion_en_background_deja_error_sin_colgarse(db_session, t
     """
     _patch_session_local(monkeypatch, test_engine)
     monkeypatch.setattr(
-        presentaciones_module, "_generar_diapositivas_ia",
+        presentaciones_module, "_generar_esqueleto_ia",
         AsyncMock(side_effect=TimeoutError("la API de Claude no respondió a tiempo")),
     )
     docente = seed_docente["docente"]
@@ -145,9 +167,7 @@ def test_ejecutar_generacion_en_background_deja_error_sin_colgarse(db_session, t
 def test_ejecutar_generacion_en_background_exito_deja_lista(db_session, test_engine, seed_docente, monkeypatch):
     _patch_session_local(monkeypatch, test_engine)
     slides = [{"tipo": "contenido", "titulo": "T", "cuerpo": "x", "notas_docente": "x"}]
-    monkeypatch.setattr(
-        presentaciones_module, "_generar_diapositivas_ia", AsyncMock(return_value=slides),
-    )
+    _mock_generacion_dos_fases(monkeypatch, slides)
     docente = seed_docente["docente"]
     grupo = seed_docente["grupo"]
     presentacion = Presentacion(
@@ -200,9 +220,7 @@ def test_presentacion_generada_se_emite_a_la_room_del_docente_dueno(
 ):
     _patch_session_local(monkeypatch, test_engine)
     slides = [{"tipo": "contenido", "titulo": "T", "cuerpo": "x", "notas_docente": "x"}]
-    monkeypatch.setattr(
-        presentaciones_module, "_generar_diapositivas_ia", AsyncMock(return_value=slides),
-    )
+    _mock_generacion_dos_fases(monkeypatch, slides)
     import socket_events
     emit_mock = AsyncMock()
     monkeypatch.setattr(socket_events.sio, "emit", emit_mock)
@@ -221,11 +239,13 @@ def test_presentacion_generada_se_emite_a_la_room_del_docente_dueno(
         presentacion.id_presentacion, grupo.id_grupo, "T", 4, 2, ["multiple"], docente.id_docente,
     ))
 
-    emit_mock.assert_awaited_once()
-    args, kwargs = emit_mock.call_args
-    assert args[0] == "presentacion:generada"
-    assert kwargs.get("room") == f"docente_{docente.id_docente}"
-    payload = args[1]
+    # SPRINT 5: ahora hay 3 emits (esqueleto, slide_lista x1, generada)
+    # — todos a la misma room del docente. El último es el de cierre.
+    eventos = [c.args[0] for c in emit_mock.call_args_list]
+    assert eventos == ["presentacion:esqueleto", "presentacion:slide_lista", "presentacion:generada"]
+    assert all(c.kwargs.get("room") == f"docente_{docente.id_docente}" for c in emit_mock.call_args_list)
+
+    payload = emit_mock.call_args_list[-1].args[1]
     assert payload["id_presentacion"] == presentacion.id_presentacion
     assert payload["estado"] == "lista"
     assert payload["error"] is None
@@ -238,7 +258,7 @@ def test_presentacion_generada_incluye_error_cuando_fallo(
     generación falló — el docente no debe tener que ir a mirar logs."""
     _patch_session_local(monkeypatch, test_engine)
     monkeypatch.setattr(
-        presentaciones_module, "_generar_diapositivas_ia",
+        presentaciones_module, "_generar_esqueleto_ia",
         AsyncMock(side_effect=RuntimeError("boom")),
     )
     import socket_events
@@ -270,10 +290,9 @@ def test_presentacion_generada_no_se_emite_a_room_de_otro_docente(
     """Verificación explícita de que la room usada es específica del
     docente DUEÑO de la presentación, no una constante compartida."""
     _patch_session_local(monkeypatch, test_engine)
-    monkeypatch.setattr(
-        presentaciones_module, "_generar_diapositivas_ia",
-        AsyncMock(return_value=[{"tipo": "contenido", "titulo": "T", "cuerpo": "x", "notas_docente": "x"}]),
-    )
+    _mock_generacion_dos_fases(monkeypatch, [
+        {"tipo": "contenido", "titulo": "T", "cuerpo": "x", "notas_docente": "x"},
+    ])
     import socket_events
     emit_mock = AsyncMock()
     monkeypatch.setattr(socket_events.sio, "emit", emit_mock)

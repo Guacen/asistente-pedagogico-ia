@@ -26,10 +26,11 @@ from datetime import datetime
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy.orm import Session
 
 from auth import verify_trial_active
+from config import settings
 from database import SessionLocal, get_db
 from models import Docente, Grupo, Presentacion, RespuestaPresentacion, SesionPresentacion
 from rate_limiter import limiter
@@ -206,13 +207,20 @@ def _validar_diagrama(raw) -> Optional[dict]:
 
 def _validar_diapositivas(bruto) -> list[dict]:
     """
-    Filtra y normaliza el array crudo devuelto por el LLM. Descarta
-    elementos malformados en vez de fallar toda la generación — mejor
-    una presentación con menos slides que un 502 al docente (mismo
-    criterio que _sanitizar_json_14_claves en piar.py). Sanitiza todo
-    texto libre con bleach antes de guardarlo (defensa en profundidad:
-    aunque el LLM no debería devolver HTML, no confiamos ciegamente en
-    su output).
+    Filtra y normaliza un array crudo de diapositivas ya generadas (todas
+    a la vez, con el "tipo" final ya decidido). Descarta elementos
+    malformados en vez de fallar toda la lista.
+
+    NOTA (SPRINT 5): la generación con IA ya no llama a esta función —
+    desde la generación en dos fases (ver _generar_esqueleto_ia /
+    _generar_relleno_contenido_ia / _generar_relleno_pregunta_ia), cada
+    diapositiva se valida individualmente a medida que llega. Esta
+    función queda como utilidad de validación de un array completo
+    (p.ej. para una futura importación manual de diapositivas) y sigue
+    cubierta por tests — comparte los mismos helpers (_texto_seguro,
+    _texto_o_lista, _validar_diagrama) que usa la generación en dos
+    fases, así que su comportamiento de normalización sigue siendo
+    representativo.
     """
     if not isinstance(bruto, list):
         return []
@@ -306,7 +314,17 @@ def _validar_diapositivas(bruto) -> list[dict]:
 
 
 # ═══════════════════════════════════════════════════════════════
-# GENERACIÓN CON IA
+# GENERACIÓN CON IA — EN DOS FASES (SPRINT 5)
+#
+# La generación de una sola vez (Sprint 2/4) pedía TODAS las diapositivas
+# en una única llamada — con hasta 25 diapositivas + diagramas eso
+# produce payloads grandes que tardan y que, si el JSON se trunca a
+# mitad de una diapositiva, invalidan la respuesta COMPLETA. Fase 1
+# ("esqueleto") pide sólo tipo+título por posición — barato y rápido, y
+# le muestra el índice al docente de inmediato. Fase 2 ("relleno") hace
+# UNA llamada corta por diapositiva, en paralelo con un límite de
+# concurrencia — si una falla, sólo esa se reintenta/marca con error;
+# las demás no se ven afectadas.
 # ═══════════════════════════════════════════════════════════════
 
 _CATALOGO_DIAGRAMAS_DESC = """- "fuerzas": {"objeto": "nombre del objeto", "fuerzas": [{"nombre": str, "direccion": "arriba"|"abajo"|"izquierda"|"derecha", "magnitud": 1-5}, ...]} (2 a 6 fuerzas)
@@ -316,40 +334,61 @@ _CATALOGO_DIAGRAMAS_DESC = """- "fuerzas": {"objeto": "nombre del objeto", "fuer
 - "jerarquia": {"raiz": str, "hijos": [str, ...]} (2 a 6 hijos)
 - "proceso": {"pasos": [str, ...]} (2 a 6 pasos en secuencia lineal, no circular)"""
 
+# Nombres de tipo de pregunta que la IA puede elegir en fase 2 — la
+# descripción es deliberadamente corta (Parte E: disciplina de payload,
+# el contrato con la IA usa claves cortas y nada de relleno).
 _TIPOS_PREGUNTA_DESC = {
-    "multiple": '- "multiple": "opciones" con 4 alternativas, "correcta" = índice (0-3) de la correcta, "tiempo_s" 15-25, "puntos" (usualmente 100)',
-    "verdadero_falso": '- "verdadero_falso": "correcta" = 0 (verdadero) o 1 (falso) — NO incluyas "opciones", se generan automáticamente. "tiempo_s" 10-15, "puntos" (usualmente 100)',
+    "multiple": '- "multiple": 4 opciones en "op", "co" = índice (0-3) de la correcta',
+    "verdadero_falso": '- "verdadero_falso": "co" = 0 (verdadero) o 1 (falso), sin "op"',
 }
 
-_PROMPT_TEMPLATE = """Eres un experto en pedagogía colombiana. Crea una presentación interactiva para:
+# SPRINT 4/5, límites defensivos (Parte D/E):
+# - timeout_s explícito en toda llamada — sin esto, una llamada podía
+#   tardar más que el timeout de proxy de Cloudflare (~100s) y el
+#   origen ni se enteraba de que la conexión ya se había cortado.
+# - max_tokens dimensionado por tipo de llamada: el esqueleto es sólo
+#   tipo+título por posición (barato); cada relleno es UNA diapositiva
+#   (más barato todavía que la generación de una sola vez de antes).
+_TIMEOUT_GENERACION_S = 60.0
+_MAX_TOKENS_ESQUELETO = 2048
+_MAX_TOKENS_RELLENO_CONTENIDO = 700
+_MAX_TOKENS_RELLENO_PREGUNTA = 350
+
+# Máximo de diapositivas rellenándose en simultáneo en fase 2 (Parte B) —
+# evita saturar al proveedor de IA con 25 llamadas a la vez si el
+# docente pide el máximo de diapositivas.
+_CONCURRENCIA_MAXIMA_RELLENO = 5
+
+
+def _limpiar_fences_json(raw: str) -> str:
+    """El modelo a veces envuelve el JSON en ```json ... ``` pese a que
+    el prompt pide 'sin texto adicional' — se lo quitamos antes de
+    json.loads en vez de fallar por eso."""
+    raw = raw.strip()
+    if raw.startswith("```"):
+        raw = re.sub(r"^```(?:json)?\s*", "", raw)
+        raw = re.sub(r"\s*```$", "", raw)
+    return raw
+
+
+# ─── FASE 1: ESQUELETO (sólo tipo + título por posición) ───────────
+
+_PROMPT_ESQUELETO_TEMPLATE = """Eres un experto en pedagogía colombiana. Vas a planear el ÍNDICE (sin contenido todavía) de una presentación interactiva para:
 - Docente: {asignatura}, grado {grado}
 - Tema: {tema}
 - Estudiantes: {n_estudiantes} estudiantes
 
-Genera EXACTAMENTE {n_slides_contenido} diapositivas de tipo "contenido" y EXACTAMENTE {n_preguntas} diapositivas de pregunta, para un total de {n_total} diapositivas. Estas cantidades son un requisito estricto, no una sugerencia.
-Intercala las preguntas de manera pareja a lo largo de toda la presentación — no las agrupes todas al inicio ni al final.
+Planea EXACTAMENTE {n_slides_contenido} posiciones de tipo "c" (contenido) y EXACTAMENTE {n_preguntas} posiciones de tipo "p" (pregunta), total {n_total}. Estas cantidades son un requisito estricto. Intercala las preguntas de forma pareja a lo largo de toda la secuencia — no las agrupes al inicio ni al final.
 
-Para cada diapositiva de tipo "contenido" incluye:
-- titulo: título claro (máx 8 palabras)
-- cuerpo: explicación en máx 4 puntos concisos (array de strings, uno por punto)
-- notas_docente: qué decir al proyectar (2-3 líneas)
-- diagrama (OPCIONAL — inclúyelo sólo si de verdad ayuda a entender el tema, no todas las diapositivas necesitan uno): un objeto {{"tipo": "...", "datos": {{...}}}} eligiendo UNO de este catálogo cerrado (no inventes otros tipos ni otros campos):
-{catalogo_diagramas}
+Para cada posición da SOLO su tipo y un título corto (máx 8 palabras) — nada de contenido, nada de opciones, eso se genera después.
 
-Para cada diapositiva de PREGUNTA, usa ÚNICAMENTE estos tipos (no uses ningún otro):
-{tipos_pregunta_desc}
-Cada pregunta debe incluir "pregunta" (el enunciado) además de lo indicado arriba.
-
-Responde SOLO con un array JSON válido de diapositivas, sin texto adicional."""
+Responde SOLO con un array JSON compacto, un objeto por posición, con claves cortas:
+[{{"t": "c"|"p", "ti": "título corto"}}, ...]
+Sin texto adicional."""
 
 
-def _construir_prompt(
-    grupo: Grupo, tema: str, n_slides_contenido: int, n_preguntas: int, tipos_pregunta: list[str],
-) -> str:
-    tipos_desc = "\n".join(
-        _TIPOS_PREGUNTA_DESC[t] for t in tipos_pregunta if t in _TIPOS_PREGUNTA_DESC
-    ) or _TIPOS_PREGUNTA_DESC["multiple"]
-    return _PROMPT_TEMPLATE.format(
+def _construir_prompt_esqueleto(grupo: Grupo, tema: str, n_slides_contenido: int, n_preguntas: int) -> str:
+    return _PROMPT_ESQUELETO_TEMPLATE.format(
         asignatura=grupo.asignatura,
         grado=grupo.grado,
         tema=tema,
@@ -357,125 +396,270 @@ def _construir_prompt(
         n_slides_contenido=n_slides_contenido,
         n_preguntas=n_preguntas,
         n_total=n_slides_contenido + n_preguntas,
-        catalogo_diagramas=_CATALOGO_DIAGRAMAS_DESC,
-        tipos_pregunta_desc=tipos_desc,
     )
 
 
-def _conteo_coincide(diapositivas: list[dict], n_slides_contenido: int, n_preguntas: int) -> bool:
-    if not diapositivas:
+def _validar_esqueleto(bruto) -> list[dict]:
+    """Cada item: {"tipo": "contenido"|"pregunta", "titulo": str}. Descarta
+    cualquier elemento sin forma reconocible en vez de reventar."""
+    if not isinstance(bruto, list):
+        return []
+    limpio: list[dict] = []
+    for item in bruto:
+        if not isinstance(item, dict):
+            continue
+        t = item.get("t")
+        if t not in ("c", "p"):
+            continue
+        titulo = _texto_seguro(item.get("ti"), 200)
+        if not titulo:
+            continue
+        limpio.append({"tipo": "contenido" if t == "c" else "pregunta", "titulo": titulo})
+    return limpio
+
+
+def _conteo_esqueleto_coincide(esqueleto: list[dict], n_slides_contenido: int, n_preguntas: int) -> bool:
+    if not esqueleto:
         return False
-    n_contenido_real = sum(1 for d in diapositivas if d.get("tipo") == "contenido")
-    n_preguntas_real = sum(1 for d in diapositivas if d.get("tipo") in TIPOS_PREGUNTA_SOPORTADOS)
-    return n_contenido_real == n_slides_contenido and n_preguntas_real == n_preguntas
+    n_contenido = sum(1 for s in esqueleto if s["tipo"] == "contenido")
+    n_preguntas_real = sum(1 for s in esqueleto if s["tipo"] == "pregunta")
+    return n_contenido == n_slides_contenido and n_preguntas_real == n_preguntas
 
 
-# SPRINT 4, Parte D — límites defensivos.
-# max_tokens: con hasta 25 diapositivas + diagramas, 4096 tokens (el
-# límite original, pensado para 4 diapositivas) puede truncar el JSON a
-# mitad de una diapositiva — eso es "respuesta malformada" tanto como
-# un error de red. 8192 da margen real sin ser excesivo.
-# timeout_s: límite explícito para la llamada HTTP — sin esto, una
-# generación grande podía tardar más que el timeout de proxy de
-# Cloudflare (~100s) y el origen ni siquiera se enteraba de que la
-# conexión ya se había cortado del otro lado.
-_MAX_TOKENS_GENERACION = 8192
-_TIMEOUT_GENERACION_S = 60.0
-
-
-async def _un_intento_generacion_ia(
-    grupo: Grupo, tema: str, n_slides_contenido: int, n_preguntas: int, tipos_pregunta: list[str],
-) -> list[dict]:
-    """Un único llamado al LLM + parseo + validación. _generar_diapositivas_ia
-    (abajo) lo envuelve con el reintento por conteo incorrecto (que
-    también cubre el caso de respuesta malformada — un JSON que no
-    parsea o que valida a 0 diapositivas jamás "coincide" con el conteo
-    pedido, así que dispara el mismo reintento)."""
-    prompt = _construir_prompt(grupo, tema, n_slides_contenido, n_preguntas, tipos_pregunta)
-
+async def _un_intento_esqueleto_ia(grupo: Grupo, tema: str, n_slides_contenido: int, n_preguntas: int) -> list[dict]:
+    prompt = _construir_prompt_esqueleto(grupo, tema, n_slides_contenido, n_preguntas)
     import llm
-    raw = (await llm.respuesta_completa(
+    raw = await llm.respuesta_completa(
         system_prompt=prompt,
-        messages=[{"role": "user", "content": "Generá la presentación ahora."}],
-        max_tokens=_MAX_TOKENS_GENERACION,
+        messages=[{"role": "user", "content": "Generá el índice ahora."}],
+        max_tokens=_MAX_TOKENS_ESQUELETO,
         timeout_s=_TIMEOUT_GENERACION_S,
-    )).strip()
-
-    # Robustez: si el modelo envuelve el JSON en ```json ... ```
-    if raw.startswith("```"):
-        raw = re.sub(r"^```(?:json)?\s*", "", raw)
-        raw = re.sub(r"\s*```$", "", raw)
-
+        model=settings.PRESENTACIONES_MODELO_ESQUELETO,
+    )
+    raw = _limpiar_fences_json(raw)
     try:
         bruto = json.loads(raw)
     except Exception:
         logger.error(
-            "LLM devolvió una respuesta no parseable como JSON al generar "
-            "presentación (grupo=%s, tema=%r). Primeros 500 chars: %r",
-            grupo.id_grupo, tema, raw[:500],
+            "LLM devolvió un esqueleto no parseable como JSON (grupo=%s, "
+            "tema=%r). Primeros 300 chars: %r",
+            grupo.id_grupo, tema, raw[:300],
         )
         bruto = []
-
-    diapositivas = _validar_diapositivas(bruto)
-    if bruto and not diapositivas:
-        logger.error(
-            "El LLM devolvió JSON válido pero _validar_diapositivas rechazó "
-            "todos los elementos al generar presentación (grupo=%s, tema=%r). "
-            "bruto=%r",
-            grupo.id_grupo, tema, bruto,
-        )
-    return diapositivas
+    return _validar_esqueleto(bruto)
 
 
-async def _generar_diapositivas_ia(
-    grupo: Grupo,
-    tema: str,
-    n_slides_contenido: int,
-    n_preguntas: int = 4,
-    tipos_pregunta: Optional[list[str]] = None,
-) -> list[dict]:
+async def _generar_esqueleto_ia(grupo: Grupo, tema: str, n_slides_contenido: int, n_preguntas: int) -> list[dict]:
     """
-    Llama al proveedor de IA activo (Claude/Gemini vía llm.py) y devuelve
-    las diapositivas ya validadas. Nombre y firma pensados para ser
-    monkeypatcheados en tests (mismo patrón que
-    piar._sintetizar_conversacion_a_json) — nunca se llama a Claude real
-    en la suite.
-
-    Valida que el conteo de diapositivas de contenido/pregunta coincida
-    EXACTO con lo pedido; si no, reintenta una vez (un docente que pidió
-    8 diapositivas de contenido y 4 preguntas espera exactamente eso, no
-    "lo que la IA decidió mandar"). Si tras el reintento el conteo sigue
-    sin coincidir, devuelve [] — el endpoint lo trata como fallo (502)
-    en vez de aceptar una presentación incompleta en silencio.
+    Fase 1 completa: pide el índice y reintenta UNA vez si el conteo de
+    posiciones "contenido"/"pregunta" no coincide EXACTO con lo pedido
+    (mismo criterio que la generación de una sola llamada en sprints
+    anteriores). Si tras el reintento sigue sin coincidir, devuelve []
+    y la presentación entera queda en estado='error' — sin un índice
+    válido no hay nada que rellenar en fase 2.
     """
-    tipos_pregunta = tipos_pregunta or ["multiple", "verdadero_falso"]
-    diapositivas: list[dict] = []
+    esqueleto: list[dict] = []
     for intento in (1, 2):
-        diapositivas = await _un_intento_generacion_ia(
-            grupo, tema, n_slides_contenido, n_preguntas, tipos_pregunta,
-        )
-        if _conteo_coincide(diapositivas, n_slides_contenido, n_preguntas):
-            return diapositivas
+        esqueleto = await _un_intento_esqueleto_ia(grupo, tema, n_slides_contenido, n_preguntas)
+        if _conteo_esqueleto_coincide(esqueleto, n_slides_contenido, n_preguntas):
+            return esqueleto
         logger.warning(
-            "Intento %d/2: conteo de diapositivas no coincide con lo pedido "
-            "(grupo=%s, tema=%r, pedido=%d contenido/%d preguntas, "
-            "obtenido=%d contenido/%d preguntas)",
+            "Intento %d/2: conteo del esqueleto no coincide con lo pedido "
+            "(grupo=%s, tema=%r, pedido=%d contenido/%d preguntas)",
             intento, grupo.id_grupo, tema, n_slides_contenido, n_preguntas,
-            sum(1 for d in diapositivas if d.get("tipo") == "contenido"),
-            sum(1 for d in diapositivas if d.get("tipo") in TIPOS_PREGUNTA_SOPORTADOS),
         )
     return []
 
 
+# ─── FASE 2: RELLENO (una llamada corta por diapositiva) ───────────
+
+_PROMPT_RELLENO_CONTENIDO_TEMPLATE = """Eres un experto en pedagogía colombiana. Estás completando UNA diapositiva (posición {posicion} de {total}) de una presentación para:
+- Docente: {asignatura}, grado {grado}
+- Tema general: {tema}
+- Título de esta diapositiva: {titulo}
+
+Genera SOLO el contenido de esta diapositiva:
+- "cu": explicación en máx 4 puntos concisos (array de strings)
+- "nd": notas para el docente, qué decir al proyectar (2-3 líneas)
+- "dg" (OPCIONAL — sólo si de verdad ayuda a entender el tema): un objeto {{"tipo": "...", "datos": {{...}}}} eligiendo UNO de este catálogo cerrado (no inventes otros tipos ni otros campos):
+{catalogo_diagramas}
+
+Responde SOLO con un objeto JSON compacto: {{"cu": [...], "nd": "...", "dg": {{...}}}} (dg es opcional). Sin texto adicional."""
+
+_PROMPT_RELLENO_PREGUNTA_TEMPLATE = """Eres un experto en pedagogía colombiana. Estás completando UNA pregunta de evaluación tipo Kahoot (posición {posicion} de {total}) para:
+- Docente: {asignatura}, grado {grado}
+- Tema general: {tema}
+- Título de esta pregunta: {titulo}
+
+Elige UNO de estos tipos de pregunta y complétalo:
+{tipos_pregunta_desc}
+
+Responde SOLO con un objeto JSON compacto:
+- Para "multiple": {{"ti": "multiple", "pr": "enunciado", "op": ["a","b","c","d"], "co": 0-3}}
+- Para "verdadero_falso": {{"ti": "verdadero_falso", "pr": "enunciado", "co": 0 (verdadero) o 1 (falso)}}
+Sin texto adicional."""
+
+
+async def _generar_relleno_contenido_ia(grupo: Grupo, tema: str, titulo: str, posicion: int, total: int) -> Optional[dict]:
+    """Un único intento de rellenar UNA diapositiva de contenido — SIN
+    reintento propio, el reintento por-diapositiva vive en el
+    orquestador (_rellenar_slide_con_reintento) para que el límite de
+    concurrencia lo controle un único lugar. Devuelve None si la
+    respuesta no es válida (JSON malformado o sin "cu")."""
+    prompt = _PROMPT_RELLENO_CONTENIDO_TEMPLATE.format(
+        asignatura=grupo.asignatura, grado=grupo.grado, tema=tema,
+        titulo=titulo, posicion=posicion, total=total,
+        catalogo_diagramas=_CATALOGO_DIAGRAMAS_DESC,
+    )
+    import llm
+    raw = await llm.respuesta_completa(
+        system_prompt=prompt,
+        messages=[{"role": "user", "content": "Completá esta diapositiva ahora."}],
+        max_tokens=_MAX_TOKENS_RELLENO_CONTENIDO,
+        timeout_s=_TIMEOUT_GENERACION_S,
+        model=settings.PRESENTACIONES_MODELO_CONTENIDO,
+    )
+    raw = _limpiar_fences_json(raw)
+    try:
+        bruto = json.loads(raw)
+    except Exception:
+        logger.error("Relleno de contenido no parseable (titulo=%r). raw=%r", titulo, raw[:300])
+        return None
+    if not isinstance(bruto, dict):
+        return None
+
+    cuerpo = _texto_o_lista(bruto.get("cu"), 400, 8)
+    if not cuerpo:
+        return None
+    slide = {
+        "tipo": "contenido",
+        "titulo": titulo,
+        "cuerpo": cuerpo,
+        "notas_docente": _texto_seguro(bruto.get("nd"), 1000),
+    }
+    diagrama = _validar_diagrama(bruto.get("dg"))
+    if diagrama is not None:
+        slide["diagrama"] = diagrama
+    return slide
+
+
+async def _generar_relleno_pregunta_ia(
+    grupo: Grupo, tema: str, titulo: str, posicion: int, total: int, tipos_pregunta: list[str],
+) -> Optional[dict]:
+    """Análogo a _generar_relleno_contenido_ia para una posición de
+    pregunta. Si la IA elige un tipo que el docente no habilitó, cae al
+    primer tipo habilitado en vez de descartar la diapositiva entera."""
+    tipos_desc = "\n".join(
+        _TIPOS_PREGUNTA_DESC[t] for t in tipos_pregunta if t in _TIPOS_PREGUNTA_DESC
+    ) or _TIPOS_PREGUNTA_DESC["multiple"]
+    prompt = _PROMPT_RELLENO_PREGUNTA_TEMPLATE.format(
+        asignatura=grupo.asignatura, grado=grupo.grado, tema=tema,
+        titulo=titulo, posicion=posicion, total=total,
+        tipos_pregunta_desc=tipos_desc,
+    )
+    import llm
+    raw = await llm.respuesta_completa(
+        system_prompt=prompt,
+        messages=[{"role": "user", "content": "Completá esta pregunta ahora."}],
+        max_tokens=_MAX_TOKENS_RELLENO_PREGUNTA,
+        timeout_s=_TIMEOUT_GENERACION_S,
+        model=settings.PRESENTACIONES_MODELO_CONTENIDO,
+    )
+    raw = _limpiar_fences_json(raw)
+    try:
+        bruto = json.loads(raw)
+    except Exception:
+        logger.error("Relleno de pregunta no parseable (titulo=%r). raw=%r", titulo, raw[:300])
+        return None
+    if not isinstance(bruto, dict):
+        return None
+
+    tipo = bruto.get("ti")
+    tipos_permitidos = [t for t in tipos_pregunta if t in TIPOS_PREGUNTA_SOPORTADOS]
+    if tipo not in tipos_permitidos:
+        tipo = tipos_permitidos[0] if tipos_permitidos else "multiple"
+
+    pregunta = _texto_seguro(bruto.get("pr"), 500)
+    if not pregunta:
+        return None
+
+    if tipo == "verdadero_falso":
+        correcta = bruto.get("co")
+        correcta = correcta if isinstance(correcta, int) and correcta in (0, 1) else 0
+        return {
+            "tipo": "verdadero_falso",
+            "pregunta": pregunta,
+            "opciones": ["Verdadero", "Falso"],
+            "correcta": correcta,
+            "tiempo_s": 15,
+            "puntos": 100,
+        }
+
+    opciones_raw = bruto.get("op")
+    if not isinstance(opciones_raw, list) or len(opciones_raw) < 2:
+        return None
+    opciones = [_texto_seguro(o, 200) for o in opciones_raw][:6]
+    correcta = bruto.get("co")
+    correcta = correcta if isinstance(correcta, int) and 0 <= correcta < len(opciones) else 0
+    return {
+        "tipo": "multiple",
+        "pregunta": pregunta,
+        "opciones": opciones,
+        "correcta": correcta,
+        "tiempo_s": 20,
+        "puntos": 100,
+    }
+
+
+async def _rellenar_slide_con_reintento(
+    grupo: Grupo, tema: str, stub: dict, index: int, total: int,
+    tipos_pregunta: list[str], semaforo: "asyncio.Semaphore",
+) -> dict:
+    """
+    Rellena UNA diapositiva del esqueleto, respetando el límite de
+    concurrencia (el semáforo se toma para los DOS intentos, no sólo el
+    primero — dos intentos de la misma diapositiva siguen contando como
+    1 hueco de concurrencia). Si el primer intento falla (excepción o
+    respuesta inválida), reintenta UNA sola vez; si el segundo también
+    falla, devuelve un slide "tipo": "error" en vez de levantar — una
+    diapositiva rota nunca debe tumbar las demás (SPRINT 5, Parte B).
+    """
+    async with semaforo:
+        for intento in (1, 2):
+            try:
+                if stub["tipo"] == "contenido":
+                    slide = await _generar_relleno_contenido_ia(grupo, tema, stub["titulo"], index + 1, total)
+                else:
+                    slide = await _generar_relleno_pregunta_ia(
+                        grupo, tema, stub["titulo"], index + 1, total, tipos_pregunta,
+                    )
+            except Exception:
+                logger.exception(
+                    "Intento %d/2 de rellenar diapositiva %d falló con excepción (titulo=%r)",
+                    intento, index, stub["titulo"],
+                )
+                slide = None
+            if slide is not None:
+                return slide
+            logger.warning(
+                "Intento %d/2 de rellenar diapositiva %d devolvió respuesta inválida (titulo=%r)",
+                intento, index, stub["titulo"],
+            )
+    return {
+        "tipo": "error",
+        "titulo": stub["titulo"],
+        "mensaje": "No se pudo generar esta diapositiva. Podés regenerar la presentación.",
+    }
+
+
 # ═══════════════════════════════════════════════════════════════
-# GENERACIÓN EN BACKGROUND (SPRINT 4)
+# GENERACIÓN EN BACKGROUND (SPRINT 4, extendido en SPRINT 5 a dos fases)
 #
 # POST /generar respondía 502 desde Cloudflare con generaciones grandes
-# (hasta 25 diapositivas + hasta 2 llamadas a la IA por el reintento de
-# conteo) — el origen tardaba más que el timeout de proxy porque
-# esperaba a Claude DENTRO del request HTTP. La fila se crea con
-# estado='generando' y se responde 202 de inmediato; la generación real
-# corre en background y deja la fila en 'lista' o 'error'.
+# — el origen tardaba más que el timeout de proxy porque esperaba a
+# Claude DENTRO del request HTTP. La fila se crea con estado='generando'
+# y se responde 202 de inmediato; la generación real corre en background
+# y deja la fila en 'lista' o 'error'.
 #
 # asyncio.create_task (no FastAPI BackgroundTasks) a propósito:
 # BackgroundTasks sigue ejecutándose como parte del mismo ciclo de
@@ -508,6 +692,37 @@ def _lanzar_generacion_en_background(
     task.add_done_callback(_tareas_generacion_en_curso.discard)
 
 
+async def _emitir_evento_presentacion(evento: str, payload: dict, docente_id: str, contexto: str) -> None:
+    """Emite un evento al docente dueño sin dejar que un fallo de
+    socket.io tumbe la generación ya persistida en DB — el docente
+    igual puede enterarse vía GET /{id} o /{id}/estado (polling)."""
+    from socket_events import sio  # import diferido — evita ciclo de imports a nivel de módulo
+    try:
+        await sio.emit(evento, payload, room=f"docente_{docente_id}")
+    except Exception:
+        logger.exception("No se pudo emitir %s (%s)", evento, contexto)
+
+
+async def _marcar_error_y_emitir(db: Session, presentacion_id: str, docente_id: str, mensaje: str) -> None:
+    presentacion = db.query(Presentacion).filter(
+        Presentacion.id_presentacion == presentacion_id,
+    ).first()
+    if not presentacion:
+        logger.warning(
+            "Generación en background terminó en error pero la presentación "
+            "ya no existe (presentacion_id=%s).", presentacion_id,
+        )
+        return
+    presentacion.estado = "error"
+    presentacion.error_generacion = mensaje
+    db.commit()
+    await _emitir_evento_presentacion(
+        "presentacion:generada",
+        {"id_presentacion": presentacion_id, "estado": "error", "error": mensaje},
+        docente_id, f"presentacion_id={presentacion_id}",
+    )
+
+
 async def _ejecutar_generacion_en_background(
     presentacion_id: str,
     grupo_id: str,
@@ -522,13 +737,21 @@ async def _ejecutar_generacion_en_background(
     (la del request original ya se cerró para cuando esto se ejecuta,
     mismo patrón que los handlers de Socket.io en presentacion_events.py).
 
-    Contrato: SIEMPRE deja la fila en estado='lista' (con diapositivas)
-    o estado='error' (con error_generacion con un mensaje real) — nunca
-    la deja colgada en 'generando' para siempre, ni aunque algo explote
-    de forma completamente inesperada (por eso el try/except amplio).
-    """
-    from socket_events import sio  # import diferido — evita ciclo de imports a nivel de módulo
+    SPRINT 5 — dos fases:
+    1. Genera el esqueleto (tipo+título por posición), lo persiste y
+       emite presentacion:esqueleto — el docente ve el índice de
+       inmediato.
+    2. Rellena cada posición concurrentemente (máx
+       _CONCURRENCIA_MAXIMA_RELLENO a la vez), persistiendo y emitiendo
+       presentacion:slide_lista apenas cada una está lista. Una
+       diapositiva que falla dos veces se marca con error pero NUNCA
+       aborta las demás.
 
+    Contrato: SIEMPRE deja la fila en estado='lista' o estado='error'
+    (con error_generacion con un mensaje real) — nunca la deja colgada
+    en 'generando' para siempre, ni aunque algo explote de forma
+    completamente inesperada (por eso el try/except amplio al final).
+    """
     db = SessionLocal()
     try:
         grupo = db.query(Grupo).filter(Grupo.id_grupo == grupo_id).first()
@@ -537,25 +760,28 @@ async def _ejecutar_generacion_en_background(
                 "Generación en background abortada — el grupo ya no existe "
                 "(presentacion_id=%s, grupo_id=%s)", presentacion_id, grupo_id,
             )
-            diapositivas: list[dict] = []
-            error_msg = "El grupo ya no existe."
-        else:
-            try:
-                diapositivas = await _generar_diapositivas_ia(
-                    grupo, tema, n_slides_contenido, n_preguntas, tipos_pregunta,
-                )
-                error_msg = None if diapositivas else (
-                    "La IA no devolvió una presentación válida después de "
-                    "reintentar. Intenta de nuevo."
-                )
-            except Exception as exc:
-                logger.exception(
-                    "Error inesperado en generación en background "
-                    "(presentacion_id=%s, grupo=%s, tema=%r)",
-                    presentacion_id, grupo_id, tema,
-                )
-                diapositivas = []
-                error_msg = f"Error generando la presentación: {exc}"
+            await _marcar_error_y_emitir(db, presentacion_id, docente_id, "El grupo ya no existe.")
+            return
+
+        try:
+            esqueleto = await _generar_esqueleto_ia(grupo, tema, n_slides_contenido, n_preguntas)
+        except Exception as exc:
+            logger.exception(
+                "Error inesperado generando el esqueleto (presentacion_id=%s, "
+                "grupo=%s, tema=%r)", presentacion_id, grupo_id, tema,
+            )
+            await _marcar_error_y_emitir(
+                db, presentacion_id, docente_id, f"Error generando la presentación: {exc}",
+            )
+            return
+
+        if not esqueleto:
+            await _marcar_error_y_emitir(
+                db, presentacion_id, docente_id,
+                "La IA no devolvió un índice de presentación válido después "
+                "de reintentar. Intenta de nuevo.",
+            )
+            return
 
         presentacion = db.query(Presentacion).filter(
             Presentacion.id_presentacion == presentacion_id,
@@ -568,32 +794,63 @@ async def _ejecutar_generacion_en_background(
             )
             return
 
-        if diapositivas:
-            presentacion.diapositivas = diapositivas
-            presentacion.estado = "lista"
-            presentacion.error_generacion = None
-        else:
-            presentacion.estado = "error"
-            presentacion.error_generacion = error_msg
+        total = len(esqueleto)
+        # Placeholders — el frontend distingue "tipo": "pendiente" para
+        # mostrar el índice con spinners individuales mientras fase 2
+        # va llenando cada posición (SPRINT 5, Parte C).
+        pendientes = [{"tipo": "pendiente", "titulo": s["titulo"]} for s in esqueleto]
+        presentacion.diapositivas = pendientes
         db.commit()
+        await _emitir_evento_presentacion(
+            "presentacion:esqueleto",
+            {"id_presentacion": presentacion_id, "esqueleto": pendientes},
+            docente_id, f"presentacion_id={presentacion_id}",
+        )
 
+        semaforo = asyncio.Semaphore(_CONCURRENCIA_MAXIMA_RELLENO)
+
+        async def _rellenar_y_persistir(index: int, stub: dict) -> None:
+            slide = await _rellenar_slide_con_reintento(
+                grupo, tema, stub, index, total, tipos_pregunta, semaforo,
+            )
+            actuales = list(presentacion.diapositivas)
+            actuales[index] = slide
+            presentacion.diapositivas = actuales
+            db.commit()
+            await _emitir_evento_presentacion(
+                "presentacion:slide_lista",
+                {"id_presentacion": presentacion_id, "index": index, "slide": slide},
+                docente_id, f"presentacion_id={presentacion_id}, index={index}",
+            )
+
+        await asyncio.gather(*[
+            _rellenar_y_persistir(i, stub) for i, stub in enumerate(esqueleto)
+        ])
+
+        presentacion.estado = "lista"
+        presentacion.error_generacion = None
+        db.commit()
+        await _emitir_evento_presentacion(
+            "presentacion:generada",
+            {"id_presentacion": presentacion_id, "estado": "lista", "error": None},
+            docente_id, f"presentacion_id={presentacion_id}",
+        )
+    except Exception as exc:
+        # Red de seguridad final — cualquier cosa no prevista arriba
+        # (p.ej. un error de DB a mitad de fase 2) tampoco debe dejar la
+        # fila colgada en 'generando' para siempre.
+        logger.exception(
+            "Error inesperado no capturado en generación en background "
+            "(presentacion_id=%s)", presentacion_id,
+        )
         try:
-            await sio.emit(
-                "presentacion:generada",
-                {
-                    "id_presentacion": presentacion_id,
-                    "estado": presentacion.estado,
-                    "error": presentacion.error_generacion,
-                },
-                room=f"docente_{docente_id}",
+            await _marcar_error_y_emitir(
+                db, presentacion_id, docente_id, f"Error inesperado generando la presentación: {exc}",
             )
         except Exception:
-            # El docente igual puede enterarse vía GET /{id}/estado — no
-            # queremos que un fallo de socket.io tumbe la generación ya
-            # persistida.
             logger.exception(
-                "No se pudo emitir presentacion:generada (presentacion_id=%s, docente=%s)",
-                presentacion_id, docente_id,
+                "No se pudo ni siquiera marcar el error final (presentacion_id=%s)",
+                presentacion_id,
             )
     finally:
         db.close()
@@ -807,6 +1064,20 @@ class GenerarPresentacionRequest(BaseModel):
                 "(multiple, verdadero_falso)."
             )
         return vistos
+
+    @model_validator(mode="after")
+    def _validar_preguntas_no_superan_contenido(self):
+        # SPRINT 5, Parte A: no tiene sentido pedagógico pedir más
+        # preguntas que diapositivas de contenido (ej. 10 preguntas sobre
+        # sólo 4 diapositivas de contenido) — cada rango individual ya
+        # está acotado por Field(ge=/le=), esto sólo valida la relación
+        # entre ambos.
+        if self.n_preguntas > self.n_slides_contenido:
+            raise ValueError(
+                "La cantidad de preguntas no puede superar la cantidad de "
+                "diapositivas de contenido."
+            )
+        return self
 
 
 class PresentacionOut(BaseModel):

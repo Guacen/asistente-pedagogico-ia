@@ -2,10 +2,11 @@
 Tests de Presentaciones Interactivas tipo Kahoot (sprint
 presentaciones-interactivas).
 
-NUNCA se llama a Claude/Gemini real: _generar_diapositivas_ia se
-mockea con monkeypatch (mismo patrón que
-piar._sintetizar_conversacion_a_json en test_piar.py) para devolver un
-array de slides canned.
+NUNCA se llama a Claude/Gemini real: desde SPRINT 5 la generación corre
+en dos fases (esqueleto + relleno por diapositiva) — _generar_esqueleto_ia
+y _generar_relleno_contenido_ia/_generar_relleno_pregunta_ia se mockean
+con monkeypatch (mismo patrón que piar._sintetizar_conversacion_a_json
+en test_piar.py) para devolver datos canned.
 
 La lógica de sesión en vivo (iniciar/cerrar slide, registrar
 respuesta, calcular resultado, finalizar) se prueba directo contra
@@ -26,6 +27,9 @@ if str(BACKEND_DIR) not in sys.path:
 
 
 def _slides_canned() -> list[dict]:
+    """Diapositivas ya RELLENAS (formato final), usadas por
+    _crear_presentacion para las pruebas de sesión en vivo — no pasan
+    por la generación con IA."""
     return [
         {
             "tipo": "contenido",
@@ -55,11 +59,24 @@ def _slides_canned() -> list[dict]:
     ]
 
 
+def _esqueleto_canned() -> list[dict]:
+    """Esqueleto (fase 1) canned — 2 contenido + 2 pregunta,
+    intercalados, que _generar_relleno_* de abajo sabe rellenar."""
+    return [
+        {"tipo": "contenido", "titulo": "Qué es la media aritmética"},
+        {"tipo": "pregunta", "titulo": "¿Cuál es la media de 2, 4 y 6?"},
+        {"tipo": "contenido", "titulo": "Para qué sirve la media"},
+        {"tipo": "pregunta", "titulo": "¿Es útil la media?"},
+    ]
+
+
 @pytest.fixture(autouse=True)
 def _mock_generacion_ia(monkeypatch, test_engine):
-    """Reemplaza la llamada a la IA por un mock async con slides canned,
+    """Reemplaza las llamadas a la IA por mocks async con datos canned,
     en TODOS los tests de este archivo — POST /generar nunca golpea la
-    API real.
+    API real. SPRINT 5: la generación corre en dos fases, así que se
+    mockean las tres piezas que hablan con el LLM (esqueleto + relleno
+    de contenido + relleno de pregunta).
 
     SPRINT 4: la generación real ahora corre en background
     (asyncio.create_task) y abre su PROPIA sesión de DB vía
@@ -73,12 +90,24 @@ def _mock_generacion_ia(monkeypatch, test_engine):
     import presentaciones as presentaciones_module
     from sqlalchemy.orm import sessionmaker
 
-    mock = AsyncMock(return_value=_slides_canned())
-    monkeypatch.setattr(presentaciones_module, "_generar_diapositivas_ia", mock)
+    esqueleto_mock = AsyncMock(return_value=_esqueleto_canned())
+    monkeypatch.setattr(presentaciones_module, "_generar_esqueleto_ia", esqueleto_mock)
+
+    async def _relleno_contenido(grupo, tema, titulo, posicion, total):
+        return {"tipo": "contenido", "titulo": titulo, "cuerpo": "x", "notas_docente": "x"}
+
+    async def _relleno_pregunta(grupo, tema, titulo, posicion, total, tipos_pregunta):
+        return {
+            "tipo": "multiple", "pregunta": titulo, "opciones": ["A", "B", "C", "D"],
+            "correcta": 0, "tiempo_s": 20, "puntos": 100,
+        }
+
+    monkeypatch.setattr(presentaciones_module, "_generar_relleno_contenido_ia", _relleno_contenido)
+    monkeypatch.setattr(presentaciones_module, "_generar_relleno_pregunta_ia", _relleno_pregunta)
 
     TestSession = sessionmaker(bind=test_engine, autocommit=False, autoflush=False)
     monkeypatch.setattr(presentaciones_module, "SessionLocal", TestSession)
-    return mock
+    return esqueleto_mock
 
 
 def _crear_presentacion(db_session, docente, grupo, diapositivas=None):
@@ -131,8 +160,7 @@ def test_generar_presentacion(client, seed_docente):
     body2 = r2.json()
     assert body2["estado"] == "lista"
     tipos = [d["tipo"] for d in body2["diapositivas"]]
-    assert tipos == ["contenido", "multiple", "contenido", "poll"]
-    assert all(t in {"contenido", "multiple", "poll", "nube"} for t in tipos)
+    assert tipos == ["contenido", "multiple", "contenido", "multiple"]
 
 
 def test_generar_presentacion_grupo_ajeno_devuelve_404(client, seed_docente_b):
@@ -153,7 +181,7 @@ def test_generar_presentacion_sin_slides_validas_deja_estado_error(client, seed_
     """
     import presentaciones as presentaciones_module
     monkeypatch.setattr(
-        presentaciones_module, "_generar_diapositivas_ia", AsyncMock(return_value=[]),
+        presentaciones_module, "_generar_esqueleto_ia", AsyncMock(return_value=[]),
     )
     r = client.post("/api/presentaciones/generar", json={
         "grupo_id": seed_docente["grupo"].id_grupo,
@@ -180,7 +208,7 @@ def test_generar_presentacion_error_proveedor_ia_deja_estado_error_con_mensaje_r
     """
     import presentaciones as presentaciones_module
     monkeypatch.setattr(
-        presentaciones_module, "_generar_diapositivas_ia",
+        presentaciones_module, "_generar_esqueleto_ia",
         AsyncMock(side_effect=RuntimeError("proveedor no configurado")),
     )
     r = client.post("/api/presentaciones/generar", json={
@@ -505,12 +533,8 @@ def test_validar_diapositivas_opcion_como_array_se_une_en_un_string():
 
 
 # ═══════════════════════════════════════════════════════════════
-# 8. SPRINT 2 — conteo de generación (contenido/preguntas) + reintento
+# 8. SPRINT 2/5 — validación de rangos de generación (contenido/preguntas)
 # ═══════════════════════════════════════════════════════════════
-
-def _slide_contenido(titulo="T"):
-    return {"tipo": "contenido", "titulo": titulo, "cuerpo": "x", "notas_docente": "x"}
-
 
 def _slide_pregunta(tipo="multiple"):
     if tipo == "verdadero_falso":
@@ -521,30 +545,13 @@ def _slide_pregunta(tipo="multiple"):
     return {"tipo": "multiple", "pregunta": "¿Cuál?", "opciones": ["A", "B"], "correcta": 0}
 
 
-def test_conteo_coincide_true_cuando_cantidades_exactas():
-    from presentaciones import _conteo_coincide
-    diapositivas = [_slide_contenido(), _slide_pregunta(), _slide_contenido(), _slide_pregunta("verdadero_falso")]
-    assert _conteo_coincide(diapositivas, n_slides_contenido=2, n_preguntas=2) is True
-
-
-def test_conteo_coincide_false_cuando_faltan_preguntas():
-    from presentaciones import _conteo_coincide
-    diapositivas = [_slide_contenido(), _slide_contenido(), _slide_pregunta()]
-    assert _conteo_coincide(diapositivas, n_slides_contenido=2, n_preguntas=2) is False
-
-
-def test_conteo_coincide_false_con_lista_vacia():
-    from presentaciones import _conteo_coincide
-    assert _conteo_coincide([], n_slides_contenido=2, n_preguntas=2) is False
-
-
-def test_generar_presentacion_deja_estado_error_si_conteo_nunca_coincide(client, seed_docente, monkeypatch):
-    """Extremo a extremo por el endpoint: si _generar_diapositivas_ia
+def test_generar_presentacion_deja_estado_error_si_esqueleto_nunca_coincide(client, seed_docente, monkeypatch):
+    """Extremo a extremo por el endpoint: si _generar_esqueleto_ia
     devuelve [] (conteo nunca coincidió tras el reintento), la fila
     queda en estado='error' — no una presentación incompleta ni un 500."""
     import presentaciones as presentaciones_module
     monkeypatch.setattr(
-        presentaciones_module, "_generar_diapositivas_ia", AsyncMock(return_value=[]),
+        presentaciones_module, "_generar_esqueleto_ia", AsyncMock(return_value=[]),
     )
     r = client.post("/api/presentaciones/generar", json={
         "grupo_id": seed_docente["grupo"].id_grupo,
@@ -574,6 +581,28 @@ def test_generar_presentacion_rechaza_tipos_pregunta_vacios(client, seed_docente
         "tipos_pregunta": [],
     })
     assert r.status_code == 422
+
+
+def test_generar_presentacion_rechaza_mas_preguntas_que_contenido(client, seed_docente):
+    """SPRINT 5, Parte A: no puede pedirse más preguntas que
+    diapositivas de contenido."""
+    r = client.post("/api/presentaciones/generar", json={
+        "grupo_id": seed_docente["grupo"].id_grupo,
+        "tema": "Tema random",
+        "n_slides_contenido": 4,
+        "n_preguntas": 5,
+    })
+    assert r.status_code == 422
+
+
+def test_generar_presentacion_acepta_preguntas_igual_a_contenido(client, seed_docente):
+    r = client.post("/api/presentaciones/generar", json={
+        "grupo_id": seed_docente["grupo"].id_grupo,
+        "tema": "Tema random",
+        "n_slides_contenido": 4,
+        "n_preguntas": 4,
+    })
+    assert r.status_code == 202, r.text
 
 
 # ═══════════════════════════════════════════════════════════════

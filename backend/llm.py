@@ -22,9 +22,12 @@ Los adapters lo traducen al formato de cada SDK.
 """
 from __future__ import annotations
 
+import logging
 from typing import Awaitable, Callable, List, Optional
 
 from config import settings
+
+logger = logging.getLogger(__name__)
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -149,6 +152,12 @@ async def _completa_claude(
         messages=messages,
         **kwargs,
     )
+    usage = getattr(response, "usage", None)
+    if usage is not None:
+        logger.info(
+            "Claude respuesta_completa — modelo=%s tokens_entrada=%s tokens_salida=%s",
+            model or settings.CLAUDE_MODEL, usage.input_tokens, usage.output_tokens,
+        )
     return response.content[0].text
 
 
@@ -226,6 +235,14 @@ async def _completa_gemini(
         contents=contenido,
         config=_gemini_config(system_prompt, max_tokens, timeout_s),
     )
+    usage = getattr(response, "usage_metadata", None)
+    if usage is not None:
+        logger.info(
+            "Gemini respuesta_completa — modelo=%s tokens_entrada=%s tokens_salida=%s",
+            model or settings.GEMINI_MODEL,
+            getattr(usage, "prompt_token_count", None),
+            getattr(usage, "candidates_token_count", None),
+        )
     return response.text
 
 
