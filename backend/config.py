@@ -38,6 +38,16 @@ class Settings(BaseSettings):
     GOOGLE_API_KEY: str = ""
     GEMINI_MODEL: str = "gemini-2.0-flash"
 
+    # Presentaciones — generación en dos fases (sprint presentaciones-dos-
+    # fases-diagramas). Fase 1 (esqueleto: sólo tipo+título por posición)
+    # usa un modelo más razonador; fase 2 (relleno de cada diapositiva,
+    # una llamada corta por diapositiva) usa el Sonnet más reciente
+    # disponible en la cuenta — más barato/rápido, adecuado para una
+    # tarea acotada. Configurables por env var para poder ajustar sin
+    # tocar código si la cuenta gana acceso a un modelo más nuevo.
+    PRESENTACIONES_MODELO_ESQUELETO: str = "claude-opus-4-5"
+    PRESENTACIONES_MODELO_CONTENIDO: str = "claude-sonnet-4-5"
+
     # Stripe
     STRIPE_SECRET_KEY: str = ""
     STRIPE_WEBHOOK_SECRET: str = ""
