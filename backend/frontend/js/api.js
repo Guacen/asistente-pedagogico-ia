@@ -801,6 +801,12 @@ class ApiClient {
         return this.request(`/api/presentaciones/${presentacionId}`);
     }
 
+    async obtenerEstadoPresentacion(presentacionId) {
+        // SPRINT 4: respaldo de polling mientras estado === 'generando'
+        // — no depende de socket.io llegando a tiempo.
+        return this.request(`/api/presentaciones/${presentacionId}/estado`);
+    }
+
     async iniciarSesionPresentacion(presentacionId) {
         return this.request(`/api/presentaciones/${presentacionId}/iniciar`, {
             method: 'POST',

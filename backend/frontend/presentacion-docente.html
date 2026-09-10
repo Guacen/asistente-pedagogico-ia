@@ -54,6 +54,33 @@
     </main>
 </div>
 
+<!-- ═══ GENERANDO (SPRINT 4 — la IA todavía está trabajando en background) ═══ -->
+<div id="pantalla-generando" class="pantalla min-h-screen flex-col items-center justify-center p-6" style="background: var(--brand-dark, #0B3D2E);">
+    <div class="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8 text-center">
+        <div id="generando-en-progreso">
+            <div class="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center" style="background: var(--brand-mint, #E1F5EE);">
+                <i class="fas fa-wand-magic-sparkles text-2xl animate-spin" style="color: var(--brand-primary, #1D9E75);"></i>
+            </div>
+            <h1 class="text-xl font-bold text-gray-900 mb-1">Generando diapositivas…</h1>
+            <p class="text-gray-500 mb-1">La IA está armando el contenido y las preguntas.</p>
+            <p class="text-sm text-gray-400">Tiempo transcurrido: <span id="generando-tiempo" class="font-mono font-semibold">0s</span></p>
+        </div>
+        <div id="generando-error" class="hidden">
+            <div class="w-14 h-14 rounded-full mx-auto mb-4 flex items-center justify-center" style="background: #FEE2E2;">
+                <i class="fas fa-triangle-exclamation text-2xl" style="color: #DC2626;"></i>
+            </div>
+            <h1 class="text-xl font-bold text-gray-900 mb-2">No se pudo generar la presentación</h1>
+            <p id="generando-error-mensaje" class="text-sm text-gray-600 bg-red-50 rounded-lg px-3 py-2 mb-4 text-left"></p>
+            <div class="flex flex-col gap-2">
+                <button id="btn-reintentar-generacion" onclick="reintentarGeneracion()" class="px-6 py-3 rounded-xl font-bold text-white shadow-lg" style="background: var(--brand-primary, #1D9E75);">
+                    <i class="fas fa-rotate-right mr-2"></i>Reintentar
+                </button>
+                <a href="dashboard.html" class="text-sm text-gray-500 hover:text-gray-700">Volver al panel</a>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- ═══ LOBBY (presentación elegida, sesión aún no iniciada / esperando) ═══ -->
 <div id="pantalla-lobby" class="pantalla min-h-screen flex-col items-center justify-center p-6" style="background: var(--brand-dark, #0B3D2E);">
     <div class="w-full max-w-2xl bg-white rounded-2xl shadow-2xl p-8 text-center">
@@ -178,12 +205,130 @@
             window.location.href = 'presentacion-docente.html';
             return;
         }
-        document.getElementById('lobby-titulo').textContent = PD.presentacion.titulo;
         conectarSocket();
-        mostrarPantalla('pantalla-lobby');
+
+        if (PD.presentacion.estado === 'generando') {
+            mostrarPantallaGenerando();
+        } else if (PD.presentacion.estado === 'error') {
+            mostrarErrorGeneracion(PD.presentacion.error_generacion);
+        } else {
+            entrarALobby();
+        }
     });
 
+    function entrarALobby() {
+        document.getElementById('lobby-titulo').textContent = PD.presentacion.titulo;
+        mostrarPantalla('pantalla-lobby');
+    }
+
+    // ── SPRINT 4: pantalla "generando" — progreso real, nunca un spinner
+    // mudo. Escucha presentacion:generada por socket Y hace polling de
+    // respaldo a GET /estado cada 5s (por si el socket se cayó/nunca
+    // conectó) — el patrón "spinner sin información" ya costó horas de
+    // diagnóstico dos veces.
+    let _generandoTickerId = null;
+    let _generandoPollId = null;
+    let _generandoInicioMs = null;
+
+    function mostrarPantallaGenerando() {
+        document.getElementById('generando-en-progreso').classList.remove('hidden');
+        document.getElementById('generando-error').classList.add('hidden');
+        mostrarPantalla('pantalla-generando');
+
+        _generandoInicioMs = Date.now();
+        actualizarTiempoGenerando();
+        _generandoTickerId = setInterval(actualizarTiempoGenerando, 1000);
+        _generandoPollId = setInterval(sondearEstadoGeneracion, 5000);
+    }
+
+    function actualizarTiempoGenerando() {
+        const segundos = Math.floor((Date.now() - _generandoInicioMs) / 1000);
+        const el = document.getElementById('generando-tiempo');
+        if (el) el.textContent = `${segundos}s`;
+    }
+
+    function detenerSeguimientoGeneracion() {
+        if (_generandoTickerId) { clearInterval(_generandoTickerId); _generandoTickerId = null; }
+        if (_generandoPollId) { clearInterval(_generandoPollId); _generandoPollId = null; }
+    }
+
+    async function sondearEstadoGeneracion() {
+        try {
+            const estado = await api.obtenerEstadoPresentacion(PD.presentacionId);
+            await procesarEstadoGeneracion(estado);
+        } catch (err) {
+            console.error('[presentacion] error consultando estado de generación:', err);
+        }
+    }
+
+    async function procesarEstadoGeneracion(estado) {
+        if (estado.estado === 'generando') return;
+        detenerSeguimientoGeneracion();
+        if (estado.estado === 'error') {
+            mostrarErrorGeneracion(estado.error_generacion);
+            return;
+        }
+        // 'lista' — recargar el detalle completo (ya trae diapositivas).
+        try {
+            PD.presentacion = await api.obtenerPresentacion(PD.presentacionId);
+        } catch (err) {
+            mostrarErrorGeneracion('La generación terminó pero no se pudo cargar la presentación: ' + (err.message || err));
+            return;
+        }
+        entrarALobby();
+    }
+
+    function mostrarErrorGeneracion(mensaje) {
+        detenerSeguimientoGeneracion();
+        document.getElementById('generando-en-progreso').classList.add('hidden');
+        document.getElementById('generando-error').classList.remove('hidden');
+        document.getElementById('generando-error-mensaje').textContent =
+            mensaje || 'Ocurrió un error inesperado generando la presentación.';
+        mostrarPantalla('pantalla-generando');
+    }
+
+    async function reintentarGeneracion() {
+        const raw = sessionStorage.getItem('ultimaGeneracionPresentacion');
+        if (!raw) {
+            alert('No se pudo recuperar el tema original — volvé al panel del grupo para generar de nuevo.');
+            window.location.href = 'dashboard.html';
+            return;
+        }
+        let parametros;
+        try {
+            parametros = JSON.parse(raw);
+        } catch (err) {
+            window.location.href = 'dashboard.html';
+            return;
+        }
+        const btn = document.getElementById('btn-reintentar-generacion');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Reintentando…';
+        try {
+            const nueva = await api.generarPresentacion(parametros.grupoId, parametros.tema, {
+                nSlidesContenido: parametros.nSlidesContenido,
+                nPreguntas: parametros.nPreguntas,
+                tiposPregunta: parametros.tiposPregunta,
+            });
+            window.location.href = `presentacion-docente.html?id=${nueva.id_presentacion}`;
+        } catch (err) {
+            alert('No se pudo reintentar: ' + (err.message || err));
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-rotate-right mr-2"></i>Reintentar';
+        }
+    }
+
     // ── Pantalla "elegir" ─────────────────────────────────────────
+    function _badgeEstadoPresentacion(estado) {
+        if (estado === 'generando') {
+            return '<span class="text-xs font-semibold px-2 py-1 rounded-full bg-amber-100 text-amber-700"><i class="fas fa-spinner fa-spin mr-1"></i>Generando</span>';
+        }
+        if (estado === 'error') {
+            return '<span class="text-xs font-semibold px-2 py-1 rounded-full bg-red-100 text-red-700"><i class="fas fa-triangle-exclamation mr-1"></i>Error</span>';
+        }
+        return '';
+    }
+
     async function cargarListaPresentaciones() {
         const cont = document.getElementById('lista-presentaciones');
         try {
@@ -195,8 +340,11 @@
             cont.innerHTML = presentaciones.map((p) => `
                 <a href="presentacion-docente.html?id=${p.id_presentacion}"
                    class="block bg-white p-5 rounded-xl shadow-sm border border-gray-100 hover:shadow-md hover:border-[var(--brand-primary,_#1D9E75)] transition-all">
-                    <div class="w-10 h-10 rounded-lg flex items-center justify-center mb-3" style="background: var(--brand-mint, #E1F5EE);">
-                        <i class="fas fa-gamepad" style="color: var(--brand-primary, #1D9E75);"></i>
+                    <div class="flex items-start justify-between mb-3">
+                        <div class="w-10 h-10 rounded-lg flex items-center justify-center" style="background: var(--brand-mint, #E1F5EE);">
+                            <i class="fas fa-gamepad" style="color: var(--brand-primary, #1D9E75);"></i>
+                        </div>
+                        ${_badgeEstadoPresentacion(p.estado)}
                     </div>
                     <h3 class="font-semibold text-gray-900 mb-1">${p.titulo}</h3>
                     <p class="text-gray-500 text-sm">${p.n_slides} diapositivas · ${p.sesiones.length} sesión(es) previas</p>
@@ -210,6 +358,14 @@
     // ── Socket ────────────────────────────────────────────────────
     function conectarSocket() {
         PD.socket = io(window.APP_CONFIG.WS_URL, { auth: { token: api.getToken() } });
+
+        // SPRINT 4: la generación en background le avisa al docente por
+        // esta vía apenas termina — el polling de sondearEstadoGeneracion
+        // es sólo el respaldo si esto no llega.
+        PD.socket.on('presentacion:generada', (data) => {
+            if (data.id_presentacion !== PD.presentacionId) return;
+            procesarEstadoGeneracion({ estado: data.estado, error_generacion: data.error });
+        });
 
         PD.socket.on('presentacion:slide_activo', (data) => {
             if (data.slide_index !== PD.slideIndex) return;
