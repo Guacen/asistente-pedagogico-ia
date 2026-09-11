@@ -92,7 +92,7 @@ def _mock_generacion_dos_fases(monkeypatch, slides):
     async def _contenido(grupo, tema, titulo, posicion, total):
         return next(s for s in slides if s["tipo"] == "contenido" and s["titulo"] == titulo)
 
-    async def _pregunta(grupo, tema, titulo, posicion, total, tipos_pregunta):
+    async def _pregunta(grupo, tema, titulo, posicion, total, tipos_pregunta, tiempo_pregunta_s=20):
         return next(s for s in slides if s["tipo"] != "contenido" and s["pregunta"] == titulo)
 
     monkeypatch.setattr(presentaciones_module, "_generar_relleno_contenido_ia", _contenido)

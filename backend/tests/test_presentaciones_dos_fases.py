@@ -53,10 +53,10 @@ async def _contenido_ok(grupo, tema, titulo, posicion, total):
     return {"tipo": "contenido", "titulo": titulo, "cuerpo": "x", "notas_docente": "x"}
 
 
-async def _pregunta_ok(grupo, tema, titulo, posicion, total, tipos_pregunta):
+async def _pregunta_ok(grupo, tema, titulo, posicion, total, tipos_pregunta, tiempo_pregunta_s=20):
     return {
         "tipo": "multiple", "pregunta": titulo, "opciones": ["A", "B"],
-        "correcta": 0, "tiempo_s": 20, "puntos": 100,
+        "correcta": 0, "tiempo_s": tiempo_pregunta_s, "puntos": 100,
     }
 
 

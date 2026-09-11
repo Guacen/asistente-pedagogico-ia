@@ -16,6 +16,23 @@
     --brand-muted-white:   rgba(255, 255, 255, 0.72);
     --brand-hover-transp:  rgba(29, 158, 117, 0.30);
 
+    /* Paleta de diagramas SVG sobre fondo oscuro (--brand-dark, #0B3D2E)
+       — sprint puntaje-podio-contraste, Parte A. --brand-primary sobre
+       --brand-dark mide 3.59:1, insuficiente para un proyector; estos
+       4 colores están elegidos específicamente por su contraste contra
+       #0B3D2E (medido, no aproximado — ver test de contraste
+       automatizado en test_contraste_diagramas.py). PROHIBIDO usar
+       --brand-primary o --brand-dark como trazo/texto de diagrama sobre
+       este fondo — sólo estos 4 tokens.
+       --diagram-stroke: #E1F5EE (mint)  — 10.7:1 — trazo principal
+       --diagram-accent: #F5B731 (amber) —  6.8:1 — resaltados, respuesta correcta
+       --diagram-second: #2ECC71 (book)  —  5.8:1 — elementos secundarios
+       --diagram-label:  #FFFFFF         — 12.2:1 — etiquetas de texto */
+    --diagram-stroke: #E1F5EE;
+    --diagram-accent: #F5B731;
+    --diagram-second: #2ECC71;
+    --diagram-label:  #FFFFFF;
+
     --font-display: 'Nunito', 'Segoe UI', system-ui, sans-serif;
     --font-body:    'Inter',  'Segoe UI', system-ui, sans-serif;
 

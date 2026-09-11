@@ -96,10 +96,10 @@ def _mock_generacion_ia(monkeypatch, test_engine):
     async def _relleno_contenido(grupo, tema, titulo, posicion, total):
         return {"tipo": "contenido", "titulo": titulo, "cuerpo": "x", "notas_docente": "x"}
 
-    async def _relleno_pregunta(grupo, tema, titulo, posicion, total, tipos_pregunta):
+    async def _relleno_pregunta(grupo, tema, titulo, posicion, total, tipos_pregunta, tiempo_pregunta_s=20):
         return {
             "tipo": "multiple", "pregunta": titulo, "opciones": ["A", "B", "C", "D"],
-            "correcta": 0, "tiempo_s": 20, "puntos": 100,
+            "correcta": 0, "tiempo_s": tiempo_pregunta_s, "puntos": 100,
         }
 
     monkeypatch.setattr(presentaciones_module, "_generar_relleno_contenido_ia", _relleno_contenido)
@@ -376,10 +376,26 @@ def test_resultado_multiple(db_session, seed_docente):
     assert resultado["correcta"] == 1
     assert resultado["total_respuestas"] == 3
 
-    nombres_ranking = {r["nombre"] for r in resultado["ranking_top5"]}
+
+def test_podio_multiple_puntua_por_acierto_y_velocidad(db_session, seed_docente):
+    """SPRINT 6: el ranking con puntaje vive en calcular_podio, no en
+    calcular_resultado (que sólo trae la distribución del slide actual,
+    sin nombres ni puntajes)."""
+    from presentaciones import calcular_podio, iniciar_slide, registrar_respuesta
+
+    presentacion = _crear_presentacion(db_session, seed_docente["docente"], seed_docente["grupo"])
+    sesion = _crear_sesion(db_session, presentacion)
+    iniciar_slide(db_session, sesion, 1)  # slide "multiple", correcta=1
+
+    registrar_respuesta(db_session, sesion, presentacion, 1, "Juan", "1", 3000)
+    registrar_respuesta(db_session, sesion, presentacion, 1, "Ana", "0", 4000)
+    registrar_respuesta(db_session, sesion, presentacion, 1, "Luis", "1", 2000)
+
+    podio = calcular_podio(db_session, sesion, presentacion)
+    nombres_ranking = {r["nombre"] for r in podio["ranking"]}
     assert nombres_ranking == {"Juan", "Ana", "Luis"}
     # Ana respondió incorrecto → 0 puntos, no debería superar a Juan/Luis.
-    puntos = {r["nombre"]: r["puntos"] for r in resultado["ranking_top5"]}
+    puntos = {r["nombre"]: r["puntaje_acumulado"] for r in podio["ranking"]}
     assert puntos["Ana"] == 0
     assert puntos["Juan"] > 0
     assert puntos["Luis"] > puntos["Juan"]  # Luis respondió más rápido
@@ -783,8 +799,8 @@ def test_calcular_resultado_verdadero_falso_expone_correcta_y_conteos(db_session
     assert resultado["conteos"] == {"0": 1, "1": 0}
 
 
-def test_calcular_resultado_verdadero_falso_cuenta_en_ranking(db_session, seed_docente):
-    from presentaciones import iniciar_slide, registrar_respuesta, calcular_resultado
+def test_calcular_podio_verdadero_falso_cuenta_en_ranking(db_session, seed_docente):
+    from presentaciones import iniciar_slide, registrar_respuesta, calcular_podio
 
     diapositivas = [_slide_pregunta("verdadero_falso")]
     presentacion = _crear_presentacion(db_session, seed_docente["docente"], seed_docente["grupo"], diapositivas)
@@ -792,6 +808,6 @@ def test_calcular_resultado_verdadero_falso_cuenta_en_ranking(db_session, seed_d
     iniciar_slide(db_session, sesion, 0)
     registrar_respuesta(db_session, sesion, presentacion, 0, "Ana", "0", 1000)
 
-    resultado = calcular_resultado(db_session, sesion, presentacion)
-    ranking = {r["nombre"]: r["puntos"] for r in resultado["ranking_top5"]}
+    podio = calcular_podio(db_session, sesion, presentacion)
+    ranking = {r["nombre"]: r["puntaje_acumulado"] for r in podio["ranking"]}
     assert ranking.get("Ana", 0) > 0

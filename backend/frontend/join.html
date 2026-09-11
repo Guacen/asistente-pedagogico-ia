@@ -139,6 +139,16 @@
         font-size: 1rem;
     }
 
+    /* SPRINT 6, Parte C — mi puntaje/posición personal (nunca el
+       ranking de los demás). */
+    .stat-puntaje {
+        width: 100%; background: var(--brand-mint, #E1F5EE); border-radius: .75rem;
+        padding: .75rem 1rem; margin-top: .75rem; display: flex; flex-direction: column; gap: .4rem;
+    }
+    .stat-puntaje-fila { display: flex; align-items: center; justify-content: space-between; font-size: .9rem; }
+    .stat-puntaje-label { color: var(--brand-dark, #0B3D2E); opacity: .75; }
+    .stat-puntaje-valor { font-weight: 800; color: var(--brand-dark, #0B3D2E); }
+
     .divisor { width: 100%; border-top: 1px solid #f3f4f6; margin: .5rem 0; }
     .texto-pie { font-size: .875rem; color: #9ca3af; display: flex; align-items: center; justify-content: center; gap: .35rem; }
 
@@ -242,6 +252,18 @@
             <div id="resultado-icono" class="icono-circulo"></div>
             <p id="resultado-titulo" class="titulo"></p>
             <p id="resultado-detalle" class="subtitulo"></p>
+            <!-- SPRINT 6, Parte C: SOLO mi puntaje/posición — nunca el
+                 ranking de los demás. -->
+            <div id="mi-puntaje" class="hidden stat-puntaje">
+                <div class="stat-puntaje-fila">
+                    <span class="stat-puntaje-label">Ganaste</span>
+                    <span id="mi-puntos-ganados" class="stat-puntaje-valor">+0 pts</span>
+                </div>
+                <div class="stat-puntaje-fila">
+                    <span class="stat-puntaje-label">Tu posición</span>
+                    <span id="mi-posicion" class="stat-puntaje-valor">—</span>
+                </div>
+            </div>
             <div class="divisor"></div>
             <p class="texto-pie">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" width="16" height="16" aria-hidden="true">
@@ -258,6 +280,18 @@
             </div>
             <p class="titulo-medio">¡La sesión terminó!</p>
             <p class="subtitulo">Gracias por participar 🎉</p>
+            <!-- SPRINT 6, Parte C: mi resultado final — mi posición, no
+                 el podio completo con nombres de los demás. -->
+            <div id="mi-resultado-final" class="hidden stat-puntaje">
+                <div class="stat-puntaje-fila">
+                    <span class="stat-puntaje-label">Tu puntaje final</span>
+                    <span id="mi-puntaje-final" class="stat-puntaje-valor">—</span>
+                </div>
+                <div class="stat-puntaje-fila">
+                    <span class="stat-puntaje-label">Tu posición final</span>
+                    <span id="mi-posicion-final" class="stat-puntaje-valor">—</span>
+                </div>
+            </div>
         </div>
 
     </div>
@@ -280,6 +314,13 @@
     let slideIndexActual = null;
     let inicioSlideMs = null;
     let timerInterval = null;
+    // SPRINT 6, Parte C — mi resultado personal (server-autoritativo,
+    // nunca el de otros estudiantes). Se resetea al abrir cada pregunta
+    // nueva; se aplica a la pantalla en cuanto llega, sin importar si
+    // 'presentacion:resultado' (la revelación general) llegó antes o
+    // después — ver los dos handlers en conectarSocket().
+    let miResultadoPregunta = null;
+    let miResultadoFinal = null;
     // Timeout de "Uniendo…" y el listener 'connect' pendiente de un
     // intento en curso — sin esto, el botón podía quedarse colgado para
     // siempre si el socket nunca lograba conectar (bug reportado en
@@ -374,6 +415,11 @@
             slideActual = data.slide_data;
             slideIndexActual = data.slide_index;
             inicioSlideMs = Date.now();
+            miResultadoPregunta = null;
+            document.getElementById('mi-puntaje').classList.add('hidden');
+            // tiempo_s ya viene PERSONALIZADO desde el servidor (extendido
+            // si tengo PIAR) — nunca se calcula ni se muestra el factor
+            // acá, sólo se usa el número que llegó (SPRINT 6, Parte B).
             renderPregunta(slideActual, data.tiempo_s);
         });
 
@@ -386,8 +432,22 @@
             renderResultado(data);
         });
 
+        // SPRINT 6, Parte C — SOLO mi resultado (nunca el de los demás):
+        // si esto o 'presentacion:resultado' llega primero, cada handler
+        // deja la pantalla en un estado válido y el otro completa el dato.
+        socket.on('presentacion:tu_resultado', (data) => {
+            miResultadoPregunta = data;
+            aplicarMiPuntaje();
+        });
+
+        socket.on('presentacion:tu_resultado_final', (data) => {
+            miResultadoFinal = data;
+            aplicarMiResultadoFinal();
+        });
+
         socket.on('presentacion:finalizada', () => {
             detenerTimer();
+            aplicarMiResultadoFinal();
             mostrarPantalla('pantalla-fin');
         });
 
@@ -560,8 +620,7 @@
         if (data.correcta !== null && data.correcta !== undefined && slideActual) {
             const opciones = slideActual.opciones || [];
             const textoCorrecta = opciones[data.correcta] ?? '';
-            const miRespuestaCorrecta = ultimaRespuestaFueCorrecta(data);
-            if (miRespuestaCorrecta) {
+            if (miAcerte(data)) {
                 icono.style.background = '#DCFCE7';
                 icono.innerHTML = svgResultado('check', '#16A34A');
                 titulo.textContent = '¡Correcto! 🎉';
@@ -581,13 +640,41 @@
             detalle.textContent = `${data.total_respuestas || 0} compañeros respondieron.`;
         }
         mostrarPantalla('pantalla-resultado');
+        aplicarMiPuntaje();
     }
 
-    // No tenemos guardado localmente si acertamos — lo inferimos del
-    // botón que el estudiante presionó, guardado al enviar.
+    // SPRINT 6: prioridad al dato server-autoritativo de
+    // 'presentacion:tu_resultado'; si todavía no llegó, cae al criterio
+    // cliente anterior (qué botón presioné) para no dejar la pantalla
+    // sin feedback mientras se espera ese evento.
     let miUltimaRespuesta = null;
-    function ultimaRespuestaFueCorrecta(data) {
+    function miAcerte(data) {
+        if (miResultadoPregunta && miResultadoPregunta.acerto !== null && miResultadoPregunta.acerto !== undefined) {
+            return miResultadoPregunta.acerto;
+        }
         return miUltimaRespuesta !== null && String(data.correcta) === miUltimaRespuesta;
+    }
+
+    // SPRINT 6, Parte C — pinta puntos ganados + posición propia dentro
+    // de la pantalla de resultado, SIN exponer el ranking de nadie más.
+    // Se llama tanto al llegar 'presentacion:tu_resultado' como al
+    // llegar 'presentacion:resultado' — lo que llegue después completa
+    // el render, sin importar el orden de llegada.
+    function aplicarMiPuntaje() {
+        if (!miResultadoPregunta) return;
+        document.getElementById('mi-puntos-ganados').textContent = `+${miResultadoPregunta.puntos_ganados || 0} pts`;
+        const cambio = miResultadoPregunta.cambio_posicion || 0;
+        const flecha = cambio > 0 ? ` ▲${cambio}` : cambio < 0 ? ` ▼${Math.abs(cambio)}` : '';
+        document.getElementById('mi-posicion').textContent = `#${miResultadoPregunta.posicion}${flecha}`;
+        document.getElementById('mi-puntaje').classList.remove('hidden');
+    }
+
+    function aplicarMiResultadoFinal() {
+        if (!miResultadoFinal || miResultadoFinal.posicion == null) return;
+        document.getElementById('mi-puntaje-final').textContent = `${miResultadoFinal.puntaje_acumulado} pts`;
+        document.getElementById('mi-posicion-final').textContent =
+            `#${miResultadoFinal.posicion} de ${miResultadoFinal.total_participantes}`;
+        document.getElementById('mi-resultado-final').classList.remove('hidden');
     }
 
     const _enviarRespuestaOriginal = enviarRespuesta;

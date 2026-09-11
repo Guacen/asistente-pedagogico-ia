@@ -703,6 +703,19 @@ class Presentacion(Base):
     estado='generando' de inmediato — nunca bloquea el request HTTP
     esperando a la IA (eso fue lo que causó 502 de Cloudflare en
     producción con generaciones grandes).
+
+    SPRINT 6 (puntaje/podio): configuración de puntaje elegida por el
+    docente EN el modal de creación (antes de que exista ninguna sesión
+    en vivo) y aplicada a todas las preguntas de esta presentación:
+    - modo_puntaje: 'competencia' (velocidad + acierto) | 'inclusivo'
+      (sólo acierto, 1000 puntos fijos).
+    - tiempo_pregunta_s: segundos base por pregunta (10-60), reemplaza
+      el `tiempo_s` que la IA proponía por pregunta — un valor
+      consistente para toda la presentación es lo que hace comparable
+      el puntaje entre preguntas y lo que necesita el ajuste PIAR.
+    - factor_tiempo_piar: multiplicador de tiempo extendido (1.25/1.5/2)
+      para estudiantes con `Estudiante.tiene_piar=True` en el grupo —
+      ver presentaciones._tiempo_limite_ms.
     """
     __tablename__ = "presentaciones"
 
@@ -714,6 +727,9 @@ class Presentacion(Base):
     diapositivas = Column(JSON, nullable=False, default=list)
     estado = Column(String(20), nullable=False, default="lista")
     error_generacion = Column(Text, nullable=True)
+    modo_puntaje = Column(String(20), nullable=False, default="competencia")
+    tiempo_pregunta_s = Column(Integer, nullable=False, default=20)
+    factor_tiempo_piar = Column(Float, nullable=False, default=1.5)
     creado_en = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     docente = relationship("Docente")
@@ -754,6 +770,9 @@ class SesionPresentacion(Base):
     respuestas = relationship(
         "RespuestaPresentacion", back_populates="sesion", cascade="all, delete-orphan",
     )
+    puntajes = relationship(
+        "PuntajeEstudiante", cascade="all, delete-orphan",
+    )
 
 
 class RespuestaPresentacion(Base):
@@ -762,6 +781,15 @@ class RespuestaPresentacion(Base):
     sólo por `nombre_estudiante` (texto libre sanitizado con bleach
     antes de guardar, ver security_utils.sanitizar_texto — es el único
     input de este proyecto que llega sin ningún JWT de por medio).
+
+    SPRINT 6: `tiempo_limite_ms` y `puntos_obtenidos` quedan FIJOS al
+    momento de responder — nunca se recalculan después. Si el docente
+    cambia el factor PIAR de un estudiante o el estudiante deja de estar
+    marcado con PIAR más adelante, las respuestas ya registradas no
+    cambian de puntaje retroactivamente (dato de investigación para la
+    tesis: tiempo_respuesta_ms/tiempo_limite_ms permiten reconstruir
+    exactamente qué límite de tiempo tenía cada estudiante en cada
+    pregunta).
     """
     __tablename__ = "respuestas_presentacion"
 
@@ -774,9 +802,42 @@ class RespuestaPresentacion(Base):
     respuesta = Column(String(500), nullable=True)
     es_correcta = Column(Boolean, nullable=True)  # NULL si es poll/nube
     tiempo_respuesta_ms = Column(Integer, nullable=True)
+    tiempo_limite_ms = Column(Integer, nullable=True)
+    puntos_obtenidos = Column(Integer, nullable=False, default=0)
     creado_en = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     sesion = relationship("SesionPresentacion", back_populates="respuestas")
+
+
+class PuntajeEstudiante(Base):
+    """
+    SPRINT 6, Parte D — puntaje ACUMULADO por (sesión, estudiante),
+    actualizado incrementalmente en presentaciones.registrar_respuesta
+    cada vez que se persiste una respuesta NUEVA (nunca en un duplicado
+    idempotente). Es la fuente de verdad para el podio en vivo y para
+    la exportación de resultados — evita recalcular sumando todas las
+    respuestas cada vez que se cierra una pregunta.
+
+    Reconexión: como la clave es (id_sesion, nombre_estudiante) — no un
+    sid de socket — un estudiante que se desconecta y vuelve a entrar
+    con el mismo nombre sigue acumulando sobre la MISMA fila.
+    """
+    __tablename__ = "puntajes_estudiante"
+    __table_args__ = (
+        __import__("sqlalchemy").UniqueConstraint(
+            "id_sesion", "nombre_estudiante", name="uq_puntaje_sesion_estudiante",
+        ),
+    )
+
+    id_puntaje = Column(String(36), primary_key=True, default=new_uuid)
+    id_sesion = Column(
+        String(36), ForeignKey("sesiones_presentacion.id_sesion"), nullable=False, index=True,
+    )
+    nombre_estudiante = Column(String(100), nullable=False)
+    puntaje_acumulado = Column(Integer, nullable=False, default=0)
+    aciertos = Column(Integer, nullable=False, default=0)
+    respuestas_totales = Column(Integer, nullable=False, default=0)
+    actualizado_en = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
 
 class SeguimientoDBA(Base):

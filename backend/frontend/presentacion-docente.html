@@ -29,6 +29,22 @@
         .pantalla { display: none; }
         .pantalla.activa { display: flex; }
         .barra-resultado > div { transition: width .6s ease; }
+        /* SPRINT 6, Parte C — pulso de revelado en la barra correcta y
+           entrada escalonada del podio final. respeta prefers-reduced-motion. */
+        @keyframes pd-pulso-revelado {
+            0%   { box-shadow: 0 0 0 0 rgba(245, 183, 49, .55); }
+            70%  { box-shadow: 0 0 0 10px rgba(245, 183, 49, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(245, 183, 49, 0); }
+        }
+        .pd-revelada { animation: pd-pulso-revelado 1s ease-out 1; }
+        @keyframes pd-podio-entra {
+            from { opacity: 0; transform: translateY(16px) scale(.96); }
+            to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .pd-podio-lugar { animation: pd-podio-entra .5s ease-out both; }
+        @media (prefers-reduced-motion: reduce) {
+            .pd-revelada, .pd-podio-lugar { animation: none; }
+        }
     </style>
 </head>
 <body class="bg-gray-50">
@@ -156,13 +172,25 @@
 
 <!-- ═══ FINALIZADA ═══ -->
 <div id="pantalla-fin" class="pantalla min-h-screen flex-col items-center justify-center p-6" style="background: var(--brand-dark, #0B3D2E);">
-    <div class="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8 text-center">
+    <div class="w-full max-w-lg bg-white rounded-2xl shadow-2xl p-8 text-center">
         <i class="fas fa-flag-checkered text-4xl mb-3" style="color: var(--brand-primary, #1D9E75);"></i>
-        <h1 class="text-xl font-bold text-gray-900 mb-4">¡Presentación finalizada!</h1>
-        <div id="fin-ranking" class="space-y-2 text-left mb-6"></div>
-        <a href="presentacion-docente.html" class="inline-block px-5 py-2.5 rounded-xl font-semibold text-white" style="background: var(--brand-primary, #1D9E75);">
-            Volver a mis presentaciones
-        </a>
+        <h1 class="text-xl font-bold text-gray-900 mb-5">¡Presentación finalizada!</h1>
+
+        <!-- Podio de 3 lugares (SPRINT 6, Parte C) -->
+        <div id="fin-podio-3" class="hidden items-end justify-center gap-2 mb-6" style="display: flex;"></div>
+
+        <div id="fin-ranking-resto" class="space-y-1.5 text-left mb-2"></div>
+        <p id="fin-sin-puntajes" class="hidden text-gray-500 text-center mb-6">Sin puntajes registrados.</p>
+
+        <div class="flex flex-col sm:flex-row gap-2 mt-5">
+            <button id="btn-exportar-resultados" onclick="exportarResultados()"
+                class="flex-1 inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-semibold border border-gray-300 text-gray-700 hover:bg-gray-50">
+                <i class="fas fa-download"></i>Exportar CSV
+            </button>
+            <a href="presentacion-docente.html" class="flex-1 inline-flex items-center justify-center px-5 py-2.5 rounded-xl font-semibold text-white" style="background: var(--brand-primary, #1D9E75);">
+                Volver a mis presentaciones
+            </a>
+        </div>
     </div>
 </div>
 
@@ -180,7 +208,7 @@
         socket: null,
         slideIndex: -1,
         slideAbierta: false,
-        ultimoRanking: [],
+        ultimoPodioFinal: [],
     };
 
     function mostrarPantalla(id) {
@@ -338,6 +366,9 @@
                 nSlidesContenido: parametros.nSlidesContenido,
                 nPreguntas: parametros.nPreguntas,
                 tiposPregunta: parametros.tiposPregunta,
+                tiempoPreguntaS: parametros.tiempoPreguntaS,
+                modoPuntaje: parametros.modoPuntaje,
+                factorTiempoPiar: parametros.factorTiempoPiar,
             });
             window.location.href = `presentacion-docente.html?id=${nueva.id_presentacion}`;
         } catch (err) {
@@ -422,13 +453,28 @@
         });
 
         PD.socket.on('presentacion:resultado', (data) => {
-            PD.ultimoRanking = data.ranking_top5 || [];
             renderResultado(data);
+        });
+
+        // SPRINT 6, Parte C — podio en vivo (sólo llega a esta room,
+        // docente_{id}, nunca a la room de la sesión donde también
+        // están los estudiantes).
+        PD.socket.on('presentacion:podio', (data) => {
+            renderPodioEnVivo(data);
         });
 
         PD.socket.on('presentacion:nueva_respuesta', (data) => {
             document.getElementById('contador-respondido').textContent = data.total_respondido;
             document.getElementById('contador-sala').textContent = data.total_sala;
+        });
+
+        // El orden entre finalizada (a la sala) y podio_final (a la room
+        // del docente) no está garantizado — cada handler es autónomo:
+        // cualquiera que llegue primero deja la pantalla en un estado
+        // válido, y el que llega después completa el render.
+        PD.socket.on('presentacion:podio_final', (data) => {
+            PD.ultimoPodioFinal = data.ranking || [];
+            renderRankingFinal();
         });
 
         PD.socket.on('presentacion:finalizada', () => {
@@ -545,7 +591,7 @@
     const _SVG_MARKER_FLECHA = `
         <defs>
             <marker id="pd-flecha" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
-                <path d="M0,0 L0,6 L9,3 z" style="fill:var(--brand-primary, #1D9E75)"/>
+                <path d="M0,0 L0,6 L9,3 z" style="fill:var(--diagram-stroke, #E1F5EE)"/>
             </marker>
         </defs>`;
 
@@ -572,16 +618,16 @@
                 const lx = x2 + dx * 8 + (dir === 'arriba' || dir === 'abajo' ? pdx * 0 : 0);
                 const ly = y2 + dy * 14 * (dir === 'abajo' ? 1 : dir === 'arriba' ? -0.4 : 0.3);
                 partes.push(`
-                    <line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" style="stroke:var(--brand-primary, #1D9E75)" stroke-width="4" marker-end="url(#pd-flecha)"/>
-                    <text x="${lx}" y="${ly}" font-size="13" style="fill:var(--brand-dark, #0B3D2E)" text-anchor="${anchor}">${escapeHtmlPD(f.nombre)}</text>
+                    <line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" style="stroke:var(--diagram-stroke, #E1F5EE)" stroke-width="4" marker-end="url(#pd-flecha)"/>
+                    <text x="${lx}" y="${ly}" font-size="16" style="fill:var(--diagram-label, #FFFFFF)" text-anchor="${anchor}">${escapeHtmlPD(f.nombre)}</text>
                 `);
             });
         });
 
         return `<svg viewBox="0 0 ${W} ${H}" class="w-full" style="max-height:260px">
             ${_SVG_MARKER_FLECHA}
-            <rect x="${cx - box / 2}" y="${cy - box / 2}" width="${box}" height="${box}" rx="10" style="fill:var(--brand-dark, #0B3D2E)"/>
-            <text x="${cx}" y="${cy + 5}" font-size="13" fill="white" text-anchor="middle">${escapeHtmlPD(datos.objeto)}</text>
+            <rect x="${cx - box / 2}" y="${cy - box / 2}" width="${box}" height="${box}" rx="10" style="fill:var(--brand-dark, #0B3D2E);stroke:var(--diagram-stroke, #E1F5EE)" stroke-width="2.5"/>
+            <text x="${cx}" y="${cy + 5}" font-size="16" style="fill:var(--diagram-label, #FFFFFF)" text-anchor="middle">${escapeHtmlPD(datos.objeto)}</text>
             ${partes.join('')}
         </svg>`;
     }
@@ -601,19 +647,19 @@
             const ux = dx / dist, uy = dy / dist;
             const x1 = n.x + ux * nodoR, y1 = n.y + uy * nodoR;
             const x2 = sig.x - ux * nodoR, y2 = sig.y - uy * nodoR;
-            return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" style="stroke:var(--brand-amber, #F5B731)" stroke-width="3" marker-end="url(#pd-flecha-ciclo)"/>`;
+            return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" style="stroke:var(--diagram-accent, #F5B731)" stroke-width="3" marker-end="url(#pd-flecha-ciclo)"/>`;
         }).join('');
         const circulos = nodos.map((n) => `
-            <circle cx="${n.x}" cy="${n.y}" r="${nodoR}" style="fill:var(--brand-mint, #E1F5EE);stroke:var(--brand-primary, #1D9E75)" stroke-width="2"/>
+            <circle cx="${n.x}" cy="${n.y}" r="${nodoR}" style="fill:var(--brand-mint, #E1F5EE);stroke:var(--diagram-label, #FFFFFF)" stroke-width="2.5"/>
             <foreignObject x="${n.x - nodoR + 6}" y="${n.y - nodoR + 6}" width="${(nodoR - 6) * 2}" height="${(nodoR - 6) * 2}">
-                <div xmlns="http://www.w3.org/1999/xhtml" style="font-size:11px;color:var(--brand-dark, #0B3D2E);text-align:center;display:flex;align-items:center;justify-content:center;height:100%;line-height:1.15;">${escapeHtmlPD(n.texto)}</div>
+                <div xmlns="http://www.w3.org/1999/xhtml" style="font-size:16px;color:var(--brand-dark, #0B3D2E);text-align:center;display:flex;align-items:center;justify-content:center;height:100%;line-height:1.15;">${escapeHtmlPD(n.texto)}</div>
             </foreignObject>
         `).join('');
 
         return `<svg viewBox="0 0 ${W} ${H}" class="w-full" style="max-height:280px">
             <defs>
                 <marker id="pd-flecha-ciclo" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
-                    <path d="M0,0 L0,6 L9,3 z" style="fill:var(--brand-amber, #F5B731)"/>
+                    <path d="M0,0 L0,6 L9,3 z" style="fill:var(--diagram-accent, #F5B731)"/>
                 </marker>
             </defs>
             ${flechas}
@@ -633,16 +679,16 @@
             const textoY = arriba ? y - 24 : y + 38;
             const etiquetaY = arriba ? y - 8 : y + 22;
             return `
-                <circle cx="${x}" cy="${y}" r="8" style="fill:var(--brand-primary, #1D9E75)"/>
-                <text x="${x}" y="${etiquetaY}" font-size="12" font-weight="bold" style="fill:var(--brand-dark, #0B3D2E)" text-anchor="middle">${escapeHtmlPD(e.etiqueta)}</text>
+                <circle cx="${x}" cy="${y}" r="8" style="fill:var(--diagram-accent, #F5B731)"/>
+                <text x="${x}" y="${etiquetaY}" font-size="16" font-weight="bold" style="fill:var(--diagram-label, #FFFFFF)" text-anchor="middle">${escapeHtmlPD(e.etiqueta)}</text>
                 <foreignObject x="${x - 55}" y="${arriba ? textoY - 34 : textoY - 4}" width="110" height="40">
-                    <div xmlns="http://www.w3.org/1999/xhtml" style="font-size:11px;color:var(--brand-dark, #0B3D2E);text-align:center;line-height:1.2;">${escapeHtmlPD(e.texto)}</div>
+                    <div xmlns="http://www.w3.org/1999/xhtml" style="font-size:16px;color:var(--diagram-stroke, #E1F5EE);text-align:center;line-height:1.2;">${escapeHtmlPD(e.texto)}</div>
                 </foreignObject>
             `;
         }).join('');
 
         return `<svg viewBox="0 0 ${W} ${H}" class="w-full" style="max-height:200px">
-            <line x1="${margen}" y1="${y}" x2="${W - margen}" y2="${y}" style="stroke:var(--brand-primary, #1D9E75)" stroke-width="3"/>
+            <line x1="${margen}" y1="${y}" x2="${W - margen}" y2="${y}" style="stroke:var(--diagram-stroke, #E1F5EE)" stroke-width="3"/>
             ${puntos}
         </svg>`;
     }
@@ -655,16 +701,16 @@
         const H = top + Math.max(izq.length, der.length) * filaAltura + 20;
         const W = 620, midX = W / 2;
         const col = (items, xTexto, anchor) => items.map((texto, i) => `
-            <text x="${xTexto}" y="${top + i * filaAltura}" font-size="13" style="fill:var(--brand-dark, #0B3D2E)" text-anchor="${anchor}">${escapeHtmlPD(texto)}</text>
+            <text x="${xTexto}" y="${top + i * filaAltura}" font-size="16" style="fill:var(--brand-dark, #0B3D2E)" text-anchor="${anchor}">${escapeHtmlPD(texto)}</text>
         `).join('');
 
         return `<svg viewBox="0 0 ${W} ${H}" class="w-full" style="max-height:280px">
             <rect x="0" y="0" width="${midX - 10}" height="${H}" rx="10" style="fill:var(--brand-mint, #E1F5EE)"/>
             <rect x="${midX + 10}" y="0" width="${midX - 10}" height="${H}" rx="10" style="fill:var(--brand-mint, #E1F5EE)"/>
-            <text x="${midX / 2}" y="30" font-size="15" font-weight="bold" style="fill:var(--brand-primary, #1D9E75)" text-anchor="middle">${escapeHtmlPD(datos.titulo_izquierda)}</text>
-            <text x="${midX + midX / 2}" y="30" font-size="15" font-weight="bold" style="fill:var(--brand-primary, #1D9E75)" text-anchor="middle">${escapeHtmlPD(datos.titulo_derecha)}</text>
-            <circle cx="${midX}" cy="${H / 2}" r="18" style="fill:var(--brand-amber, #F5B731)"/>
-            <text x="${midX}" y="${H / 2 + 5}" font-size="12" font-weight="bold" style="fill:var(--brand-dark, #0B3D2E)" text-anchor="middle">VS</text>
+            <text x="${midX / 2}" y="30" font-size="16" font-weight="bold" style="fill:var(--brand-primary, #1D9E75)" text-anchor="middle">${escapeHtmlPD(datos.titulo_izquierda)}</text>
+            <text x="${midX + midX / 2}" y="30" font-size="16" font-weight="bold" style="fill:var(--brand-primary, #1D9E75)" text-anchor="middle">${escapeHtmlPD(datos.titulo_derecha)}</text>
+            <circle cx="${midX}" cy="${H / 2}" r="18" style="fill:var(--diagram-accent, #F5B731)"/>
+            <text x="${midX}" y="${H / 2 + 5}" font-size="16" font-weight="bold" style="fill:var(--brand-dark, #0B3D2E)" text-anchor="middle">VS</text>
             ${col(izq, 20, 'start')}
             ${col(der, W - 20, 'end')}
         </svg>`;
@@ -679,21 +725,21 @@
         const paso = W / hijos.length;
         const lineas = hijos.map((_, i) => {
             const x = paso * i + paso / 2;
-            return `<line x1="${raizX}" y1="${raizY + 20}" x2="${x}" y2="${hijoY}" style="stroke:var(--brand-primary, #1D9E75)" stroke-width="2"/>`;
+            return `<line x1="${raizX}" y1="${raizY + 20}" x2="${x}" y2="${hijoY}" style="stroke:var(--diagram-stroke, #E1F5EE)" stroke-width="2.5"/>`;
         }).join('');
         const cajas = hijos.map((texto, i) => {
             const x = paso * i + paso / 2;
             return `
-                <rect x="${x - boxW / 2}" y="${hijoY}" width="${boxW}" height="${boxH}" rx="8" style="fill:var(--brand-mint, #E1F5EE);stroke:var(--brand-primary, #1D9E75)" stroke-width="1.5"/>
+                <rect x="${x - boxW / 2}" y="${hijoY}" width="${boxW}" height="${boxH}" rx="8" style="fill:var(--brand-mint, #E1F5EE);stroke:var(--diagram-label, #FFFFFF)" stroke-width="2.5"/>
                 <foreignObject x="${x - boxW / 2 + 4}" y="${hijoY + 2}" width="${boxW - 8}" height="${boxH - 4}">
-                    <div xmlns="http://www.w3.org/1999/xhtml" style="font-size:11px;color:var(--brand-dark, #0B3D2E);text-align:center;display:flex;align-items:center;justify-content:center;height:100%;line-height:1.15;">${escapeHtmlPD(texto)}</div>
+                    <div xmlns="http://www.w3.org/1999/xhtml" style="font-size:16px;color:var(--brand-dark, #0B3D2E);text-align:center;display:flex;align-items:center;justify-content:center;height:100%;line-height:1.15;">${escapeHtmlPD(texto)}</div>
                 </foreignObject>
             `;
         }).join('');
 
         return `<svg viewBox="0 0 ${W} ${H}" class="w-full" style="max-height:240px">
-            <rect x="${raizX - 70}" y="${raizY - 20}" width="140" height="40" rx="8" style="fill:var(--brand-dark, #0B3D2E)"/>
-            <text x="${raizX}" y="${raizY + 5}" font-size="13" fill="white" text-anchor="middle">${escapeHtmlPD(datos.raiz)}</text>
+            <rect x="${raizX - 70}" y="${raizY - 20}" width="140" height="40" rx="8" style="fill:var(--brand-dark, #0B3D2E);stroke:var(--diagram-stroke, #E1F5EE)" stroke-width="2.5"/>
+            <text x="${raizX}" y="${raizY + 5}" font-size="16" style="fill:var(--diagram-label, #FFFFFF)" text-anchor="middle">${escapeHtmlPD(datos.raiz)}</text>
             ${lineas}
             ${cajas}
         </svg>`;
@@ -708,20 +754,20 @@
         const partes = pasos.map((texto, i) => {
             const x = 10 + i * (boxW + gap);
             const caja = `
-                <rect x="${x}" y="${y}" width="${boxW}" height="${boxH}" rx="10" style="fill:var(--brand-mint, #E1F5EE);stroke:var(--brand-primary, #1D9E75)" stroke-width="1.5"/>
+                <rect x="${x}" y="${y}" width="${boxW}" height="${boxH}" rx="10" style="fill:var(--brand-mint, #E1F5EE);stroke:var(--diagram-label, #FFFFFF)" stroke-width="2.5"/>
                 <foreignObject x="${x + 6}" y="${y + 4}" width="${boxW - 12}" height="${boxH - 8}">
-                    <div xmlns="http://www.w3.org/1999/xhtml" style="font-size:11px;color:var(--brand-dark, #0B3D2E);text-align:center;display:flex;align-items:center;justify-content:center;height:100%;line-height:1.15;">${escapeHtmlPD(texto)}</div>
+                    <div xmlns="http://www.w3.org/1999/xhtml" style="font-size:16px;color:var(--brand-dark, #0B3D2E);text-align:center;display:flex;align-items:center;justify-content:center;height:100%;line-height:1.15;">${escapeHtmlPD(texto)}</div>
                 </foreignObject>
             `;
             if (i === pasos.length - 1) return caja;
             const x1 = x + boxW, x2 = x + boxW + gap;
-            return `${caja}<line x1="${x1}" y1="${H / 2}" x2="${x2}" y2="${H / 2}" style="stroke:var(--brand-amber, #F5B731)" stroke-width="3" marker-end="url(#pd-flecha-proceso)"/>`;
+            return `${caja}<line x1="${x1}" y1="${H / 2}" x2="${x2}" y2="${H / 2}" style="stroke:var(--diagram-accent, #F5B731)" stroke-width="3" marker-end="url(#pd-flecha-proceso)"/>`;
         }).join('');
 
         return `<svg viewBox="0 0 ${W} ${H}" class="w-full" style="max-height:150px">
             <defs>
                 <marker id="pd-flecha-proceso" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
-                    <path d="M0,0 L0,6 L9,3 z" style="fill:var(--brand-amber, #F5B731)"/>
+                    <path d="M0,0 L0,6 L9,3 z" style="fill:var(--diagram-accent, #F5B731)"/>
                 </marker>
             </defs>
             ${partes}
@@ -778,6 +824,7 @@
                 <h2 class="text-2xl lg:text-3xl font-bold mb-6">${escapeHtmlPD(textoSeguroPD(slide.pregunta || slide.instruccion))}</h2>
                 <div id="slide-opciones-proyeccion" class="grid grid-cols-2 gap-3"></div>
                 <div id="slide-resultado-proyeccion" class="hidden mt-2"></div>
+                <div id="podio-en-vivo" class="hidden mt-6"></div>
             `;
             if (slide.opciones) {
                 const colores = ['#E03131', '#1971C2', '#F08C00', '#2F9E44', '#9C36B5', '#0CA678'];
@@ -842,37 +889,127 @@
         } else {
             const opciones = slide.opciones || [];
             const total = Object.values(data.conteos || {}).reduce((a, b) => a + b, 0) || 1;
+            // SPRINT 6, Parte A/C: la correcta se resalta en
+            // --diagram-accent (ámbar, 6.8:1 sobre el fondo oscuro) con
+            // un pulso de revelado — nunca --brand-primary, que mide
+            // 3.59:1 e insuficiente para proyector.
             cont.innerHTML = `<div class="space-y-2 barra-resultado">` + opciones.map((o, i) => {
                 const n = (data.conteos && data.conteos[String(i)]) || 0;
                 const pct = Math.round((n / total) * 100);
                 const esCorrecta = data.correcta === i;
+                const color = esCorrecta ? 'var(--diagram-accent, #F5B731)' : 'var(--diagram-second, #2ECC71)';
                 return `
                     <div>
                         <div class="flex justify-between text-sm mb-1">
-                            <span>${o}${esCorrecta ? ' <i class="fas fa-check-circle"></i>' : ''}</span>
+                            <span>${escapeHtmlPD(textoSeguroPD(o))}${esCorrecta ? ' <i class="fas fa-check-circle"></i>' : ''}</span>
                             <span>${n} (${pct}%)</span>
                         </div>
-                        <div class="h-3 rounded-full bg-white/10 overflow-hidden">
-                            <div class="h-full rounded-full" style="width:${pct}%; background:${esCorrecta ? '#2ECC71' : '#F5B731'}"></div>
+                        <div class="h-3 rounded-full bg-white/10 overflow-hidden${esCorrecta ? ' pd-revelada' : ''}">
+                            <div class="h-full rounded-full" style="width:${pct}%; background:${color}"></div>
                         </div>
                     </div>`;
             }).join('') + `</div>`;
         }
     }
 
-    function renderRankingFinal() {
-        const cont = document.getElementById('fin-ranking');
-        if (!PD.ultimoRanking.length) {
-            cont.innerHTML = '<p class="text-gray-500 text-center">Sin puntajes registrados.</p>';
+    // ── Podio en vivo (SPRINT 6, Parte C) ───────────────────────────
+    // Llega SOLO al docente (room docente_{id}) — nunca al estudiante.
+    function renderPodioEnVivo(data) {
+        const cont = document.getElementById('podio-en-vivo');
+        if (!cont) return;
+        const top5 = data.podio_top5 || [];
+        if (!top5.length) {
+            cont.classList.add('hidden');
             return;
         }
+        cont.classList.remove('hidden');
+        const flecha = (cambio) => {
+            if (cambio > 0) return `<span style="color: var(--diagram-second, #2ECC71);"><i class="fas fa-arrow-up"></i> ${cambio}</span>`;
+            if (cambio < 0) return `<span style="color: #F87171;"><i class="fas fa-arrow-down"></i> ${Math.abs(cambio)}</span>`;
+            return `<span class="opacity-50"><i class="fas fa-minus"></i></span>`;
+        };
         const medallas = ['🥇', '🥈', '🥉', '🏅', '🏅'];
-        cont.innerHTML = PD.ultimoRanking.map((r, i) => `
+        cont.innerHTML = `
+            <p class="text-xs uppercase tracking-widest opacity-70 mb-2">Podio</p>
+            <div class="space-y-1.5">
+                ${top5.map((r, i) => `
+                    <div class="pd-podio-lugar flex items-center justify-between rounded-lg px-3 py-2" style="background: rgba(255,255,255,.08); animation-delay: ${i * 80}ms;">
+                        <span>${medallas[i] || '🏅'} ${escapeHtmlPD(r.nombre)}</span>
+                        <span class="flex items-center gap-3">
+                            <span class="font-bold" style="color: var(--diagram-label, #FFFFFF);">${r.puntaje_acumulado} pts</span>
+                            ${flecha(r.cambio_posicion)}
+                        </span>
+                    </div>
+                `).join('')}
+            </div>`;
+    }
+
+    function renderRankingFinal() {
+        const podio3 = document.getElementById('fin-podio-3');
+        const resto = document.getElementById('fin-ranking-resto');
+        const sinPuntajes = document.getElementById('fin-sin-puntajes');
+        const ranking = PD.ultimoPodioFinal || [];
+
+        if (!ranking.length) {
+            podio3.classList.add('hidden');
+            resto.innerHTML = '';
+            sinPuntajes.classList.remove('hidden');
+            return;
+        }
+        sinPuntajes.classList.add('hidden');
+
+        // Podio de 3 lugares — columnas de alturas distintas (1º más
+        // alta), orden visual 2º-1º-3º como un podio real, con entrada
+        // animada escalonada.
+        const top3 = ranking.slice(0, 3);
+        const alturas = { 0: 'h-28', 1: 'h-20', 2: 'h-14' };
+        const colores = { 0: '#F5B731', 1: '#C0C0C0', 2: '#CD7F32' };
+        const ordenVisual = [1, 0, 2].filter((i) => i < top3.length);
+        podio3.classList.remove('hidden');
+        podio3.innerHTML = ordenVisual.map((i, orden) => {
+            const r = top3[i];
+            return `
+                <div class="pd-podio-lugar flex flex-col items-center" style="width: 90px; animation-delay: ${orden * 120}ms;">
+                    <p class="text-sm font-semibold text-gray-800 mb-1 truncate w-full text-center">${escapeHtmlPD(r.nombre)}</p>
+                    <p class="text-xs text-gray-500 mb-1">${r.puntaje_acumulado} pts</p>
+                    <div class="${alturas[i]} w-full rounded-t-lg flex items-start justify-center pt-2 text-white font-black text-lg" style="background: ${colores[i]};">
+                        ${i + 1}
+                    </div>
+                </div>`;
+        }).join('');
+
+        // El resto (4º en adelante) como lista simple debajo del podio.
+        resto.innerHTML = ranking.slice(3).map((r, i) => `
             <div class="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
-                <span>${medallas[i] || '🏅'} ${r.nombre}</span>
-                <span class="font-bold" style="color: var(--brand-primary, #1D9E75);">${r.puntos} pts</span>
+                <span>🏅 ${escapeHtmlPD(r.nombre)}</span>
+                <span class="font-bold" style="color: var(--brand-primary, #1D9E75);">${r.puntaje_acumulado} pts</span>
             </div>
         `).join('');
+    }
+
+    // ── Exportar resultados (SPRINT 6, Parte C/D) ───────────────────
+    async function exportarResultados() {
+        if (!PD.sesionId) return;
+        const btn = document.getElementById('btn-exportar-resultados');
+        const original = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>Exportando…';
+        try {
+            const { blob, filename } = await api.descargarResultadosSesion(PD.sesionId);
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+        } catch (err) {
+            alert('No se pudo exportar: ' + (err.message || err));
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = original;
+        }
     }
 </script>
 </body>

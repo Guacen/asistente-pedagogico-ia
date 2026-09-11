@@ -25,6 +25,10 @@ import logging
 from database import SessionLocal
 from models import RespuestaPresentacion, SesionPresentacion
 from presentaciones import (
+    TIPOS_PREGUNTA_SOPORTADOS,
+    _estudiante_tiene_piar,
+    _tiempo_limite_ms,
+    calcular_podio,
     calcular_resultado,
     cerrar_slide,
     finalizar_sesion,
@@ -246,15 +250,43 @@ async def presentacion_iniciar_slide(sid, data):
         iniciar_slide(db, sesion, slide_index)
         slide = presentacion.diapositivas[slide_index]
         await sio.enter_room(sid, _sala(id_sesion))
+        slide_publico = _slide_publico(slide)
+        tiempo_base_s = slide.get("tiempo_s")
+
+        # Confirmación al docente — su propio control usa el tiempo base
+        # (no personalizado; el docente ve todo igual, es quien decide
+        # a quién le aplica el ajuste, no al revés).
         await sio.emit(
             "presentacion:slide_activo",
-            {
-                "slide_data": _slide_publico(slide),
-                "slide_index": slide_index,
-                "tiempo_s": slide.get("tiempo_s"),
-            },
-            room=_sala(id_sesion),
+            {"slide_data": slide_publico, "slide_index": slide_index, "tiempo_s": tiempo_base_s},
+            to=sid,
         )
+
+        if slide.get("tipo") in TIPOS_PREGUNTA_SOPORTADOS and tiempo_base_s:
+            # SPRINT 6, Parte B — cada estudiante recibe SU PROPIO
+            # tiempo_s (extendido si tiene PIAR), nunca un broadcast
+            # compartido: si todos recibieran el mismo payload, comparar
+            # el `tiempo_s` entre compañeros delataría quién tiene el
+            # ajuste. El tiempo extendido NUNCA se expone públicamente.
+            for sid_estudiante, info in list(_estudiantes.items()):
+                if info.get("id_sesion") != id_sesion:
+                    continue
+                tiene_piar = _estudiante_tiene_piar(db, presentacion.id_grupo, info["nombre"])
+                tiempo_efectivo_s = round(_tiempo_limite_ms(presentacion, tiene_piar) / 1000)
+                await sio.emit(
+                    "presentacion:slide_activo",
+                    {"slide_data": slide_publico, "slide_index": slide_index, "tiempo_s": tiempo_efectivo_s},
+                    to=sid_estudiante,
+                )
+        else:
+            # Diapositiva sin ajuste de tiempo relevante (poll/nube) —
+            # nada que ocultar, un solo broadcast a la sala basta.
+            await sio.emit(
+                "presentacion:slide_activo",
+                {"slide_data": slide_publico, "slide_index": slide_index, "tiempo_s": tiempo_base_s},
+                room=_sala(id_sesion),
+                skip_sid=sid,
+            )
     finally:
         db.close()
 
@@ -269,9 +301,49 @@ async def presentacion_cerrar_slide(sid, data):
         sesion = db.query(SesionPresentacion).filter(SesionPresentacion.id_sesion == id_sesion).first()
         if not sesion:
             return
+        presentacion = sesion.presentacion
         cerrar_slide(db, sesion)
-        resultado = calcular_resultado(db, sesion, sesion.presentacion)
+
+        # "Distribución antes de revelar": conteos por opción + cuál era
+        # la correcta — va a la sala completa (docente y estudiantes),
+        # no expone puntajes ni nombres de nadie.
+        resultado = calcular_resultado(db, sesion, presentacion)
         await sio.emit("presentacion:resultado", resultado, room=_sala(id_sesion))
+
+        # SPRINT 6, Parte C — podio con el ranking completo (nombres +
+        # puntaje + cambio de posición) SOLO al docente, vía su room
+        # docente_{id} (no la room de la sesión — ahí también están los
+        # estudiantes, y "nunca mostrarle el ranking completo al
+        # estudiante" es una regla explícita del sprint).
+        podio = calcular_podio(db, sesion, presentacion)
+        await sio.emit("presentacion:podio", podio, room=f"docente_{presentacion.id_docente}")
+
+        # Feedback personal por estudiante — sólo SU posición/puntos,
+        # nunca el ranking de los demás.
+        posicion_por_nombre = {e["nombre"]: i for i, e in enumerate(podio["ranking"])}
+        for sid_estudiante, info in list(_estudiantes.items()):
+            if info.get("id_sesion") != id_sesion:
+                continue
+            pos = posicion_por_nombre.get(info["nombre"])
+            if pos is None:
+                continue
+            entrada = podio["ranking"][pos]
+            respuesta_estudiante = db.query(RespuestaPresentacion).filter(
+                RespuestaPresentacion.id_sesion == id_sesion,
+                RespuestaPresentacion.slide_index == sesion.slide_actual,
+                RespuestaPresentacion.nombre_estudiante == info["nombre"],
+            ).first()
+            await sio.emit(
+                "presentacion:tu_resultado",
+                {
+                    "acerto": respuesta_estudiante.es_correcta if respuesta_estudiante else None,
+                    "puntos_ganados": respuesta_estudiante.puntos_obtenidos if respuesta_estudiante else 0,
+                    "puntaje_acumulado": entrada["puntaje_acumulado"],
+                    "posicion": pos + 1,
+                    "cambio_posicion": entrada["cambio_posicion"],
+                },
+                to=sid_estudiante,
+            )
     finally:
         db.close()
 
@@ -286,8 +358,34 @@ async def presentacion_finalizar(sid, data):
         sesion = db.query(SesionPresentacion).filter(SesionPresentacion.id_sesion == id_sesion).first()
         if not sesion:
             return
+        presentacion = sesion.presentacion
         finalizar_sesion(db, sesion)
+        podio_final = calcular_podio(db, sesion, presentacion)
+
+        # Trigger genérico de "se acabó" para ambos lados — la data rica
+        # (podio con nombres para el docente, posición propia para cada
+        # estudiante) va en eventos separados y dirigidos, mismo
+        # criterio de privacidad que presentacion:podio/tu_resultado.
         await sio.emit("presentacion:finalizada", {}, room=_sala(id_sesion))
+        await sio.emit(
+            "presentacion:podio_final", podio_final, room=f"docente_{presentacion.id_docente}",
+        )
+
+        posicion_por_nombre = {e["nombre"]: i for i, e in enumerate(podio_final["ranking"])}
+        for sid_estudiante, info in list(_estudiantes.items()):
+            if info.get("id_sesion") != id_sesion:
+                continue
+            pos = posicion_por_nombre.get(info["nombre"])
+            entrada = podio_final["ranking"][pos] if pos is not None else None
+            await sio.emit(
+                "presentacion:tu_resultado_final",
+                {
+                    "puntaje_acumulado": entrada["puntaje_acumulado"] if entrada else 0,
+                    "posicion": (pos + 1) if pos is not None else None,
+                    "total_participantes": len(podio_final["ranking"]),
+                },
+                to=sid_estudiante,
+            )
 
         # Limpieza del estado en memoria de los estudiantes de esta sesión.
         for s in [s for s, v in _estudiantes.items() if v.get("id_sesion") == id_sesion]:

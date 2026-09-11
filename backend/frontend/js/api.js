@@ -780,6 +780,9 @@ class ApiClient {
             nSlidesContenido = 8,
             nPreguntas = 4,
             tiposPregunta = ['multiple', 'verdadero_falso'],
+            modoPuntaje = 'competencia',
+            tiempoPreguntaS = 20,
+            factorTiempoPiar = 1.5,
         } = opciones;
         return this.request('/api/presentaciones/generar', {
             method: 'POST',
@@ -789,6 +792,9 @@ class ApiClient {
                 n_slides_contenido: nSlidesContenido,
                 n_preguntas: nPreguntas,
                 tipos_pregunta: tiposPregunta,
+                modo_puntaje: modoPuntaje,
+                tiempo_pregunta_s: tiempoPreguntaS,
+                factor_tiempo_piar: factorTiempoPiar,
             }),
         });
     }
@@ -805,6 +811,21 @@ class ApiClient {
         // SPRINT 4: respaldo de polling mientras estado === 'generando'
         // — no depende de socket.io llegando a tiempo.
         return this.request(`/api/presentaciones/${presentacionId}/estado`);
+    }
+
+    // SPRINT 6, Parte D — descarga el CSV de resultados. No usa
+    // this.request() porque esa devuelve JSON parseado; acá necesitamos
+    // el blob crudo para disparar la descarga del archivo.
+    async descargarResultadosSesion(idSesion) {
+        const response = await fetch(`${this.baseUrl}/api/presentaciones/sesiones/${idSesion}/exportar`, {
+            headers: { Authorization: `Bearer ${this.getToken()}` },
+        });
+        if (!response.ok) {
+            throw new Error(await response.text() || `Error ${response.status}`);
+        }
+        const blob = await response.blob();
+        const match = /filename="([^"]+)"/.exec(response.headers.get('Content-Disposition') || '');
+        return { blob, filename: match ? match[1] : `resultados_${idSesion}.csv` };
     }
 
     async iniciarSesionPresentacion(presentacionId) {

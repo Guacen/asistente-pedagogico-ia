@@ -261,6 +261,50 @@ def apply_migrations():
             conn.commit()
             print("✅ Migración: columna 'error_generacion' agregada a 'presentaciones'")
 
+    # ── SPRINT 6 — puntaje configurable, podio en vivo, PIAR ──
+    # Config de puntaje en presentaciones (elegida en el modal de
+    # creación, aplica a toda la presentación) + tiempo_limite_ms/
+    # puntos_obtenidos en respuestas_presentacion (fijados al responder,
+    # nunca recalculados) + tabla nueva de puntaje acumulado por sesión.
+    cols_pres = [c["name"] for c in inspect(engine).get_columns("presentaciones")]
+    with engine.connect() as conn:
+        if "modo_puntaje" not in cols_pres:
+            conn.execute(text(
+                "ALTER TABLE presentaciones ADD COLUMN modo_puntaje VARCHAR(20) NOT NULL DEFAULT 'competencia'"
+            ))
+            conn.commit()
+            print("✅ Migración: columna 'modo_puntaje' agregada a 'presentaciones'")
+        if "tiempo_pregunta_s" not in cols_pres:
+            conn.execute(text(
+                "ALTER TABLE presentaciones ADD COLUMN tiempo_pregunta_s INTEGER NOT NULL DEFAULT 20"
+            ))
+            conn.commit()
+            print("✅ Migración: columna 'tiempo_pregunta_s' agregada a 'presentaciones'")
+        if "factor_tiempo_piar" not in cols_pres:
+            conn.execute(text(
+                "ALTER TABLE presentaciones ADD COLUMN factor_tiempo_piar FLOAT NOT NULL DEFAULT 1.5"
+            ))
+            conn.commit()
+            print("✅ Migración: columna 'factor_tiempo_piar' agregada a 'presentaciones'")
+
+    cols_resp = [c["name"] for c in inspect(engine).get_columns("respuestas_presentacion")]
+    with engine.connect() as conn:
+        if "tiempo_limite_ms" not in cols_resp:
+            conn.execute(text(
+                "ALTER TABLE respuestas_presentacion ADD COLUMN tiempo_limite_ms INTEGER"
+            ))
+            conn.commit()
+            print("✅ Migración: columna 'tiempo_limite_ms' agregada a 'respuestas_presentacion'")
+        if "puntos_obtenidos" not in cols_resp:
+            conn.execute(text(
+                "ALTER TABLE respuestas_presentacion ADD COLUMN puntos_obtenidos INTEGER NOT NULL DEFAULT 0"
+            ))
+            conn.commit()
+            print("✅ Migración: columna 'puntos_obtenidos' agregada a 'respuestas_presentacion'")
+
+    from models import PuntajeEstudiante  # noqa: F401
+    Base.metadata.create_all(bind=engine, tables=[PuntajeEstudiante.__table__])
+
     # Backfill uni-personal: cada docente sin id_institucion recibe una
     # Institucion nueva a su nombre. Idempotente — si ya tiene, no toca.
     _backfill_instituciones_unipersonales()
