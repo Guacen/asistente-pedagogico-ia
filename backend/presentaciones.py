@@ -377,7 +377,7 @@ _PROMPT_ESQUELETO_TEMPLATE = """Eres un experto en pedagogía colombiana. Vas a 
 - Docente: {asignatura}, grado {grado}
 - Tema: {tema}
 - Estudiantes: {n_estudiantes} estudiantes
-
+{otros_temas_bloque}
 Planea EXACTAMENTE {n_slides_contenido} posiciones de tipo "c" (contenido) y EXACTAMENTE {n_preguntas} posiciones de tipo "p" (pregunta), total {n_total}. Estas cantidades son un requisito estricto. Intercala las preguntas de forma pareja a lo largo de toda la secuencia — no las agrupes al inicio ni al final.
 
 Para cada posición da SOLO su tipo y un título corto (máx 8 palabras) — nada de contenido, nada de opciones, eso se genera después.
@@ -386,8 +386,25 @@ Responde SOLO con un array JSON compacto, un objeto por posición, con claves co
 [{{"t": "c"|"p", "ti": "título corto"}}, ...]
 Sin texto adicional."""
 
+# SPRINT 7, Parte A: esta sección es UNA de varias secciones (temas) de
+# la MISMA presentación, para el MISMO grupo (mismo grado/asignatura,
+# porque una presentación tiene un solo grupo) — sin este bloque, dos
+# secciones sobre temas relacionados (ej. "Fracciones" y "Decimales")
+# tienden a repetir el mismo contenido introductorio.
+_OTROS_TEMAS_BLOQUE_TEMPLATE = """
+Esta es UNA de varias secciones de la misma presentación, para el mismo grupo. Las OTRAS secciones ya cubren estos temas — evita repetir contenido introductorio o ejemplos que probablemente ya usaron ahí:
+{lista_otros_temas}
+"""
 
-def _construir_prompt_esqueleto(grupo: Grupo, tema: str, n_slides_contenido: int, n_preguntas: int) -> str:
+
+def _construir_prompt_esqueleto(
+    grupo: Grupo, tema: str, n_slides_contenido: int, n_preguntas: int,
+    otros_temas: Optional[list[str]] = None,
+) -> str:
+    otros_temas_bloque = ""
+    if otros_temas:
+        lista = "\n".join(f"- {t}" for t in otros_temas)
+        otros_temas_bloque = _OTROS_TEMAS_BLOQUE_TEMPLATE.format(lista_otros_temas=lista)
     return _PROMPT_ESQUELETO_TEMPLATE.format(
         asignatura=grupo.asignatura,
         grado=grupo.grado,
@@ -396,6 +413,7 @@ def _construir_prompt_esqueleto(grupo: Grupo, tema: str, n_slides_contenido: int
         n_slides_contenido=n_slides_contenido,
         n_preguntas=n_preguntas,
         n_total=n_slides_contenido + n_preguntas,
+        otros_temas_bloque=otros_temas_bloque,
     )
 
 
@@ -426,8 +444,11 @@ def _conteo_esqueleto_coincide(esqueleto: list[dict], n_slides_contenido: int, n
     return n_contenido == n_slides_contenido and n_preguntas_real == n_preguntas
 
 
-async def _un_intento_esqueleto_ia(grupo: Grupo, tema: str, n_slides_contenido: int, n_preguntas: int) -> list[dict]:
-    prompt = _construir_prompt_esqueleto(grupo, tema, n_slides_contenido, n_preguntas)
+async def _un_intento_esqueleto_ia(
+    grupo: Grupo, tema: str, n_slides_contenido: int, n_preguntas: int,
+    otros_temas: Optional[list[str]] = None,
+) -> list[dict]:
+    prompt = _construir_prompt_esqueleto(grupo, tema, n_slides_contenido, n_preguntas, otros_temas)
     import llm
     raw = await llm.respuesta_completa(
         system_prompt=prompt,
@@ -449,18 +470,25 @@ async def _un_intento_esqueleto_ia(grupo: Grupo, tema: str, n_slides_contenido: 
     return _validar_esqueleto(bruto)
 
 
-async def _generar_esqueleto_ia(grupo: Grupo, tema: str, n_slides_contenido: int, n_preguntas: int) -> list[dict]:
+async def _generar_esqueleto_ia(
+    grupo: Grupo, tema: str, n_slides_contenido: int, n_preguntas: int,
+    otros_temas: Optional[list[str]] = None,
+) -> list[dict]:
     """
-    Fase 1 completa: pide el índice y reintenta UNA vez si el conteo de
-    posiciones "contenido"/"pregunta" no coincide EXACTO con lo pedido
-    (mismo criterio que la generación de una sola llamada en sprints
-    anteriores). Si tras el reintento sigue sin coincidir, devuelve []
-    y la presentación entera queda en estado='error' — sin un índice
-    válido no hay nada que rellenar en fase 2.
+    Fase 1 completa PARA UNA SECCIÓN: pide el índice y reintenta UNA vez
+    si el conteo de posiciones "contenido"/"pregunta" no coincide EXACTO
+    con lo pedido (mismo criterio que la generación de una sola llamada
+    en sprints anteriores). Si tras el reintento sigue sin coincidir,
+    devuelve [] y ESA sección queda en estado='error' — las demás
+    secciones de la presentación siguen su curso (SPRINT 7, Parte A).
+
+    otros_temas (SPRINT 7): títulos de las OTRAS secciones de la misma
+    presentación — se le pasan a la IA como contexto para que no repita
+    contenido entre secciones del mismo grupo.
     """
     esqueleto: list[dict] = []
     for intento in (1, 2):
-        esqueleto = await _un_intento_esqueleto_ia(grupo, tema, n_slides_contenido, n_preguntas)
+        esqueleto = await _un_intento_esqueleto_ia(grupo, tema, n_slides_contenido, n_preguntas, otros_temas)
         if _conteo_esqueleto_coincide(esqueleto, n_slides_contenido, n_preguntas):
             return esqueleto
         logger.warning(
@@ -681,15 +709,11 @@ _tareas_generacion_en_curso: set = set()
 def _lanzar_generacion_en_background(
     presentacion_id: str,
     grupo_id: str,
-    tema: str,
-    n_slides_contenido: int,
-    n_preguntas: int,
     tipos_pregunta: List[str],
     docente_id: str,
 ) -> None:
     task = asyncio.create_task(_ejecutar_generacion_en_background(
-        presentacion_id, grupo_id, tema, n_slides_contenido, n_preguntas,
-        tipos_pregunta, docente_id,
+        presentacion_id, grupo_id, tipos_pregunta, docente_id,
     ))
     _tareas_generacion_en_curso.add(task)
     task.add_done_callback(_tareas_generacion_en_curso.discard)
@@ -726,12 +750,150 @@ async def _marcar_error_y_emitir(db: Session, presentacion_id: str, docente_id: 
     )
 
 
+def _marcar_estado_seccion(presentacion: Presentacion, seccion_index: int, estado: str, error_generacion: Optional[str] = None) -> None:
+    """Reasigna presentacion.secciones ENTERO (no in-place) para que
+    SQLAlchemy detecte el cambio en la columna JSON — mismo patrón que
+    presentacion.diapositivas en todo este módulo."""
+    secciones = list(presentacion.secciones)
+    seccion = dict(secciones[seccion_index])
+    seccion["estado"] = estado
+    seccion["error_generacion"] = error_generacion
+    secciones[seccion_index] = seccion
+    presentacion.secciones = secciones
+
+
+async def _ejecutar_generacion_seccion(
+    db: Session,
+    presentacion_id: str,
+    grupo: Grupo,
+    seccion_index: int,
+    tipos_pregunta: List[str],
+    docente_id: str,
+    semaforo: "asyncio.Semaphore",
+) -> None:
+    """
+    Genera UNA sección completa (fase 1 + fase 2) dentro de su rango ya
+    reservado en presentacion.diapositivas[inicio+1 : fin+1] (inicio es
+    la diapositiva separadora, ya persistida sin IA desde el endpoint).
+    NUNCA propaga una excepción — si esta sección falla, sólo ELLA
+    queda en estado='error'; el asyncio.gather del llamador no debe
+    verse afectado (SPRINT 7, Parte A: "si una sección falla, las
+    demás siguen").
+    """
+    try:
+        presentacion = db.query(Presentacion).filter(
+            Presentacion.id_presentacion == presentacion_id,
+        ).first()
+        if not presentacion:
+            return
+        seccion = presentacion.secciones[seccion_index]
+        tema = seccion["tema"]
+        n_slides_contenido = seccion["n_slides_contenido"]
+        n_preguntas = seccion["n_preguntas"]
+        offset = seccion["inicio"] + 1  # +1 salta la separadora
+
+        # Contexto de las OTRAS secciones (mismo grupo → mismo grado/
+        # asignatura siempre) para que la IA no repita contenido.
+        otros_temas = [
+            s["tema"] for i, s in enumerate(presentacion.secciones) if i != seccion_index
+        ]
+
+        try:
+            esqueleto = await _generar_esqueleto_ia(
+                grupo, tema, n_slides_contenido, n_preguntas, otros_temas,
+            )
+        except Exception as exc:
+            logger.exception(
+                "Error inesperado generando el esqueleto de la sección %d "
+                "(presentacion_id=%s, tema=%r)", seccion_index, presentacion_id, tema,
+            )
+            esqueleto = []
+            error_esqueleto = f"Error generando la sección: {exc}"
+        else:
+            error_esqueleto = None if esqueleto else (
+                "La IA no devolvió un índice válido para esta sección después de reintentar."
+            )
+
+        if not esqueleto:
+            # Marca TODA la ventana de la sección como error — nunca un
+            # spinner sin información (mismo criterio que una
+            # diapositiva individual rota, sólo que acá aplica a la
+            # sección completa).
+            actuales = list(presentacion.diapositivas)
+            for i in range(offset, offset + n_slides_contenido + n_preguntas):
+                actuales[i] = {"tipo": "error", "titulo": tema, "mensaje": error_esqueleto}
+            presentacion.diapositivas = actuales
+            _marcar_estado_seccion(presentacion, seccion_index, "error", error_esqueleto)
+            db.commit()
+            await _emitir_evento_presentacion(
+                "presentacion:seccion_error",
+                {"id_presentacion": presentacion_id, "seccion_index": seccion_index, "error": error_esqueleto},
+                docente_id, f"presentacion_id={presentacion_id}, seccion={seccion_index}",
+            )
+            return
+
+        total = len(esqueleto)
+        pendientes = [{"tipo": "pendiente", "titulo": s["titulo"]} for s in esqueleto]
+        actuales = list(presentacion.diapositivas)
+        actuales[offset:offset + total] = pendientes
+        presentacion.diapositivas = actuales
+        db.commit()
+        await _emitir_evento_presentacion(
+            "presentacion:esqueleto",
+            {
+                "id_presentacion": presentacion_id, "seccion_index": seccion_index,
+                "offset": offset, "esqueleto": pendientes,
+            },
+            docente_id, f"presentacion_id={presentacion_id}, seccion={seccion_index}",
+        )
+
+        async def _rellenar_y_persistir(pos_local: int, stub: dict) -> None:
+            index = offset + pos_local
+            slide = await _rellenar_slide_con_reintento(
+                grupo, tema, stub, pos_local, total, tipos_pregunta, semaforo,
+                presentacion.tiempo_pregunta_s,
+            )
+            actuales_slide = list(presentacion.diapositivas)
+            actuales_slide[index] = slide
+            presentacion.diapositivas = actuales_slide
+            db.commit()
+            await _emitir_evento_presentacion(
+                "presentacion:slide_lista",
+                {"id_presentacion": presentacion_id, "index": index, "slide": slide},
+                docente_id, f"presentacion_id={presentacion_id}, index={index}",
+            )
+
+        await asyncio.gather(*[
+            _rellenar_y_persistir(i, stub) for i, stub in enumerate(esqueleto)
+        ])
+
+        _marcar_estado_seccion(presentacion, seccion_index, "lista")
+        db.commit()
+    except Exception:
+        # Red de seguridad — cualquier cosa no prevista arriba (p.ej.
+        # error de DB a mitad de fase 2) tampoco debe dejar la sección
+        # colgada ni, peor, tumbar las demás secciones vía el gather.
+        logger.exception(
+            "Error inesperado no capturado generando la sección %d "
+            "(presentacion_id=%s)", seccion_index, presentacion_id,
+        )
+        try:
+            presentacion = db.query(Presentacion).filter(
+                Presentacion.id_presentacion == presentacion_id,
+            ).first()
+            if presentacion:
+                _marcar_estado_seccion(presentacion, seccion_index, "error", "Error inesperado generando esta sección.")
+                db.commit()
+        except Exception:
+            logger.exception(
+                "No se pudo ni siquiera marcar el error de la sección %d "
+                "(presentacion_id=%s)", seccion_index, presentacion_id,
+            )
+
+
 async def _ejecutar_generacion_en_background(
     presentacion_id: str,
     grupo_id: str,
-    tema: str,
-    n_slides_contenido: int,
-    n_preguntas: int,
     tipos_pregunta: List[str],
     docente_id: str,
 ) -> None:
@@ -740,20 +902,18 @@ async def _ejecutar_generacion_en_background(
     (la del request original ya se cerró para cuando esto se ejecuta,
     mismo patrón que los handlers de Socket.io en presentacion_events.py).
 
-    SPRINT 5 — dos fases:
-    1. Genera el esqueleto (tipo+título por posición), lo persiste y
-       emite presentacion:esqueleto — el docente ve el índice de
-       inmediato.
-    2. Rellena cada posición concurrentemente (máx
-       _CONCURRENCIA_MAXIMA_RELLENO a la vez), persistiendo y emitiendo
-       presentacion:slide_lista apenas cada una está lista. Una
-       diapositiva que falla dos veces se marca con error pero NUNCA
-       aborta las demás.
+    SPRINT 7, Parte A: cada sección (tema) de presentacion.secciones se
+    genera en su PROPIA task de asyncio.gather — corren en paralelo
+    entre sí, cada una con su fase 1 (esqueleto) + fase 2 (relleno
+    concurrente, mismo límite de concurrencia SPRINT 5 pero compartido
+    entre TODAS las secciones, no uno por sección — evita saturar al
+    proveedor con 5 secciones × 5 rellenos = 25 llamadas a la vez).
+    _ejecutar_generacion_seccion nunca propaga una excepción, así que
+    el fallo de una sección nunca cancela ni afecta a las demás.
 
-    Contrato: SIEMPRE deja la fila en estado='lista' o estado='error'
-    (con error_generacion con un mensaje real) — nunca la deja colgada
-    en 'generando' para siempre, ni aunque algo explote de forma
-    completamente inesperada (por eso el try/except amplio al final).
+    Contrato: SIEMPRE deja la fila en estado='lista' (si al menos una
+    sección quedó lista) o estado='error' (si TODAS fallaron) — nunca
+    la deja colgada en 'generando' para siempre.
     """
     db = SessionLocal()
     try:
@@ -766,83 +926,54 @@ async def _ejecutar_generacion_en_background(
             await _marcar_error_y_emitir(db, presentacion_id, docente_id, "El grupo ya no existe.")
             return
 
-        try:
-            esqueleto = await _generar_esqueleto_ia(grupo, tema, n_slides_contenido, n_preguntas)
-        except Exception as exc:
-            logger.exception(
-                "Error inesperado generando el esqueleto (presentacion_id=%s, "
-                "grupo=%s, tema=%r)", presentacion_id, grupo_id, tema,
-            )
-            await _marcar_error_y_emitir(
-                db, presentacion_id, docente_id, f"Error generando la presentación: {exc}",
-            )
-            return
-
-        if not esqueleto:
-            await _marcar_error_y_emitir(
-                db, presentacion_id, docente_id,
-                "La IA no devolvió un índice de presentación válido después "
-                "de reintentar. Intenta de nuevo.",
-            )
-            return
-
         presentacion = db.query(Presentacion).filter(
             Presentacion.id_presentacion == presentacion_id,
         ).first()
         if not presentacion:
             logger.warning(
-                "Generación en background terminó pero la presentación ya "
-                "no existe (presentacion_id=%s) — probablemente se borró "
-                "mientras generaba.", presentacion_id,
+                "Generación en background abortada — la presentación ya no "
+                "existe (presentacion_id=%s).", presentacion_id,
             )
             return
 
-        total = len(esqueleto)
-        # Placeholders — el frontend distingue "tipo": "pendiente" para
-        # mostrar el índice con spinners individuales mientras fase 2
-        # va llenando cada posición (SPRINT 5, Parte C).
-        pendientes = [{"tipo": "pendiente", "titulo": s["titulo"]} for s in esqueleto]
-        presentacion.diapositivas = pendientes
-        db.commit()
-        await _emitir_evento_presentacion(
-            "presentacion:esqueleto",
-            {"id_presentacion": presentacion_id, "esqueleto": pendientes},
-            docente_id, f"presentacion_id={presentacion_id}",
-        )
-
+        n_secciones = len(presentacion.secciones)
         semaforo = asyncio.Semaphore(_CONCURRENCIA_MAXIMA_RELLENO)
-
-        async def _rellenar_y_persistir(index: int, stub: dict) -> None:
-            slide = await _rellenar_slide_con_reintento(
-                grupo, tema, stub, index, total, tipos_pregunta, semaforo,
-                presentacion.tiempo_pregunta_s,
-            )
-            actuales = list(presentacion.diapositivas)
-            actuales[index] = slide
-            presentacion.diapositivas = actuales
-            db.commit()
-            await _emitir_evento_presentacion(
-                "presentacion:slide_lista",
-                {"id_presentacion": presentacion_id, "index": index, "slide": slide},
-                docente_id, f"presentacion_id={presentacion_id}, index={index}",
-            )
-
         await asyncio.gather(*[
-            _rellenar_y_persistir(i, stub) for i, stub in enumerate(esqueleto)
+            _ejecutar_generacion_seccion(
+                db, presentacion_id, grupo, i, tipos_pregunta, docente_id, semaforo,
+            )
+            for i in range(n_secciones)
         ])
 
-        presentacion.estado = "lista"
-        presentacion.error_generacion = None
+        presentacion = db.query(Presentacion).filter(
+            Presentacion.id_presentacion == presentacion_id,
+        ).first()
+        if not presentacion:
+            return
+        estados_seccion = [s.get("estado") for s in presentacion.secciones]
+        todas_fallaron = bool(estados_seccion) and all(e == "error" for e in estados_seccion)
+        if todas_fallaron:
+            presentacion.estado = "error"
+            # Mensajes reales de cada sección — no un genérico — para
+            # poder diagnosticar sin depender de los logs de Railway
+            # (mismo criterio que SPRINT 4, Parte B).
+            errores = [s.get("error_generacion") for s in presentacion.secciones if s.get("error_generacion")]
+            presentacion.error_generacion = (
+                "No se pudo generar ninguna sección: " + "; ".join(errores)
+                if errores else "No se pudo generar ninguna sección. Intenta de nuevo."
+            )
+        else:
+            presentacion.estado = "lista"
+            presentacion.error_generacion = None
         db.commit()
         await _emitir_evento_presentacion(
             "presentacion:generada",
-            {"id_presentacion": presentacion_id, "estado": "lista", "error": None},
+            {"id_presentacion": presentacion_id, "estado": presentacion.estado, "error": presentacion.error_generacion},
             docente_id, f"presentacion_id={presentacion_id}",
         )
     except Exception as exc:
         # Red de seguridad final — cualquier cosa no prevista arriba
-        # (p.ej. un error de DB a mitad de fase 2) tampoco debe dejar la
-        # fila colgada en 'generando' para siempre.
+        # tampoco debe dejar la fila colgada en 'generando' para siempre.
         logger.exception(
             "Error inesperado no capturado en generación en background "
             "(presentacion_id=%s)", presentacion_id,
@@ -1155,16 +1286,102 @@ def calcular_podio(db: Session, sesion: SesionPresentacion, presentacion: Presen
 
 
 # ═══════════════════════════════════════════════════════════════
+# SECCIONES (SPRINT 7) — límites, duración estimada, helpers
+# ═══════════════════════════════════════════════════════════════
+
+MAX_SECCIONES = 5
+MAX_DIAPOSITIVAS_TOTAL = 60
+
+# Parte B — la misma fórmula/constantes se replican en JS
+# (grupo-panel.html) para actualizar el modal en vivo sin pegarle al
+# backend en cada tick del slider; viven acá también para poder
+# testear la fórmula y para que la validación del request comparta la
+# misma constante de tope.
+SEGUNDOS_POR_DIAPOSITIVA_CONTENIDO = 90
+SEGUNDOS_EXTRA_POR_PREGUNTA = 20
+
+
+def _duracion_estimada_s(n_contenido_total: int, n_preguntas_total: int, tiempo_pregunta_s: int) -> int:
+    """duración = (n_contenido * 90s) + (n_preguntas * (tiempo_pregunta + 20s))
+    — sumando TODAS las secciones (el docente piensa en la clase
+    completa, no sección por sección)."""
+    return (
+        n_contenido_total * SEGUNDOS_POR_DIAPOSITIVA_CONTENIDO
+        + n_preguntas_total * (tiempo_pregunta_s + SEGUNDOS_EXTRA_POR_PREGUNTA)
+    )
+
+
+def _clasificar_duracion(minutos: float) -> str:
+    """Semáforo puramente informativo (SPRINT 7, Parte B) — NUNCA
+    bloquea la generación, sólo orienta: 'verde' hasta 35 min, 'ambar'
+    36-50 min, 'rojo' más de 50 min ('considera dividir en dos
+    sesiones')."""
+    if minutos <= 35:
+        return "verde"
+    if minutos <= 50:
+        return "ambar"
+    return "rojo"
+
+
+def _seccion_de_slide(presentacion: Presentacion, slide_index: int) -> Optional[dict]:
+    """Sección (metadata de presentacion.secciones) a la que pertenece
+    slide_index, o None si no matchea ninguna — nunca revienta aunque
+    `secciones` esté vacío (presentación no migrada todavía, caso que
+    no debería darse en la práctica tras la migración de este sprint)."""
+    for seccion in presentacion.secciones or []:
+        if seccion.get("inicio", -1) <= slide_index <= seccion.get("fin", -2):
+            return seccion
+    return None
+
+
+def _es_ultima_slide_de_seccion(presentacion: Presentacion, slide_index: int) -> bool:
+    """True si slide_index es la última diapositiva de su sección — el
+    punto en el que se muestra el podio PARCIAL de esa sección (SPRINT
+    7, Parte C), además del podio de la pregunta individual."""
+    seccion = _seccion_de_slide(presentacion, slide_index)
+    return seccion is not None and seccion.get("fin") == slide_index
+
+
+# ═══════════════════════════════════════════════════════════════
 # SCHEMAS
 # ═══════════════════════════════════════════════════════════════
 
+class SeccionRequest(BaseModel):
+    """SPRINT 7, Parte A — un tema = una sección. El docente define
+    cantidad de contenido/preguntas POR sección; el máximo de contenido
+    subió de 15 a 25 (Parte B) porque ahora el límite real es la
+    duración total estimada, no un tope arbitrario por sección."""
+    tema: str = Field(min_length=1, max_length=500)
+    n_slides_contenido: int = Field(default=8, ge=4, le=25)
+    n_preguntas: int = Field(default=4, ge=2, le=10)
+
+    @field_validator("tema")
+    @classmethod
+    def _sanitizar_tema(cls, v: str) -> str:
+        limpio = sanitizar_texto(v, 500) or ""
+        if not limpio:
+            raise ValueError("El tema no puede estar vacío.")
+        return limpio
+
+    @model_validator(mode="after")
+    def _validar_preguntas_no_superan_contenido(self):
+        if self.n_preguntas > self.n_slides_contenido:
+            raise ValueError(
+                "La cantidad de preguntas no puede superar la cantidad de "
+                "diapositivas de contenido de la misma sección."
+            )
+        return self
+
+
 class GenerarPresentacionRequest(BaseModel):
     grupo_id: str
-    tema: str = Field(min_length=1, max_length=500)
-    n_slides_contenido: int = Field(default=8, ge=4, le=15)
-    n_preguntas: int = Field(default=4, ge=2, le=10)
+    # SPRINT 7, Parte A: 1 a 5 secciones — una presentación de un solo
+    # tema sigue siendo válida, es simplemente `secciones` con 1 item.
+    secciones: List[SeccionRequest] = Field(min_length=1, max_length=MAX_SECCIONES)
     tipos_pregunta: List[str] = Field(default_factory=lambda: ["multiple", "verdadero_falso"])
-    # SPRINT 6, Parte B — controles de puntaje del modal de creación.
+    # SPRINT 6, Parte B — controles de puntaje del modal de creación
+    # (compartidos por TODAS las secciones: el puntaje es acumulado a
+    # lo largo de toda la presentación, no por sección).
     modo_puntaje: str = Field(default="competencia")
     tiempo_pregunta_s: int = Field(default=20, ge=10, le=60)
     factor_tiempo_piar: float = Field(default=1.5)
@@ -1185,14 +1402,6 @@ class GenerarPresentacionRequest(BaseModel):
             )
         return v
 
-    @field_validator("tema")
-    @classmethod
-    def _sanitizar_tema(cls, v: str) -> str:
-        limpio = sanitizar_texto(v, 500) or ""
-        if not limpio:
-            raise ValueError("El tema no puede estar vacío.")
-        return limpio
-
     @field_validator("tipos_pregunta")
     @classmethod
     def _validar_tipos_pregunta(cls, v: List[str]) -> List[str]:
@@ -1208,16 +1417,15 @@ class GenerarPresentacionRequest(BaseModel):
         return vistos
 
     @model_validator(mode="after")
-    def _validar_preguntas_no_superan_contenido(self):
-        # SPRINT 5, Parte A: no tiene sentido pedagógico pedir más
-        # preguntas que diapositivas de contenido (ej. 10 preguntas sobre
-        # sólo 4 diapositivas de contenido) — cada rango individual ya
-        # está acotado por Field(ge=/le=), esto sólo valida la relación
-        # entre ambos.
-        if self.n_preguntas > self.n_slides_contenido:
+    def _validar_total_no_supera_el_maximo(self):
+        # SPRINT 7, Parte B: 60 diapositivas totales sumando secciones
+        # (contenido + preguntas; las separadoras no cuentan — son
+        # estructurales, no configuradas por el docente).
+        total = sum(s.n_slides_contenido + s.n_preguntas for s in self.secciones)
+        if total > MAX_DIAPOSITIVAS_TOTAL:
             raise ValueError(
-                "La cantidad de preguntas no puede superar la cantidad de "
-                "diapositivas de contenido."
+                f"El total de diapositivas de todas las secciones ({total}) no puede "
+                f"superar {MAX_DIAPOSITIVAS_TOTAL}."
             )
         return self
 
@@ -1229,6 +1437,7 @@ class PresentacionOut(BaseModel):
     titulo: str
     tema: str
     diapositivas: list
+    secciones: list
     estado: str
     error_generacion: Optional[str] = None
     modo_puntaje: str
@@ -1265,6 +1474,7 @@ class PresentacionListItemOut(BaseModel):
     id_grupo: str
     creado_en: datetime
     n_slides: int
+    n_secciones: int
     estado: str
     error_generacion: Optional[str] = None
     sesiones: List[SesionResumenOut]
@@ -1312,6 +1522,36 @@ def _presentacion_del_docente_o_404(presentacion_id: str, docente_id: str, db: S
 # ENDPOINTS
 # ═══════════════════════════════════════════════════════════════
 
+def _construir_secciones_y_diapositivas_iniciales(
+    secciones_req: List["SeccionRequest"],
+) -> tuple[list[dict], list[dict]]:
+    """
+    SPRINT 7, Parte A — calcula el rango [inicio, fin] (inclusive) de
+    cada sección dentro del array PLANO de diapositivas, y arma ese
+    array inicial: la diapositiva separadora de cada sección ya
+    completa (no necesita IA, se conoce del request) + placeholders
+    "pendiente" en el resto de su rango, listos para que la fase 1/2
+    de esa sección los vaya llenando de forma independiente.
+    """
+    secciones_meta: list[dict] = []
+    diapositivas: list[dict] = []
+    for s in secciones_req:
+        inicio = len(diapositivas)
+        diapositivas.append({"tipo": "separador", "titulo": s.tema})
+        n_total_seccion = s.n_slides_contenido + s.n_preguntas
+        diapositivas.extend({"tipo": "pendiente", "titulo": s.tema} for _ in range(n_total_seccion))
+        secciones_meta.append({
+            "tema": s.tema,
+            "n_slides_contenido": s.n_slides_contenido,
+            "n_preguntas": s.n_preguntas,
+            "inicio": inicio,
+            "fin": len(diapositivas) - 1,
+            "estado": "generando",
+            "error_generacion": None,
+        })
+    return secciones_meta, diapositivas
+
+
 @router.post("/generar", response_model=PresentacionOut, status_code=202)
 async def generar_presentacion(
     body: GenerarPresentacionRequest,
@@ -1321,24 +1561,30 @@ async def generar_presentacion(
     """
     SPRINT 4: responde 202 de inmediato con estado='generando' — NUNCA
     espera a la IA dentro del request HTTP. Generaciones grandes (hasta
-    25 diapositivas + hasta 2 llamadas a la IA por el reintento de
-    conteo) tardaban más que el timeout de proxy de Cloudflare, que
-    devolvía 502 aunque el servidor siguiera vivo.
+    60 diapositivas entre todas las secciones) tardaban más que el
+    timeout de proxy de Cloudflare, que devolvía 502 aunque el servidor
+    siguiera vivo.
 
-    La generación real corre en background (ver
-    _ejecutar_generacion_en_background) y dejará esta misma fila en
-    estado='lista' o 'error', emitiendo presentacion:generada por
-    socket.io al docente. GET /{id}/estado sirve de respaldo si el
+    SPRINT 7: `body.secciones` (1 a 5 temas) — cada una se genera en
+    background de forma independiente (ver
+    _ejecutar_generacion_en_background/_ejecutar_generacion_seccion) y
+    deja esta fila en estado='lista' (si al menos una sección quedó
+    lista) o 'error' (si todas fallaron), emitiendo presentacion:generada
+    por socket.io al docente. GET /{id}/estado sirve de respaldo si el
     socket no llega.
     """
     grupo = _grupo_del_docente_o_404(body.grupo_id, docente.id_docente, db)
 
+    secciones_meta, diapositivas_iniciales = _construir_secciones_y_diapositivas_iniciales(body.secciones)
+    tema_resumen = ", ".join(s.tema for s in body.secciones)
+
     presentacion = Presentacion(
         id_docente=docente.id_docente,
         id_grupo=grupo.id_grupo,
-        titulo=body.tema[:200],
-        tema=body.tema,
-        diapositivas=[],
+        titulo=tema_resumen[:200],
+        tema=tema_resumen[:500],
+        diapositivas=diapositivas_iniciales,
+        secciones=secciones_meta,
         estado="generando",
         modo_puntaje=body.modo_puntaje,
         tiempo_pregunta_s=body.tiempo_pregunta_s,
@@ -1351,9 +1597,6 @@ async def generar_presentacion(
     _lanzar_generacion_en_background(
         presentacion.id_presentacion,
         grupo.id_grupo,
-        body.tema,
-        body.n_slides_contenido,
-        body.n_preguntas,
         body.tipos_pregunta,
         docente.id_docente,
     )
@@ -1393,6 +1636,7 @@ def listar_presentaciones(
             id_grupo=p.id_grupo,
             creado_en=p.creado_en,
             n_slides=len(p.diapositivas or []),
+            n_secciones=len(p.secciones or []),
             estado=p.estado,
             error_generacion=p.error_generacion,
             sesiones=[SesionResumenOut.model_validate(s) for s in p.sesiones],

@@ -305,6 +305,22 @@ def apply_migrations():
     from models import PuntajeEstudiante  # noqa: F401
     Base.metadata.create_all(bind=engine, tables=[PuntajeEstudiante.__table__])
 
+    # ── SPRINT 7 — multi-tema por secciones ──
+    # `secciones` es METADATA nueva (qué rango de `diapositivas`
+    # pertenece a cada tema) — `diapositivas` en sí NUNCA se reescribe
+    # acá: correrle los índices rompería slide_index ya guardado en
+    # respuestas/sesiones existentes. Presentaciones de antes de este
+    # sprint quedan con una sola sección sintética que cubre todo su
+    # array tal cual está, sin diapositiva separadora (ese concepto es
+    # nuevo, no se inventa retroactivamente).
+    cols_pres = [c["name"] for c in inspect(engine).get_columns("presentaciones")]
+    if "secciones" not in cols_pres:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE presentaciones ADD COLUMN secciones JSON"))
+            conn.commit()
+        print("✅ Migración: columna 'secciones' agregada a 'presentaciones'")
+        _backfill_secciones_presentaciones_existentes()
+
     # Backfill uni-personal: cada docente sin id_institucion recibe una
     # Institucion nueva a su nombre. Idempotente — si ya tiene, no toca.
     _backfill_instituciones_unipersonales()
@@ -337,6 +353,48 @@ def apply_migrations():
         print("✅ Migración: tabla 'presentaciones' verificada/creada")
 
     print("✅ Migraciones aplicadas")
+
+
+def _backfill_secciones_presentaciones_existentes():
+    """
+    SPRINT 7 — a cada Presentacion con secciones NULL (recién agregada
+    la columna) se le sintetiza una sola sección que cubre todo su
+    `diapositivas` actual, derivando los conteos de contenido/preguntas
+    de lo que YA está guardado ahí (no hace falta preguntarle nada al
+    docente ni a la IA). Idempotente vía el filtro IS NULL: una
+    presentación nueva creada después de este ALTER ya nace con
+    `secciones` poblado por el ORM (default=list en el modelo, o
+    poblado explícitamente por el endpoint /generar), así que nunca
+    vuelve a entrar acá.
+    """
+    from models import Presentacion
+    from presentaciones import TIPOS_PREGUNTA_SOPORTADOS
+
+    db = SessionLocal()
+    try:
+        pendientes = db.query(Presentacion).filter(Presentacion.secciones.is_(None)).all()
+        if not pendientes:
+            print("ℹ️  Backfill secciones: ninguna presentación pendiente")
+            return
+        for p in pendientes:
+            diapositivas = p.diapositivas or []
+            n_contenido = sum(1 for d in diapositivas if isinstance(d, dict) and d.get("tipo") == "contenido")
+            n_preguntas = sum(
+                1 for d in diapositivas if isinstance(d, dict) and d.get("tipo") in TIPOS_PREGUNTA_SOPORTADOS
+            )
+            p.secciones = [{
+                "tema": p.tema,
+                "n_slides_contenido": n_contenido,
+                "n_preguntas": n_preguntas,
+                "inicio": 0,
+                "fin": max(len(diapositivas) - 1, 0),
+                "estado": p.estado,
+                "error_generacion": p.error_generacion,
+            }]
+        db.commit()
+        print(f"✅ Backfill: {len(pendientes)} presentación(es) migrada(s) a una sección única")
+    finally:
+        db.close()
 
 
 def _backfill_instituciones_unipersonales():

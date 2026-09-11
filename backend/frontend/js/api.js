@@ -775,10 +775,11 @@ class ApiClient {
     // PRESENTACIONES INTERACTIVAS (sprint presentaciones-interactivas)
     // ==========================================
 
-    async generarPresentacion(grupoId, tema, opciones = {}) {
+    // SPRINT 7, Parte A: `secciones` es un array de 1 a 5
+    // {tema, nSlidesContenido, nPreguntas} — una presentación de un
+    // solo tema sigue siendo válida, es sólo un array de 1 elemento.
+    async generarPresentacion(grupoId, secciones, opciones = {}) {
         const {
-            nSlidesContenido = 8,
-            nPreguntas = 4,
             tiposPregunta = ['multiple', 'verdadero_falso'],
             modoPuntaje = 'competencia',
             tiempoPreguntaS = 20,
@@ -788,9 +789,11 @@ class ApiClient {
             method: 'POST',
             body: JSON.stringify({
                 grupo_id: grupoId,
-                tema,
-                n_slides_contenido: nSlidesContenido,
-                n_preguntas: nPreguntas,
+                secciones: secciones.map((s) => ({
+                    tema: s.tema,
+                    n_slides_contenido: s.nSlidesContenido,
+                    n_preguntas: s.nPreguntas,
+                })),
                 tipos_pregunta: tiposPregunta,
                 modo_puntaje: modoPuntaje,
                 tiempo_pregunta_s: tiempoPreguntaS,

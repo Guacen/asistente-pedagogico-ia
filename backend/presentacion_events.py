@@ -26,7 +26,9 @@ from database import SessionLocal
 from models import RespuestaPresentacion, SesionPresentacion
 from presentaciones import (
     TIPOS_PREGUNTA_SOPORTADOS,
+    _es_ultima_slide_de_seccion,
     _estudiante_tiene_piar,
+    _seccion_de_slide,
     _tiempo_limite_ms,
     calcular_podio,
     calcular_resultado,
@@ -317,6 +319,20 @@ async def presentacion_cerrar_slide(sid, data):
         # estudiante" es una regla explícita del sprint).
         podio = calcular_podio(db, sesion, presentacion)
         await sio.emit("presentacion:podio", podio, room=f"docente_{presentacion.id_docente}")
+
+        # SPRINT 7, Parte C — "al terminar cada sección, mostrar el
+        # podio parcial de esa sección": mismo cálculo (el puntaje es
+        # acumulado de TODA la presentación, no se resetea por sección
+        # — esto es sólo el MOMENTO en que se muestra), un evento
+        # adicional sólo para que el proyector lo distinga visualmente
+        # de un cierre de pregunta cualquiera.
+        if _es_ultima_slide_de_seccion(presentacion, sesion.slide_actual):
+            seccion = _seccion_de_slide(presentacion, sesion.slide_actual)
+            await sio.emit(
+                "presentacion:podio_seccion",
+                {**podio, "seccion_tema": seccion.get("tema") if seccion else None},
+                room=f"docente_{presentacion.id_docente}",
+            )
 
         # Feedback personal por estudiante — sólo SU posición/puntos,
         # nunca el ranking de los demás.

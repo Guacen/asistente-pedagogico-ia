@@ -131,9 +131,27 @@
 <div id="pantalla-vivo" class="pantalla min-h-screen">
     <div class="flex flex-col lg:flex-row min-h-screen">
 
-        <!-- Izquierda 70% — proyectable -->
-        <section class="w-full lg:w-[70%] flex items-center justify-center p-8 lg:p-16" style="background: var(--brand-dark, #0B3D2E);">
-            <div id="slide-proyectable" class="w-full max-w-3xl text-white"></div>
+        <!-- Izquierda 70% — proyectable. La tabla de posiciones (SPRINT
+             7, Parte C) vive DENTRO de esta misma sección oscura, como
+             un panel lateral que de verdad le quita ancho al slide
+             cuando está abierto (necesario para que un diagrama SVG
+             recupere el ancho completo al cerrarlo). -->
+        <section class="w-full lg:w-[70%] flex" style="background: var(--brand-dark, #0B3D2E);">
+            <div id="slide-proyectable" class="flex-1 min-w-0 flex items-center justify-center p-8 lg:p-16 text-white"></div>
+
+            <aside id="panel-posiciones" class="hidden w-72 flex-shrink-0 border-l p-4 overflow-y-auto text-white" style="border-color: rgba(255,255,255,.12);">
+                <div class="flex items-center justify-between mb-3">
+                    <p class="text-xs uppercase tracking-widest opacity-70">Tabla de posiciones</p>
+                    <button onclick="alternarPanelPosiciones()" class="opacity-60 hover:opacity-100" aria-label="Cerrar tabla de posiciones (tecla T)">
+                        <i class="fas fa-xmark"></i>
+                    </button>
+                </div>
+                <div id="panel-posiciones-lista" class="space-y-1.5"></div>
+                <p id="panel-posiciones-vacio" class="text-sm opacity-60">Todavía no hay puntajes.</p>
+                <button id="btn-panel-posiciones-expandir" onclick="alternarExpansionPosiciones()" class="hidden mt-3 text-xs font-semibold opacity-80 hover:opacity-100">
+                    Ver todos <i class="fas fa-chevron-down ml-1"></i>
+                </button>
+            </aside>
         </section>
 
         <!-- Derecha 30% — control del docente -->
@@ -142,6 +160,11 @@
                 <span id="control-slide-pos" class="text-xs font-bold uppercase tracking-wide text-gray-400"></span>
                 <span id="control-codigo" class="text-xs font-mono bg-gray-100 px-2 py-1 rounded"></span>
             </div>
+
+            <button onclick="alternarPanelPosiciones()" class="flex items-center justify-between bg-gray-50 hover:bg-gray-100 rounded-xl px-4 py-2.5 text-sm font-semibold text-gray-700">
+                <span><i class="fas fa-ranking-star mr-2" style="color: var(--brand-primary, #1D9E75);"></i>Tabla de posiciones</span>
+                <span class="text-xs text-gray-400 font-mono">T</span>
+            </button>
 
             <div id="control-contador" class="hidden bg-gray-50 rounded-xl p-4 text-center">
                 <p class="text-3xl font-black" style="color: var(--brand-primary, #1D9E75);">
@@ -288,6 +311,9 @@
         }
         ul.innerHTML = diapositivas.map((d) => {
             const titulo = escapeHtmlPD(textoSeguroPD(d.titulo || d.pregunta || 'Diapositiva'));
+            if (d.tipo === 'separador') {
+                return `<li class="flex items-center gap-2 font-bold pt-1" style="color: var(--diagram-label, #FFFFFF);"><i class="fas fa-layer-group w-4"></i><span>${titulo}</span></li>`;
+            }
             if (d.tipo === 'pendiente') {
                 return `<li class="flex items-center gap-2"><i class="fas fa-spinner fa-spin text-gray-400 w-4"></i><span>${titulo}</span></li>`;
             }
@@ -362,9 +388,7 @@
         btn.disabled = true;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Reintentando…';
         try {
-            const nueva = await api.generarPresentacion(parametros.grupoId, parametros.tema, {
-                nSlidesContenido: parametros.nSlidesContenido,
-                nPreguntas: parametros.nPreguntas,
+            const nueva = await api.generarPresentacion(parametros.grupoId, parametros.secciones, {
                 tiposPregunta: parametros.tiposPregunta,
                 tiempoPreguntaS: parametros.tiempoPreguntaS,
                 modoPuntaje: parametros.modoPuntaje,
@@ -407,7 +431,7 @@
                         ${_badgeEstadoPresentacion(p.estado)}
                     </div>
                     <h3 class="font-semibold text-gray-900 mb-1">${p.titulo}</h3>
-                    <p class="text-gray-500 text-sm">${p.n_slides} diapositivas · ${p.sesiones.length} sesión(es) previas</p>
+                    <p class="text-gray-500 text-sm">${p.n_slides} diapositivas${p.n_secciones > 1 ? ` · ${p.n_secciones} secciones` : ''} · ${p.sesiones.length} sesión(es) previas</p>
                 </a>
             `).join('');
         } catch (err) {
@@ -430,9 +454,18 @@
         // SPRINT 5, Parte B/C: fase 1 (esqueleto) — el docente ve el
         // índice completo apenas la IA lo planea, antes de que ninguna
         // diapositiva tenga contenido real todavía.
+        // SPRINT 7: ahora es POR SECCIÓN — cada sección emite su propio
+        // evento con `offset`/`seccion_index`, hay que insertar sus
+        // stubs en el lugar correcto del array (ya del tamaño final
+        // desde la creación: separadoras + placeholders genéricos),
+        // nunca reemplazar el array completo.
         PD.socket.on('presentacion:esqueleto', (data) => {
             if (data.id_presentacion !== PD.presentacionId) return;
-            PD.presentacion.diapositivas = data.esqueleto;
+            if (!Array.isArray(PD.presentacion.diapositivas)) return;
+            const offset = data.offset || 0;
+            data.esqueleto.forEach((stub, i) => {
+                PD.presentacion.diapositivas[offset + i] = stub;
+            });
             renderIndiceGenerando(PD.presentacion.diapositivas);
         });
 
@@ -461,6 +494,19 @@
         // están los estudiantes).
         PD.socket.on('presentacion:podio', (data) => {
             renderPodioEnVivo(data);
+        });
+
+        // SPRINT 7, Parte C — podio PARCIAL al terminar cada sección.
+        PD.socket.on('presentacion:podio_seccion', (data) => {
+            mostrarAvisoFinDeSeccion(data);
+        });
+
+        // SPRINT 7, Parte A — la sección falló completa (esqueleto
+        // nunca coincidió tras reintentar) — el índice de generación ya
+        // muestra cada posición en "error" vía slide_lista/esqueleto,
+        // esto es sólo un log para diagnóstico si hace falta.
+        PD.socket.on('presentacion:seccion_error', (data) => {
+            console.error('[presentacion] sección', data.seccion_index, 'falló:', data.error);
         });
 
         PD.socket.on('presentacion:nueva_respuesta', (data) => {
@@ -504,6 +550,7 @@
 
     function comenzarPresentacion() {
         mostrarPantalla('pantalla-vivo');
+        _restaurarEstadoPanelPosiciones();
         irASlide(0);
     }
 
@@ -524,7 +571,9 @@
 
     function slideActualEsInteraccion() {
         const slide = PD.presentacion.diapositivas[PD.slideIndex];
-        return slide && slide.tipo !== 'contenido';
+        // SPRINT 7: la separadora de sección es sólo un letrero, igual
+        // que "contenido" — nunca dispara iniciar_slide/cerrar_slide.
+        return slide && slide.tipo !== 'contenido' && slide.tipo !== 'separador';
     }
 
     // ── Render defensivo de campos de texto de la diapositiva ──────
@@ -808,7 +857,17 @@
         const notas = document.getElementById('control-notas');
         const notasTexto = document.getElementById('control-notas-texto');
 
-        if (slide.tipo === 'contenido') {
+        if (slide.tipo === 'separador') {
+            // SPRINT 7, Parte A: portada de sección — sin IA, se conoce
+            // desde que se creó la presentación.
+            proy.innerHTML = `
+                <div class="text-center">
+                    <p class="text-sm uppercase tracking-widest opacity-70 mb-3"><i class="fas fa-layer-group mr-2"></i>Nueva sección</p>
+                    <h2 class="text-4xl lg:text-5xl font-black">${escapeHtmlPD(textoSeguroPD(slide.titulo))}</h2>
+                </div>
+            `;
+            notas.classList.add('hidden');
+        } else if (slide.tipo === 'contenido') {
             proy.innerHTML = `
                 <p class="text-sm uppercase tracking-widest opacity-70 mb-3">Contenido</p>
                 <h2 class="text-3xl lg:text-4xl font-bold mb-6">${escapeHtmlPD(textoSeguroPD(slide.titulo))}</h2>
@@ -824,7 +883,6 @@
                 <h2 class="text-2xl lg:text-3xl font-bold mb-6">${escapeHtmlPD(textoSeguroPD(slide.pregunta || slide.instruccion))}</h2>
                 <div id="slide-opciones-proyeccion" class="grid grid-cols-2 gap-3"></div>
                 <div id="slide-resultado-proyeccion" class="hidden mt-2"></div>
-                <div id="podio-en-vivo" class="hidden mt-6"></div>
             `;
             if (slide.opciones) {
                 const colores = ['#E03131', '#1971C2', '#F08C00', '#2F9E44', '#9C36B5', '#0CA678'];
@@ -914,34 +972,102 @@
 
     // ── Podio en vivo (SPRINT 6, Parte C) ───────────────────────────
     // Llega SOLO al docente (room docente_{id}) — nunca al estudiante.
+    // SPRINT 7, Parte C — tabla de posiciones plegable, persistente
+    // entre diapositivas (vive fuera del innerHTML que renderSlideActual
+    // reemplaza), actualizada en cada presentacion:podio (cada vez que
+    // cambia un puntaje). En modo inclusivo muestra top 3 por defecto
+    // — el docente puede expandirla.
+    let _panelPosicionesExpandido = false;
+    let _ultimoPodioEnVivo = null;
+
     function renderPodioEnVivo(data) {
-        const cont = document.getElementById('podio-en-vivo');
-        if (!cont) return;
-        const top5 = data.podio_top5 || [];
-        if (!top5.length) {
-            cont.classList.add('hidden');
+        _ultimoPodioEnVivo = data;
+        const lista = document.getElementById('panel-posiciones-lista');
+        const vacio = document.getElementById('panel-posiciones-vacio');
+        const btnExpandir = document.getElementById('btn-panel-posiciones-expandir');
+        const ranking = data.ranking || [];
+
+        if (!ranking.length) {
+            lista.innerHTML = '';
+            vacio.classList.remove('hidden');
+            btnExpandir.classList.add('hidden');
             return;
         }
-        cont.classList.remove('hidden');
+        vacio.classList.add('hidden');
+
+        const esInclusivo = PD.presentacion && PD.presentacion.modo_puntaje === 'inclusivo';
+        const limiteDefault = esInclusivo ? 3 : 5;
+        const mostrar = _panelPosicionesExpandido ? ranking : ranking.slice(0, limiteDefault);
+
+        btnExpandir.classList.toggle('hidden', ranking.length <= limiteDefault);
+        btnExpandir.innerHTML = _panelPosicionesExpandido
+            ? 'Ver menos <i class="fas fa-chevron-up ml-1"></i>'
+            : 'Ver todos <i class="fas fa-chevron-down ml-1"></i>';
+
         const flecha = (cambio) => {
             if (cambio > 0) return `<span style="color: var(--diagram-second, #2ECC71);"><i class="fas fa-arrow-up"></i> ${cambio}</span>`;
             if (cambio < 0) return `<span style="color: #F87171;"><i class="fas fa-arrow-down"></i> ${Math.abs(cambio)}</span>`;
-            return `<span class="opacity-50"><i class="fas fa-minus"></i></span>`;
+            return `<span class="opacity-40"><i class="fas fa-minus"></i></span>`;
         };
-        const medallas = ['🥇', '🥈', '🥉', '🏅', '🏅'];
-        cont.innerHTML = `
-            <p class="text-xs uppercase tracking-widest opacity-70 mb-2">Podio</p>
-            <div class="space-y-1.5">
-                ${top5.map((r, i) => `
-                    <div class="pd-podio-lugar flex items-center justify-between rounded-lg px-3 py-2" style="background: rgba(255,255,255,.08); animation-delay: ${i * 80}ms;">
-                        <span>${medallas[i] || '🏅'} ${escapeHtmlPD(r.nombre)}</span>
-                        <span class="flex items-center gap-3">
-                            <span class="font-bold" style="color: var(--diagram-label, #FFFFFF);">${r.puntaje_acumulado} pts</span>
-                            ${flecha(r.cambio_posicion)}
-                        </span>
-                    </div>
-                `).join('')}
-            </div>`;
+        const medallas = ['🥇', '🥈', '🥉'];
+        lista.innerHTML = mostrar.map((r, i) => `
+            <div class="flex items-center justify-between rounded-lg px-2.5 py-1.5 text-sm" style="background: rgba(255,255,255,.08);">
+                <span class="truncate">${medallas[i] || `${i + 1}.`} ${escapeHtmlPD(r.nombre)}</span>
+                <span class="flex items-center gap-2 flex-shrink-0">
+                    <span class="font-bold" style="color: var(--diagram-label, #FFFFFF);">${r.puntaje_acumulado}</span>
+                    ${flecha(r.cambio_posicion)}
+                </span>
+            </div>
+        `).join('');
+    }
+
+    function alternarExpansionPosiciones() {
+        _panelPosicionesExpandido = !_panelPosicionesExpandido;
+        if (_ultimoPodioEnVivo) renderPodioEnVivo(_ultimoPodioEnVivo);
+    }
+
+    function alternarPanelPosiciones() {
+        const panel = document.getElementById('panel-posiciones');
+        const ahoraOculto = panel.classList.toggle('hidden');
+        _guardarEstadoPanelPosiciones(!ahoraOculto);
+    }
+
+    function _guardarEstadoPanelPosiciones(abierto) {
+        try {
+            sessionStorage.setItem(`panelPosiciones_${PD.presentacionId}`, abierto ? '1' : '0');
+        } catch (_) { /* sessionStorage puede fallar en modo privado — no es crítico */ }
+    }
+
+    function _restaurarEstadoPanelPosiciones() {
+        let abierto = false;
+        try {
+            abierto = sessionStorage.getItem(`panelPosiciones_${PD.presentacionId}`) === '1';
+        } catch (_) { /* ignorar */ }
+        document.getElementById('panel-posiciones').classList.toggle('hidden', !abierto);
+    }
+
+    // Atajo de teclado "T" — sólo mientras la sesión en vivo está en
+    // pantalla, y nunca si el foco está en un campo de texto.
+    document.addEventListener('keydown', (e) => {
+        if (e.key.toLowerCase() !== 't') return;
+        if (!document.getElementById('pantalla-vivo').classList.contains('activa')) return;
+        const activo = document.activeElement;
+        if (activo && (activo.tagName === 'INPUT' || activo.tagName === 'TEXTAREA' || activo.isContentEditable)) return;
+        alternarPanelPosiciones();
+    });
+
+    // SPRINT 7, Parte C — podio PARCIAL al cerrar la última pregunta de
+    // una sección: mismo dato que presentacion:podio, sólo que además
+    // dispara un aviso breve para que el docente lo note.
+    function mostrarAvisoFinDeSeccion(data) {
+        renderPodioEnVivo(data);
+        const aviso = document.createElement('div');
+        aviso.className = 'fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-xl font-semibold text-sm shadow-lg';
+        aviso.style.background = 'var(--diagram-accent, #F5B731)';
+        aviso.style.color = 'var(--brand-dark, #0B3D2E)';
+        aviso.textContent = `Sección completa: ${data.seccion_tema || ''} — podio parcial actualizado`;
+        document.body.appendChild(aviso);
+        setTimeout(() => aviso.remove(), 4000);
     }
 
     function renderRankingFinal() {

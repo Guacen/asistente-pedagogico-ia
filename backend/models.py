@@ -716,6 +716,25 @@ class Presentacion(Base):
     - factor_tiempo_piar: multiplicador de tiempo extendido (1.25/1.5/2)
       para estudiantes con `Estudiante.tiene_piar=True` en el grupo —
       ver presentaciones._tiempo_limite_ms.
+
+    SPRINT 7 (multi-tema por secciones): `diapositivas` sigue siendo UN
+    SOLO array plano — slide_index (SesionPresentacion.slide_actual,
+    RespuestaPresentacion.slide_index) sigue direccionando una posición
+    ahí directamente, sin ningún cambio; toda la lógica de sesión en
+    vivo (iniciar_slide/cerrar_slide/registrar_respuesta/calcular_*)
+    sigue funcionando exactamente igual. `secciones` es sólo METADATA
+    que describe qué rango de `diapositivas` pertenece a cada tema:
+      {"tema": str, "n_slides_contenido": int, "n_preguntas": int,
+       "inicio": int, "fin": int, "estado": "generando"|"lista"|"error",
+       "error_generacion": str|None}
+    `inicio` apunta a la diapositiva separadora de esa sección
+    ({"tipo": "separador", "titulo": tema}, sin IA — se conoce de
+    entrada); `fin` es el índice de la última diapositiva de esa
+    sección (inclusive). Presentaciones de ANTES de este sprint no
+    tienen separador (la migración no reescribe `diapositivas` para no
+    correr los índices de respuestas/sesiones ya existentes) — quedan
+    con una sola sección sintética que cubre todo el array tal cual
+    estaba.
     """
     __tablename__ = "presentaciones"
 
@@ -725,6 +744,7 @@ class Presentacion(Base):
     titulo = Column(String(200), nullable=False)
     tema = Column(String(500), nullable=False)
     diapositivas = Column(JSON, nullable=False, default=list)
+    secciones = Column(JSON, nullable=False, default=list)
     estado = Column(String(20), nullable=False, default="lista")
     error_generacion = Column(Text, nullable=True)
     modo_puntaje = Column(String(20), nullable=False, default="competencia")
