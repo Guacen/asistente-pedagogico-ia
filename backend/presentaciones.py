@@ -545,6 +545,7 @@ async def _generar_relleno_contenido_ia(grupo: Grupo, tema: str, titulo: str, po
 
 async def _generar_relleno_pregunta_ia(
     grupo: Grupo, tema: str, titulo: str, posicion: int, total: int, tipos_pregunta: list[str],
+    tiempo_pregunta_s: int = 20,
 ) -> Optional[dict]:
     """Análogo a _generar_relleno_contenido_ia para una posición de
     pregunta. Si la IA elige un tipo que el docente no habilitó, cae al
@@ -591,7 +592,7 @@ async def _generar_relleno_pregunta_ia(
             "pregunta": pregunta,
             "opciones": ["Verdadero", "Falso"],
             "correcta": correcta,
-            "tiempo_s": 15,
+            "tiempo_s": tiempo_pregunta_s,
             "puntos": 100,
         }
 
@@ -606,7 +607,7 @@ async def _generar_relleno_pregunta_ia(
         "pregunta": pregunta,
         "opciones": opciones,
         "correcta": correcta,
-        "tiempo_s": 20,
+        "tiempo_s": tiempo_pregunta_s,
         "puntos": 100,
     }
 
@@ -614,6 +615,7 @@ async def _generar_relleno_pregunta_ia(
 async def _rellenar_slide_con_reintento(
     grupo: Grupo, tema: str, stub: dict, index: int, total: int,
     tipos_pregunta: list[str], semaforo: "asyncio.Semaphore",
+    tiempo_pregunta_s: int = 20,
 ) -> dict:
     """
     Rellena UNA diapositiva del esqueleto, respetando el límite de
@@ -632,6 +634,7 @@ async def _rellenar_slide_con_reintento(
                 else:
                     slide = await _generar_relleno_pregunta_ia(
                         grupo, tema, stub["titulo"], index + 1, total, tipos_pregunta,
+                        tiempo_pregunta_s,
                     )
             except Exception:
                 logger.exception(
@@ -812,6 +815,7 @@ async def _ejecutar_generacion_en_background(
         async def _rellenar_y_persistir(index: int, stub: dict) -> None:
             slide = await _rellenar_slide_con_reintento(
                 grupo, tema, stub, index, total, tipos_pregunta, semaforo,
+                presentacion.tiempo_pregunta_s,
             )
             actuales = list(presentacion.diapositivas)
             actuales[index] = slide
@@ -900,6 +904,78 @@ def finalizar_sesion(db: Session, sesion: SesionPresentacion) -> None:
     db.commit()
 
 
+MODOS_PUNTAJE = frozenset({"competencia", "inclusivo"})
+FACTORES_TIEMPO_PIAR_SOPORTADOS = frozenset({1.25, 1.5, 2.0})
+
+
+def _estudiante_tiene_piar(db: Session, id_grupo: str, nombre_estudiante: str) -> bool:
+    """
+    SPRINT 6 — el estudiante en una sesión en vivo no tiene cuenta, sólo
+    un nombre libre; lo único que podemos hacer es emparejarlo (exacto,
+    sin importar mayúsculas/espacios extremos) contra el roster real del
+    grupo (Estudiante.codigo_estudiante, que pese al nombre histórico del
+    campo es el nombre que usa el resto de la app — ver piar.py). Si el
+    nombre no matchea ningún estudiante del grupo, se trata como sin
+    PIAR — no es una fuente de verdad perfecta (cualquiera puede escribir
+    cualquier nombre), pero es el mismo nivel de confianza que el resto
+    del sistema de sesiones sin autenticación.
+    """
+    nombre_norm = (nombre_estudiante or "").strip().lower()
+    if not nombre_norm:
+        return False
+    from sqlalchemy import func
+
+    from models import Estudiante
+    return db.query(Estudiante).filter(
+        Estudiante.id_grupo == id_grupo,
+        Estudiante.tiene_piar.is_(True),
+        func.lower(Estudiante.codigo_estudiante) == nombre_norm,
+    ).first() is not None
+
+
+def _tiempo_limite_ms(presentacion: Presentacion, tiene_piar: bool) -> int:
+    """
+    Límite de tiempo PROPIO del estudiante — base de la presentación
+    (tiempo_pregunta_s) multiplicado por factor_tiempo_piar si tiene
+    PIAR. CRÍTICO (SPRINT 6, Parte B): el puntaje en modo competencia se
+    calcula contra ESTE valor, nunca contra el base — así un estudiante
+    con PIAR que usa proporcionalmente el mismo tiempo relativo no pierde
+    puntos por el ajuste.
+    """
+    base_s = presentacion.tiempo_pregunta_s or 20
+    factor = (presentacion.factor_tiempo_piar or 1.5) if tiene_piar else 1.0
+    return int(round(base_s * factor * 1000))
+
+
+def _calcular_puntos(
+    modo_puntaje: str,
+    es_correcta: Optional[bool],
+    tiempo_respuesta_ms: Optional[int],
+    tiempo_limite_ms: int,
+) -> int:
+    """
+    SPRINT 6, Parte B — reemplaza el puntaje estilo Kahoot anterior
+    (50%-100% de un `puntos` configurable por pregunta) por las dos
+    fórmulas fijas que pidió el sprint:
+    - inclusivo: 1000 si es correcta, sin importar el tiempo.
+    - competencia: entre 500 y 1000 si es correcta, según qué fracción
+      del tiempo LÍMITE del estudiante (ya ajustado por PIAR si aplica)
+      usó para responder. 0 si es incorrecta, en ambos modos.
+    """
+    if not es_correcta:
+        return 0
+    if modo_puntaje == "inclusivo":
+        return 1000
+
+    tiempo = tiempo_respuesta_ms if isinstance(tiempo_respuesta_ms, (int, float)) and tiempo_respuesta_ms > 0 else 0
+    limite = tiempo_limite_ms if tiempo_limite_ms and tiempo_limite_ms > 0 else 1
+    # Clamp a [0, 1]: una respuesta "instantánea" (0ms) da 1.0 de fracción
+    # de tiempo AHORRADO → 1000 puntos; una que agota exactamente el
+    # límite (o llega tarde por latencia de red) nunca baja de 500.
+    fraccion_usada = min(1.0, max(0.0, tiempo / limite))
+    return round(1000 * (1 - 0.5 * fraccion_usada))
+
+
 def registrar_respuesta(
     db: Session,
     sesion: SesionPresentacion,
@@ -914,7 +990,17 @@ def registrar_respuesta(
     el estudiante responde a un slide que ya no es el actual (cliente
     desincronizado), o si el índice no existe. Es idempotente por
     (sesión, slide, nombre): una segunda respuesta del mismo estudiante
-    al mismo slide devuelve la primera en vez de duplicar el conteo.
+    al mismo slide devuelve la primera en vez de duplicar el conteo —
+    IMPORTANTE: en ese caso NO se vuelve a tocar PuntajeEstudiante, para
+    no duplicar puntos.
+
+    SPRINT 6: resuelve el ajuste PIAR y calcula los puntos ACÁ (no en
+    calcular_resultado) — el límite de tiempo y el puntaje quedan fijos
+    en la fila de la respuesta para siempre, y el acumulado de
+    PuntajeEstudiante (id_sesion, nombre_estudiante) se actualiza en el
+    mismo commit. Como la clave es el nombre (no un sid de socket), un
+    estudiante que se reconecta con el mismo nombre sigue sumando sobre
+    la misma fila — recupera su puntaje sin ninguna lógica extra.
     """
     if not sesion.slide_abierto or sesion.slide_actual != slide_index:
         return None
@@ -934,8 +1020,15 @@ def registrar_respuesta(
 
     slide = presentacion.diapositivas[slide_index]
     es_correcta = None
+    tiempo_limite_ms = None
+    puntos = 0
     if slide.get("tipo") in TIPOS_PREGUNTA_SOPORTADOS:
         es_correcta = respuesta_limpia == str(slide.get("correcta"))
+        tiene_piar = _estudiante_tiene_piar(db, presentacion.id_grupo, nombre_limpio)
+        tiempo_limite_ms = _tiempo_limite_ms(presentacion, tiene_piar)
+        puntos = _calcular_puntos(
+            presentacion.modo_puntaje, es_correcta, tiempo_respuesta_ms, tiempo_limite_ms,
+        )
 
     respuesta = RespuestaPresentacion(
         id_sesion=sesion.id_sesion,
@@ -944,40 +1037,43 @@ def registrar_respuesta(
         respuesta=respuesta_limpia,
         es_correcta=es_correcta,
         tiempo_respuesta_ms=tiempo_respuesta_ms,
+        tiempo_limite_ms=tiempo_limite_ms,
+        puntos_obtenidos=puntos,
     )
     db.add(respuesta)
+
+    from models import PuntajeEstudiante
+    puntaje = db.query(PuntajeEstudiante).filter(
+        PuntajeEstudiante.id_sesion == sesion.id_sesion,
+        PuntajeEstudiante.nombre_estudiante == nombre_limpio,
+    ).first()
+    if puntaje is None:
+        puntaje = PuntajeEstudiante(
+            id_sesion=sesion.id_sesion, nombre_estudiante=nombre_limpio,
+            puntaje_acumulado=0, aciertos=0, respuestas_totales=0,
+        )
+        db.add(puntaje)
+    puntaje.puntaje_acumulado += puntos
+    puntaje.respuestas_totales += 1
+    if es_correcta:
+        puntaje.aciertos += 1
+
     db.commit()
     db.refresh(respuesta)
     return respuesta
 
 
-def _puntos_por_respuesta(slide: dict, es_correcta: Optional[bool], tiempo_ms: Optional[int]) -> int:
-    """
-    Puntaje estilo Kahoot: 0 si es incorrecta; si es correcta, entre el
-    50% y el 100% de los puntos del slide según qué tan rápido respondió
-    dentro de la ventana de tiempo permitida.
-    """
-    if not es_correcta:
-        return 0
-    puntos_base = int(slide.get("puntos") or 100)
-    if not tiempo_ms:
-        return puntos_base
-    tiempo_s = slide.get("tiempo_s") or 20
-    fraccion_transcurrida = min(1.0, max(0.0, tiempo_ms / (tiempo_s * 1000)))
-    factor = 1 - fraccion_transcurrida * 0.5
-    return round(puntos_base * factor)
-
-
 def calcular_resultado(db: Session, sesion: SesionPresentacion, presentacion: Presentacion) -> dict:
     """
     Conteos por opción (multiple/verdadero_falso/poll) o por palabra
-    (nube) del slide ACTUAL, más un ranking acumulado de toda la sesión
-    (sólo cuenta puntos de slides "pregunta" — TIPOS_PREGUNTA_SOPORTADOS
-    — igual que Kahoot; "poll"/"nube" no tienen respuesta correcta).
+    (nube) del slide ACTUAL, para la distribución de barras que se
+    muestra ANTES de revelar. El ranking/podio con puntajes vive en
+    calcular_podio — separado a propósito (dos momentos distintos de la
+    UI: "cómo respondió la clase esta pregunta" vs "cómo va el podio").
     """
     diapositivas = presentacion.diapositivas or []
     if sesion.slide_actual < 0 or sesion.slide_actual >= len(diapositivas):
-        return {"conteos": {}, "correcta": None, "total_respuestas": 0, "ranking_top5": []}
+        return {"conteos": {}, "correcta": None, "total_respuestas": 0}
 
     slide = diapositivas[sesion.slide_actual]
     respuestas_slide = db.query(RespuestaPresentacion).filter(
@@ -1003,33 +1099,59 @@ def calcular_resultado(db: Session, sesion: SesionPresentacion, presentacion: Pr
             if palabra:
                 conteos[palabra] = conteos.get(palabra, 0) + 1
 
-    todas = db.query(RespuestaPresentacion).filter(
-        RespuestaPresentacion.id_sesion == sesion.id_sesion,
-    ).all()
-    puntos_por_nombre: dict[str, int] = {}
-    for r in todas:
-        if r.slide_index < 0 or r.slide_index >= len(diapositivas):
-            continue
-        s = diapositivas[r.slide_index]
-        if s.get("tipo") not in TIPOS_PREGUNTA_SOPORTADOS:
-            continue
-        puntos_por_nombre[r.nombre_estudiante] = (
-            puntos_por_nombre.get(r.nombre_estudiante, 0)
-            + _puntos_por_respuesta(s, r.es_correcta, r.tiempo_respuesta_ms)
-        )
-
-    ranking_top5 = sorted(
-        ({"nombre": n, "puntos": p} for n, p in puntos_por_nombre.items()),
-        key=lambda x: x["puntos"],
-        reverse=True,
-    )[:5]
-
     return {
         "conteos": conteos,
         "correcta": correcta,
         "total_respuestas": len(respuestas_slide),
-        "ranking_top5": ranking_top5,
     }
+
+
+def _puntaje_acumulado_hasta(db: Session, id_sesion: str, slide_index_max: int) -> dict[str, int]:
+    """Suma puntos_obtenidos por nombre_estudiante considerando sólo
+    respuestas con slide_index <= slide_index_max. Se usa dos veces en
+    calcular_podio (con y sin la pregunta recién cerrada) para poder
+    calcular cuánto subió/bajó cada estudiante — se recalcula desde
+    RespuestaPresentacion (el log completo) en vez de confiar en
+    snapshots, así siempre es consistente con lo realmente persistido."""
+    if slide_index_max < 0:
+        return {}
+    filas = db.query(
+        RespuestaPresentacion.nombre_estudiante, RespuestaPresentacion.puntos_obtenidos,
+    ).filter(
+        RespuestaPresentacion.id_sesion == id_sesion,
+        RespuestaPresentacion.slide_index <= slide_index_max,
+    ).all()
+    totales: dict[str, int] = {}
+    for nombre, puntos in filas:
+        totales[nombre] = totales.get(nombre, 0) + (puntos or 0)
+    return totales
+
+
+def calcular_podio(db: Session, sesion: SesionPresentacion, presentacion: Presentacion) -> dict:
+    """
+    SPRINT 6, Parte C — ranking completo ordenado por puntaje acumulado,
+    con `cambio_posicion` (positivo = subió, negativo = bajó, 0 = igual
+    o primera vez que puntúa) respecto a como estaba ANTES de la
+    pregunta que se acaba de cerrar (sesion.slide_actual).
+    """
+    idx = sesion.slide_actual
+    actual = _puntaje_acumulado_hasta(db, sesion.id_sesion, idx)
+    anterior = _puntaje_acumulado_hasta(db, sesion.id_sesion, idx - 1)
+
+    orden_actual = sorted(actual.items(), key=lambda kv: kv[1], reverse=True)
+    posiciones_anteriores = {
+        nombre: pos for pos, (nombre, _) in enumerate(
+            sorted(anterior.items(), key=lambda kv: kv[1], reverse=True),
+        )
+    }
+
+    ranking = []
+    for pos, (nombre, puntos) in enumerate(orden_actual):
+        pos_anterior = posiciones_anteriores.get(nombre)
+        cambio = (pos_anterior - pos) if pos_anterior is not None else 0
+        ranking.append({"nombre": nombre, "puntaje_acumulado": puntos, "cambio_posicion": cambio})
+
+    return {"ranking": ranking, "podio_top5": ranking[:5]}
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -1042,6 +1164,26 @@ class GenerarPresentacionRequest(BaseModel):
     n_slides_contenido: int = Field(default=8, ge=4, le=15)
     n_preguntas: int = Field(default=4, ge=2, le=10)
     tipos_pregunta: List[str] = Field(default_factory=lambda: ["multiple", "verdadero_falso"])
+    # SPRINT 6, Parte B — controles de puntaje del modal de creación.
+    modo_puntaje: str = Field(default="competencia")
+    tiempo_pregunta_s: int = Field(default=20, ge=10, le=60)
+    factor_tiempo_piar: float = Field(default=1.5)
+
+    @field_validator("modo_puntaje")
+    @classmethod
+    def _validar_modo_puntaje(cls, v: str) -> str:
+        if v not in MODOS_PUNTAJE:
+            raise ValueError(f"modo_puntaje debe ser uno de: {', '.join(sorted(MODOS_PUNTAJE))}")
+        return v
+
+    @field_validator("factor_tiempo_piar")
+    @classmethod
+    def _validar_factor_tiempo_piar(cls, v: float) -> float:
+        if v not in FACTORES_TIEMPO_PIAR_SOPORTADOS:
+            raise ValueError(
+                f"factor_tiempo_piar debe ser uno de: {', '.join(str(f) for f in sorted(FACTORES_TIEMPO_PIAR_SOPORTADOS))}"
+            )
+        return v
 
     @field_validator("tema")
     @classmethod
@@ -1089,6 +1231,9 @@ class PresentacionOut(BaseModel):
     diapositivas: list
     estado: str
     error_generacion: Optional[str] = None
+    modo_puntaje: str
+    tiempo_pregunta_s: int
+    factor_tiempo_piar: float
     creado_en: datetime
 
     model_config = {"from_attributes": True}
@@ -1195,6 +1340,9 @@ async def generar_presentacion(
         tema=body.tema,
         diapositivas=[],
         estado="generando",
+        modo_puntaje=body.modo_puntaje,
+        tiempo_pregunta_s=body.tiempo_pregunta_s,
+        factor_tiempo_piar=body.factor_tiempo_piar,
     )
     db.add(presentacion)
     db.commit()
@@ -1288,6 +1436,45 @@ def iniciar_sesion(
         sesion_id=sesion.id_sesion,
         codigo=sesion.codigo,
         url_estudiante=f"https://usemaestria.co/join/{sesion.codigo}",
+    )
+
+
+@router.get("/sesiones/{id_sesion}/exportar")
+def exportar_resultados_sesion(
+    id_sesion: str,
+    docente: Docente = Depends(verify_trial_active),
+    db: Session = Depends(get_db),
+):
+    """
+    SPRINT 6, Parte C/D — CSV de resultados (nombre, aciertos,
+    respuestas totales, puntaje acumulado) para que el docente exporte
+    después de la sesión. Ownership vía la presentación dueña de la
+    sesión (mismo criterio 404-no-403 que el resto del módulo).
+    """
+    import csv
+    import io
+
+    from models import PuntajeEstudiante
+
+    sesion = db.query(SesionPresentacion).filter(SesionPresentacion.id_sesion == id_sesion).first()
+    if not sesion or sesion.presentacion.id_docente != docente.id_docente:
+        raise HTTPException(status_code=404, detail="Sesión no encontrada")
+
+    puntajes = db.query(PuntajeEstudiante).filter(
+        PuntajeEstudiante.id_sesion == id_sesion,
+    ).order_by(PuntajeEstudiante.puntaje_acumulado.desc()).all()
+
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(["nombre", "aciertos", "respuestas_totales", "puntaje_acumulado"])
+    for p in puntajes:
+        writer.writerow([p.nombre_estudiante, p.aciertos, p.respuestas_totales, p.puntaje_acumulado])
+
+    nombre_archivo = f"resultados_{sesion.codigo}.csv"
+    return Response(
+        content=buffer.getvalue(),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{nombre_archivo}"'},
     )
 
 
