@@ -159,9 +159,31 @@
 
     .hidden { display: none !important; }
     .flex { display: flex !important; }
+
+    /* SPRINT 8, Parte A — indicador de conexión visible en toda
+       pantalla salvo la de entrada: el estudiante nunca debe quedarse
+       mirando una pantalla muda sin saber qué está pasando. */
+    .indicador-conexion {
+        position: fixed; top: .75rem; right: .75rem; z-index: 50;
+        display: flex; align-items: center; gap: .4rem;
+        background: rgba(255,255,255,.97); border-radius: 9999px;
+        padding: .3rem .7rem; font-size: .75rem; font-weight: 700;
+        box-shadow: 0 4px 12px rgba(0,0,0,.15); color: #6b7280;
+    }
+    .indicador-punto { width: .5rem; height: .5rem; border-radius: 9999px; background: #9ca3af; flex-shrink: 0; }
+    .indicador-conexion.conectado { color: #16A34A; }
+    .indicador-conexion.conectado .indicador-punto { background: #16A34A; }
+    .indicador-conexion.reconectando { color: #B45309; }
+    .indicador-conexion.reconectando .indicador-punto { background: var(--brand-amber, #F5B731); animation: parpadeo 1s ease-in-out infinite; }
+    @keyframes parpadeo { 50% { opacity: .25; } }
 </style>
 </head>
 <body>
+
+<div id="indicador-conexion" class="hidden indicador-conexion">
+    <span class="indicador-punto"></span>
+    <span id="indicador-conexion-texto"></span>
+</div>
 
 <div class="envoltorio">
     <div class="contenedor">
@@ -321,12 +343,50 @@
     // después — ver los dos handlers en conectarSocket().
     let miResultadoPregunta = null;
     let miResultadoFinal = null;
-    // Timeout de "Uniendo…" y el listener 'connect' pendiente de un
-    // intento en curso — sin esto, el botón podía quedarse colgado para
-    // siempre si el socket nunca lograba conectar (bug reportado en
-    // clase real: CSP bloqueando el WebSocket en Safari).
+    // Timeout de "Uniendo…" — sin esto, el botón podía quedarse colgado
+    // para siempre si el socket nunca lograba conectar (bug reportado
+    // en clase real: CSP bloqueando el WebSocket en Safari).
     let joinTimeoutId = null;
-    let pendingEmitirUnirse = null;
+    // SPRINT 8, Parte A — {codigo, nombre} del último intento de unión
+    // (exitoso o en curso). Vive en memoria, no en sessionStorage: sólo
+    // nos importa reconectar dentro de ESTA pestaña (el estudiante que
+    // cambia de app y vuelve, no el que recarga la página desde cero).
+    // Cada 'connect' del socket —el inicial Y cualquier reconexión— lo
+    // usa para re-emitir presentacion:unirse automáticamente, sin
+    // esperar a que el estudiante toque nada.
+    let ultimoIntento = null;
+
+    // SPRINT 8, Parte A — identidad estable del participante: se genera
+    // una sola vez y se guarda en sessionStorage (sobrevive una recarga
+    // de página, no sólo un cambio de app) para que el servidor
+    // reasocie al MISMO participante en reconexiones futuras en vez de
+    // crear uno nuevo — evita duplicados y pérdida de puntaje.
+    function obtenerParticipanteId() {
+        let id;
+        try { id = sessionStorage.getItem('participanteId'); } catch (_) { id = null; }
+        if (!id) {
+            id = (window.crypto && crypto.randomUUID)
+                ? crypto.randomUUID()
+                : `p-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+            try { sessionStorage.setItem('participanteId', id); } catch (_) { /* modo privado, etc. */ }
+        }
+        return id;
+    }
+
+    function actualizarIndicadorConexion(estado) {
+        const el = document.getElementById('indicador-conexion');
+        const texto = document.getElementById('indicador-conexion-texto');
+        el.classList.remove('hidden', 'conectado', 'reconectando');
+        if (estado === 'conectado') {
+            el.classList.add('conectado');
+            texto.textContent = 'Conectado';
+        } else if (estado === 'reconectando') {
+            el.classList.add('reconectando');
+            texto.textContent = 'Reconectando…';
+        } else {
+            el.classList.add('hidden');
+        }
+    }
 
     // ── Prellenar código desde la URL: /join/ABC123 o join.html?codigo=ABC123 ──
     function codigoDesdeUrl() {
@@ -363,10 +423,6 @@
             clearTimeout(joinTimeoutId);
             joinTimeoutId = null;
         }
-        if (pendingEmitirUnirse && socket) {
-            socket.off('connect', pendingEmitirUnirse);
-            pendingEmitirUnirse = null;
-        }
     }
 
     function conectarSocket() {
@@ -374,7 +430,32 @@
         // Estudiante SIN cuenta — se conecta sin token (ver
         // socket_events.connect en el backend, que acepta conexiones
         // anónimas específicamente para este flujo).
-        socket = io(WS_URL);
+        socket = io(WS_URL, {
+            // reconexión automática de socket.io con backoff — ya viene
+            // activada por default, se deja explícita por claridad.
+            reconnection: true,
+        });
+
+        // SPRINT 8, Parte A — CADA 'connect' (el primero Y cualquier
+        // reconexión posterior) re-emite presentacion:unirse solo, sin
+        // esperar a que el estudiante toque nada. socket.io asigna un
+        // sid NUEVO en cada reconexión; sin re-unirse, ese sid queda
+        // "conectado" pero fuera de la sala — la pantalla se congela
+        // aunque el socket funcione (bug reportado en clase real).
+        socket.on('connect', () => {
+            actualizarIndicadorConexion('conectado');
+            if (ultimoIntento) {
+                socket.emit('presentacion:unirse', {
+                    codigo: ultimoIntento.codigo,
+                    nombre: ultimoIntento.nombre,
+                    participante_id: obtenerParticipanteId(),
+                });
+            }
+        });
+
+        socket.on('disconnect', () => {
+            if (ultimoIntento) actualizarIndicadorConexion('reconectando');
+        });
 
         socket.on('presentacion:unido', (data) => {
             limpiarTimeoutUnion();
@@ -382,12 +463,29 @@
             idSesionActual = data.sesion_id;
             document.getElementById('espera-nombre').textContent = nombreEstudiante;
             resetBotonUnirme();
+            // Pantalla por defecto — presentacion:sincronizar (abajo)
+            // puede reemplazarla de inmediato si ya hay una pregunta
+            // activa, la sesión ya terminó, etc.
             mostrarPantalla('pantalla-espera');
+            socket.emit('presentacion:sincronizar', { sesion_id: idSesionActual });
+        });
+
+        // SPRINT 8, Parte A — estado completo del lado del servidor:
+        // diapositiva activa, tiempo restante (calculado por el
+        // servidor, no por este cliente), si ya respondí, mi puntaje y
+        // mi posición. Pinta la pantalla correcta sin importar en qué
+        // momento me reconecté.
+        socket.on('presentacion:sincronizado', (data) => {
+            aplicarEstadoSincronizado(data);
         });
 
         socket.on('presentacion:error', (data) => {
             limpiarTimeoutUnion();
             resetBotonUnirme();
+            // Un error de unirse (código inválido, sesión finalizada)
+            // significa que este intento no sirve — no reintentar solo
+            // en la próxima reconexión.
+            ultimoIntento = null;
             mostrarErrorEntrada(data.message || 'Ocurrió un error.');
         });
 
@@ -397,6 +495,7 @@
         // ningún evento de presentación (bug reportado en clase real).
         socket.on('connect_error', (err) => {
             console.error('[join] connect_error:', err);
+            if (ultimoIntento) actualizarIndicadorConexion('reconectando');
             limpiarTimeoutUnion();
             resetBotonUnirme();
             mostrarErrorEntrada('No se pudo conectar al servidor. Verificá tu conexión e intentá de nuevo.');
@@ -454,6 +553,52 @@
         return socket;
     }
 
+    // SPRINT 8, Parte A — pinta la pantalla correcta a partir del
+    // snapshot completo que manda el servidor al reconectar. Nunca
+    // confía en un timer propio para "cuánto falta": usa
+    // tiempo_restante_s tal cual llega.
+    function aplicarEstadoSincronizado(data) {
+        if (data.finalizada) {
+            detenerTimer();
+            miResultadoFinal = {
+                puntaje_acumulado: data.puntaje_acumulado,
+                posicion: data.posicion,
+                total_participantes: data.total_participantes,
+            };
+            aplicarMiResultadoFinal();
+            mostrarPantalla('pantalla-fin');
+            return;
+        }
+        if (!data.slide_activa) {
+            // El docente está en contenido/separadora — nada que
+            // responder todavía.
+            mostrarPantalla('pantalla-espera');
+            return;
+        }
+        slideActual = data.slide_data;
+        slideIndexActual = data.slide_index;
+        if (data.ya_respondio) {
+            detenerTimer();
+            mostrarPantalla('pantalla-enviada');
+            return;
+        }
+        if (data.slide_abierto) {
+            // Reconstruye cuándo "empezó de verdad" la pregunta a partir
+            // del tiempo restante que manda el servidor, para que si
+            // este estudiante responde ahora, tiempo_respuesta_ms siga
+            // reflejando el tiempo real transcurrido desde que la
+            // pregunta abrió — no desde que se reconectó.
+            const limiteS = data.tiempo_limite_s || 0;
+            const restanteS = data.tiempo_restante_s || 0;
+            inicioSlideMs = Date.now() - Math.max(0, limiteS - restanteS) * 1000;
+            renderPregunta(slideActual, restanteS);
+            return;
+        }
+        // Slide cerrada (ya se reveló) y no había respondido — no tiene
+        // sentido mostrarle el formulario; espera al próximo slide_activo.
+        mostrarPantalla('pantalla-espera');
+    }
+
     function resetBotonUnirme() {
         document.getElementById('btn-unirme').disabled = false;
         document.getElementById('btn-unirme-texto').textContent = 'Unirme';
@@ -478,10 +623,13 @@
         document.getElementById('btn-unirme-texto').textContent = 'Uniendo…';
         document.getElementById('btn-unirme-spinner').classList.remove('hidden');
 
-        const s = conectarSocket();
+        // SPRINT 8, Parte A — se guarda ANTES de conectar: el handler
+        // 'connect' (registrado una sola vez en conectarSocket) lo usa
+        // para emitir unirse apenas haya conexión, sea la primera vez o
+        // una reconexión — no hace falta un listener 'once' por intento.
+        ultimoIntento = { codigo, nombre };
 
-        // Limpia cualquier intento anterior en curso (reintento manual del
-        // mismo botón "Unirme" tras un timeout/error previo).
+        const s = conectarSocket();
         limpiarTimeoutUnion();
 
         // CRÍTICO: el botón nunca debe quedarse colgado en "Uniendo…". Si
@@ -490,26 +638,29 @@
         // para que el usuario pueda reintentar.
         joinTimeoutId = setTimeout(() => {
             joinTimeoutId = null;
-            if (pendingEmitirUnirse && socket) {
-                socket.off('connect', pendingEmitirUnirse);
-                pendingEmitirUnirse = null;
-            }
             console.error('[join] timeout de 10s esperando unirse — código:', codigo);
             resetBotonUnirme();
             mostrarErrorEntrada('La conexión está tardando demasiado. Verificá tu internet e intentá de nuevo.');
         }, 10000);
 
-        const emitirUnirse = () => {
-            pendingEmitirUnirse = null;
-            s.emit('presentacion:unirse', { codigo, nombre });
-        };
         if (s.connected) {
-            emitirUnirse();
-        } else {
-            pendingEmitirUnirse = emitirUnirse;
-            s.once('connect', emitirUnirse);
+            s.emit('presentacion:unirse', { codigo, nombre, participante_id: obtenerParticipanteId() });
         }
+        // si no está conectado todavía, el handler 'connect' de
+        // conectarSocket() emite unirse apenas conecte.
     }
+
+    // SPRINT 8, Parte A — el celular cambia de app o se bloquea, vuelve
+    // a primer plano: si el socket quedó desconectado (muy común en iOS/
+    // Android, que suspenden WebSockets en background), se fuerza la
+    // reconexión de inmediato en vez de esperar al backoff automático.
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState !== 'visible') return;
+        if (socket && !socket.connected && ultimoIntento) {
+            actualizarIndicadorConexion('reconectando');
+            socket.connect();
+        }
+    });
 
     // ── Renderizar la pregunta activa ────────────────────────────
     function renderPregunta(slide, tiempoS) {

@@ -29,10 +29,12 @@ from presentaciones import (
     _es_ultima_slide_de_seccion,
     _estudiante_tiene_piar,
     _seccion_de_slide,
+    _slide_publico,
     _tiempo_limite_ms,
     calcular_podio,
     calcular_resultado,
     cerrar_slide,
+    construir_estado_sincronizacion,
     finalizar_sesion,
     iniciar_slide,
     registrar_respuesta,
@@ -48,18 +50,6 @@ def _sala(id_sesion: str) -> str:
     return f"presentacion_{id_sesion}"
 
 
-def _slide_publico(slide: dict) -> dict:
-    """
-    Versión del slide segura para difundir a la sala: nunca incluye
-    `correcta` antes de que el docente cierre el slide y se revele el
-    resultado (si no, cualquier estudiante podría leer la respuesta
-    correcta directamente del payload del evento).
-    """
-    publico = dict(slide)
-    publico.pop("correcta", None)
-    return publico
-
-
 def _contar_estudiantes_sala(id_sesion: str) -> int:
     return sum(1 for v in _estudiantes.values() if v.get("id_sesion") == id_sesion)
 
@@ -73,6 +63,12 @@ async def presentacion_unirse(sid, data):
     data = data or {}
     codigo = (data.get("codigo") or "").strip().upper()
     nombre = (data.get("nombre") or "").strip()
+    # SPRINT 8, Parte A: id de participante generado y persistido en
+    # sessionStorage del lado del cliente — se reenvía en cada
+    # (re)conexión para que el servidor identifique que es el MISMO
+    # estudiante, no uno nuevo. Opcional por compatibilidad con un
+    # cliente viejo que todavía no lo mande.
+    participante_id = (data.get("participante_id") or "").strip() or None
 
     if not codigo or not nombre:
         logger.info(
@@ -113,7 +109,30 @@ async def presentacion_unirse(sid, data):
             return
 
         nombre_limpio = sanitizar_texto(nombre, 100) or "Anónimo"
-        _estudiantes[sid] = {"nombre": nombre_limpio, "id_sesion": sesion.id_sesion}
+
+        # SPRINT 8, Parte A: si este participante ya tenía OTRA conexión
+        # viva (sid distinto) en la misma sesión, era la vieja — el
+        # navegador se reconectó con un sid nuevo. La limpiamos para que
+        # no quede un fantasma inflando el conteo de la sala ni
+        # recibiendo eventos personalizados (tiempo PIAR, tu_resultado)
+        # que ya no le sirven a nadie.
+        if participante_id:
+            for sid_viejo, info in list(_estudiantes.items()):
+                if (
+                    sid_viejo != sid
+                    and info.get("id_sesion") == sesion.id_sesion
+                    and info.get("participante_id") == participante_id
+                ):
+                    _estudiantes.pop(sid_viejo, None)
+                    logger.info(
+                        "presentacion:unirse — reconexión detectada, se limpia sid viejo "
+                        "(participante_id=%s, sid_viejo=%s, sid_nuevo=%s)",
+                        participante_id, sid_viejo, sid,
+                    )
+
+        _estudiantes[sid] = {
+            "nombre": nombre_limpio, "id_sesion": sesion.id_sesion, "participante_id": participante_id,
+        }
         await sio.enter_room(sid, _sala(sesion.id_sesion))
 
         await sio.emit(
@@ -166,6 +185,40 @@ async def presentacion_unirse(sid, data):
             {"message": "Ocurrió un error al unirte — intenta de nuevo."},
             to=sid,
         )
+    finally:
+        db.close()
+
+
+@sio.on("presentacion:sincronizar")
+async def presentacion_sincronizar(sid, data):
+    """
+    SPRINT 8, Parte A — el cliente pide esto DESPUÉS de (re)emitir
+    presentacion:unirse en cada reconexión (ver join.html: visibility-
+    change/'connect' de socket.io). Devuelve el estado completo actual
+    — diapositiva activa, pregunta abierta y su tiempo restante
+    (calculado por el SERVIDOR), si ya respondió, puntaje y posición —
+    para que el cliente pinte la pantalla correcta sin importar dónde
+    se quedó colgado.
+    """
+    data = data or {}
+    id_sesion = data.get("sesion_id")
+
+    estudiante = _estudiantes.get(sid)
+    if not estudiante or estudiante.get("id_sesion") != id_sesion:
+        await sio.emit(
+            "presentacion:error",
+            {"message": "No estás unido a esta sesión."},
+            to=sid,
+        )
+        return
+
+    db = SessionLocal()
+    try:
+        sesion = db.query(SesionPresentacion).filter(SesionPresentacion.id_sesion == id_sesion).first()
+        if not sesion:
+            return
+        estado = construir_estado_sincronizacion(db, sesion, sesion.presentacion, estudiante["nombre"])
+        await sio.emit("presentacion:sincronizado", estado, to=sid)
     finally:
         db.close()
 

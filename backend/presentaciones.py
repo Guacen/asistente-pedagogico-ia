@@ -23,10 +23,10 @@ import logging
 import re
 import secrets
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Literal, Optional, Union
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
 from sqlalchemy.orm import Session
 
 from auth import verify_trial_active
@@ -528,6 +528,83 @@ Responde SOLO con un objeto JSON compacto:
 Sin texto adicional."""
 
 
+# ═══════════════════════════════════════════════════════════════
+# DEFENSA ESTRUCTURAL (SPRINT 8, Parte B) — esquema explícito de una
+# diapositiva ya rellenada, validado ANTES de guardarla.
+#
+# Dos veces ya un desajuste de contrato entre lo que la IA devuelve y
+# lo que el resto del sistema espera se coló en silencio: el "cuerpo"
+# como array crudo mostrando corchetes en pantalla (SPRINT 1), y ahora
+# el contrato de pregunta. En vez de checks sueltos dispersos (que ya
+# existían, ver abajo, y siguen ahí como primera línea de defensa
+# rápida) esto es la fuente de verdad ÚNICA del contrato — si algo no
+# valida acá, la función devuelve None, lo que dispara el reintento
+# ÚNICO ya existente en _rellenar_slide_con_reintento; si el reintento
+# también falla, esa diapositiva puntual queda con estado de error y
+# un mensaje claro (nunca silenciosa frente a un salón lleno).
+# ═══════════════════════════════════════════════════════════════
+
+class DiapositivaContenidoSchema(BaseModel):
+    tipo: Literal["contenido"]
+    titulo: str = Field(min_length=1, max_length=200)
+    cuerpo: Union[str, List[str]]
+    notas_docente: str = ""
+    diagrama: Optional[dict] = None
+
+    @field_validator("cuerpo")
+    @classmethod
+    def _cuerpo_no_vacio(cls, v):
+        if isinstance(v, list) and not [x for x in v if str(x).strip()]:
+            raise ValueError("cuerpo no puede ser una lista vacía")
+        if isinstance(v, str) and not v.strip():
+            raise ValueError("cuerpo no puede estar vacío")
+        return v
+
+
+class DiapositivaMultipleSchema(BaseModel):
+    tipo: Literal["multiple"]
+    pregunta: str = Field(min_length=1, max_length=500)
+    opciones: List[str] = Field(min_length=2, max_length=6)
+    correcta: int = Field(ge=0)
+    tiempo_s: int = Field(gt=0)
+    puntos: int = Field(gt=0)
+
+    @model_validator(mode="after")
+    def _correcta_dentro_de_rango(self):
+        if self.correcta >= len(self.opciones):
+            raise ValueError("correcta debe ser un índice válido dentro de opciones")
+        return self
+
+
+class DiapositivaVerdaderoFalsoSchema(BaseModel):
+    tipo: Literal["verdadero_falso"]
+    pregunta: str = Field(min_length=1, max_length=500)
+    opciones: List[str] = Field(min_length=2, max_length=2)
+    correcta: Literal[0, 1]
+    tiempo_s: int = Field(gt=0)
+    puntos: int = Field(gt=0)
+
+
+def _validar_esquema_pregunta(slide: dict) -> Optional[dict]:
+    """Elige el esquema según slide['tipo'] y valida — devuelve el
+    dict validado (equivalente al original) o None si no pasa."""
+    schema = {
+        "multiple": DiapositivaMultipleSchema,
+        "verdadero_falso": DiapositivaVerdaderoFalsoSchema,
+    }.get(slide.get("tipo"))
+    if schema is None:
+        return None
+    try:
+        schema.model_validate(slide)
+    except ValidationError as exc:
+        logger.error(
+            "Diapositiva de pregunta no pasó el esquema Pydantic (tipo=%r, titulo=%r): %s",
+            slide.get("tipo"), slide.get("pregunta"), exc,
+        )
+        return None
+    return slide
+
+
 async def _generar_relleno_contenido_ia(grupo: Grupo, tema: str, titulo: str, posicion: int, total: int) -> Optional[dict]:
     """Un único intento de rellenar UNA diapositiva de contenido — SIN
     reintento propio, el reintento por-diapositiva vive en el
@@ -568,6 +645,12 @@ async def _generar_relleno_contenido_ia(grupo: Grupo, tema: str, titulo: str, po
     diagrama = _validar_diagrama(bruto.get("dg"))
     if diagrama is not None:
         slide["diagrama"] = diagrama
+
+    try:
+        DiapositivaContenidoSchema.model_validate(slide)
+    except ValidationError as exc:
+        logger.error("Diapositiva de contenido no pasó el esquema Pydantic (titulo=%r): %s", titulo, exc)
+        return None
     return slide
 
 
@@ -615,7 +698,7 @@ async def _generar_relleno_pregunta_ia(
     if tipo == "verdadero_falso":
         correcta = bruto.get("co")
         correcta = correcta if isinstance(correcta, int) and correcta in (0, 1) else 0
-        return {
+        slide = {
             "tipo": "verdadero_falso",
             "pregunta": pregunta,
             "opciones": ["Verdadero", "Falso"],
@@ -623,6 +706,7 @@ async def _generar_relleno_pregunta_ia(
             "tiempo_s": tiempo_pregunta_s,
             "puntos": 100,
         }
+        return _validar_esquema_pregunta(slide)
 
     opciones_raw = bruto.get("op")
     if not isinstance(opciones_raw, list) or len(opciones_raw) < 2:
@@ -630,7 +714,7 @@ async def _generar_relleno_pregunta_ia(
     opciones = [_texto_seguro(o, 200) for o in opciones_raw][:6]
     correcta = bruto.get("co")
     correcta = correcta if isinstance(correcta, int) and 0 <= correcta < len(opciones) else 0
-    return {
+    slide = {
         "tipo": "multiple",
         "pregunta": pregunta,
         "opciones": opciones,
@@ -638,6 +722,7 @@ async def _generar_relleno_pregunta_ia(
         "tiempo_s": tiempo_pregunta_s,
         "puntos": 100,
     }
+    return _validar_esquema_pregunta(slide)
 
 
 async def _rellenar_slide_con_reintento(
@@ -1012,11 +1097,24 @@ def _generar_codigo_unico(db: Session) -> str:
 # LÓGICA DE SESIÓN EN VIVO — funciones puras (usadas por Socket.io y tests)
 # ═══════════════════════════════════════════════════════════════
 
+def _slide_publico(slide: dict) -> dict:
+    """
+    Versión del slide segura para mandarle a un estudiante: nunca
+    incluye `correcta` antes de que el docente cierre el slide y se
+    revele el resultado (si no, cualquier estudiante podría leer la
+    respuesta correcta directamente del payload del evento).
+    """
+    publico = dict(slide)
+    publico.pop("correcta", None)
+    return publico
+
+
 def iniciar_slide(db: Session, sesion: SesionPresentacion, slide_index: int) -> None:
     """Abre un slide para recibir respuestas."""
     sesion.estado = "activa"
     sesion.slide_actual = slide_index
     sesion.slide_abierto = True
+    sesion.slide_abierto_en = datetime.utcnow()
     if sesion.iniciado_en is None:
         sesion.iniciado_en = datetime.utcnow()
     db.commit()
@@ -1076,6 +1174,22 @@ def _tiempo_limite_ms(presentacion: Presentacion, tiene_piar: bool) -> int:
     base_s = presentacion.tiempo_pregunta_s or 20
     factor = (presentacion.factor_tiempo_piar or 1.5) if tiene_piar else 1.0
     return int(round(base_s * factor * 1000))
+
+
+def _tiempo_restante_s(sesion: SesionPresentacion, tiempo_limite_ms: int) -> int:
+    """
+    SPRINT 8, Parte A — cuánto tiempo le queda a ESTE estudiante en la
+    pregunta actual, calculado del lado del SERVIDOR a partir de
+    sesion.slide_abierto_en (nunca del reloj del celular, que se detiene
+    si el navegador queda en background/suspendido). Nunca negativo — un
+    estudiante que reconecta tarde simplemente ve 0s, no un número
+    negativo sin sentido.
+    """
+    if not sesion.slide_abierto or not sesion.slide_abierto_en:
+        return 0
+    transcurrido_ms = (datetime.utcnow() - sesion.slide_abierto_en).total_seconds() * 1000
+    restante_ms = tiempo_limite_ms - transcurrido_ms
+    return max(0, int(restante_ms / 1000))
 
 
 def _calcular_puntos(
@@ -1283,6 +1397,86 @@ def calcular_podio(db: Session, sesion: SesionPresentacion, presentacion: Presen
         ranking.append({"nombre": nombre, "puntaje_acumulado": puntos, "cambio_posicion": cambio})
 
     return {"ranking": ranking, "podio_top5": ranking[:5]}
+
+
+def construir_estado_sincronizacion(
+    db: Session, sesion: SesionPresentacion, presentacion: Presentacion, nombre_estudiante: str,
+) -> dict:
+    """
+    SPRINT 8, Parte A — snapshot completo para presentacion:sincronizar:
+    un estudiante que reconecta (cambió de app, bloqueó el celular, mala
+    señal) no debe depender de haberse perdido ningún evento anterior —
+    esto le alcanza para pintar la pantalla correcta sin importar en qué
+    momento de la presentación quedó colgado.
+
+    tiempo_restante_s SIEMPRE sale del servidor (_tiempo_restante_s) —
+    nunca de un timer del lado del cliente, que se detiene si el
+    navegador quedó suspendido en background.
+    """
+    if sesion.estado == "finalizada":
+        podio = calcular_podio(db, sesion, presentacion)
+        posiciones = {e["nombre"]: i for i, e in enumerate(podio["ranking"])}
+        pos = posiciones.get(nombre_estudiante)
+        entrada = podio["ranking"][pos] if pos is not None else None
+        return {
+            "finalizada": True,
+            "puntaje_acumulado": entrada["puntaje_acumulado"] if entrada else 0,
+            "posicion": (pos + 1) if pos is not None else None,
+            "total_participantes": len(podio["ranking"]),
+        }
+
+    diapositivas = presentacion.diapositivas or []
+    idx = sesion.slide_actual
+    if idx < 0 or idx >= len(diapositivas):
+        return {"finalizada": False, "slide_index": idx, "slide_activa": False}
+
+    slide = diapositivas[idx]
+    es_pregunta = slide.get("tipo") in TIPOS_PREGUNTA_SOPORTADOS
+
+    ya_respondio = False
+    if es_pregunta:
+        ya_respondio = db.query(RespuestaPresentacion).filter(
+            RespuestaPresentacion.id_sesion == sesion.id_sesion,
+            RespuestaPresentacion.slide_index == idx,
+            RespuestaPresentacion.nombre_estudiante == nombre_estudiante,
+        ).first() is not None
+
+    tiempo_restante_s = None
+    tiempo_limite_s = None
+    if es_pregunta and sesion.slide_abierto:
+        tiene_piar = _estudiante_tiene_piar(db, presentacion.id_grupo, nombre_estudiante)
+        tiempo_limite_ms = _tiempo_limite_ms(presentacion, tiene_piar)
+        tiempo_restante_s = _tiempo_restante_s(sesion, tiempo_limite_ms)
+        # tiempo_limite_s (el límite COMPLETO, no el restante) viaja
+        # junto para que el cliente pueda reconstruir cuánto tiempo ya
+        # pasó — necesario para que tiempo_respuesta_ms, si el
+        # estudiante responde después de reconectar, siga reflejando el
+        # tiempo real transcurrido desde que la pregunta abrió, no sólo
+        # desde que se reconectó (ver join.html: aplicarEstadoSincronizado).
+        tiempo_limite_s = round(tiempo_limite_ms / 1000)
+
+    puntaje_acumulado = 0
+    posicion = None
+    if es_pregunta:
+        podio = calcular_podio(db, sesion, presentacion)
+        posiciones = {e["nombre"]: i for i, e in enumerate(podio["ranking"])}
+        pos = posiciones.get(nombre_estudiante)
+        if pos is not None:
+            puntaje_acumulado = podio["ranking"][pos]["puntaje_acumulado"]
+            posicion = pos + 1
+
+    return {
+        "finalizada": False,
+        "slide_index": idx,
+        "slide_activa": es_pregunta,
+        "slide_data": _slide_publico(slide) if es_pregunta else None,
+        "slide_abierto": bool(sesion.slide_abierto) if es_pregunta else False,
+        "tiempo_restante_s": tiempo_restante_s,
+        "tiempo_limite_s": tiempo_limite_s,
+        "ya_respondio": ya_respondio,
+        "puntaje_acumulado": puntaje_acumulado,
+        "posicion": posicion,
+    }
 
 
 # ═══════════════════════════════════════════════════════════════

@@ -321,6 +321,14 @@ def apply_migrations():
         print("✅ Migración: columna 'secciones' agregada a 'presentaciones'")
         _backfill_secciones_presentaciones_existentes()
 
+    # ── SPRINT 8, Parte A — reconexión: tiempo restante server-truthful ──
+    cols_sesion = [c["name"] for c in inspect(engine).get_columns("sesiones_presentacion")]
+    if "slide_abierto_en" not in cols_sesion:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE sesiones_presentacion ADD COLUMN slide_abierto_en DATETIME"))
+            conn.commit()
+        print("✅ Migración: columna 'slide_abierto_en' agregada a 'sesiones_presentacion'")
+
     # Backfill uni-personal: cada docente sin id_institucion recibe una
     # Institucion nueva a su nombre. Idempotente — si ya tiene, no toca.
     _backfill_instituciones_unipersonales()
