@@ -45,6 +45,33 @@
         @media (prefers-reduced-motion: reduce) {
             .pd-revelada, .pd-podio-lugar { animation: none; }
         }
+
+        /* SPRINT 8, Parte C — modo presentación (pantalla completa).
+           La diapositiva ocupa todo; el panel de control del docente
+           pasa de columna fija a superpuesto flotante y plegable, para
+           no robarle ancho al contenido (un diagrama SVG necesita el
+           ancho completo). */
+        #pantalla-vivo.modo-presentacion #slide-seccion { width: 100% !important; }
+        #pantalla-vivo.modo-presentacion #control-docente-aside {
+            position: fixed; bottom: 1rem; right: 1rem; z-index: 40;
+            width: min(340px, 92vw); max-height: 50vh; overflow-y: auto;
+            border-radius: 1rem; box-shadow: 0 10px 40px rgba(0,0,0,.35);
+            border-left: none;
+        }
+        #pantalla-vivo.modo-presentacion #btn-plegar-control { display: inline-block !important; }
+        #pantalla-vivo.modo-presentacion #control-docente-aside.control-plegado #control-plegable,
+        #pantalla-vivo.modo-presentacion #control-docente-aside.control-plegado .mt-auto {
+            display: none;
+        }
+        /* Tipografía y SVG escalados con el tamaño real de pantalla —
+           lo que se lee en un portátil no se lee en un proyector desde
+           la última fila. clamp() crece con el viewport de la pantalla
+           completa (normalmente mucho más grande que la ventana normal). */
+        #pantalla-vivo.modo-presentacion #slide-proyectable h2 { font-size: clamp(2.25rem, 5vw, 5.5rem) !important; }
+        #pantalla-vivo.modo-presentacion #slide-proyectable p,
+        #pantalla-vivo.modo-presentacion #slide-proyectable div.leading-relaxed { font-size: clamp(1.15rem, 2.2vw, 2.25rem) !important; }
+        #pantalla-vivo.modo-presentacion #slide-proyectable svg { max-height: min(65vh, 620px) !important; }
+        #pantalla-vivo.modo-presentacion #slide-opciones-proyeccion { font-size: clamp(1rem, 1.8vw, 1.75rem) !important; }
     </style>
 </head>
 <body class="bg-gray-50">
@@ -136,13 +163,13 @@
              un panel lateral que de verdad le quita ancho al slide
              cuando está abierto (necesario para que un diagrama SVG
              recupere el ancho completo al cerrarlo). -->
-        <section class="w-full lg:w-[70%] flex" style="background: var(--brand-dark, #0B3D2E);">
+        <section id="slide-seccion" class="w-full lg:w-[70%] flex" style="background: var(--brand-dark, #0B3D2E);">
             <div id="slide-proyectable" class="flex-1 min-w-0 flex items-center justify-center p-8 lg:p-16 text-white"></div>
 
             <aside id="panel-posiciones" class="hidden w-72 flex-shrink-0 border-l p-4 overflow-y-auto text-white" style="border-color: rgba(255,255,255,.12);">
                 <div class="flex items-center justify-between mb-3">
                     <p class="text-xs uppercase tracking-widest opacity-70">Tabla de posiciones</p>
-                    <button onclick="alternarPanelPosiciones()" class="opacity-60 hover:opacity-100" aria-label="Cerrar tabla de posiciones (tecla T)">
+                    <button onclick="alternarPanelPosiciones()" class="opacity-60 hover:opacity-100" aria-label="Cerrar tabla de posiciones (tecla P)">
                         <i class="fas fa-xmark"></i>
                     </button>
                 </div>
@@ -154,16 +181,28 @@
             </aside>
         </section>
 
-        <!-- Derecha 30% — control del docente -->
-        <aside class="w-full lg:w-[30%] bg-white p-6 flex flex-col gap-5 border-l border-gray-100">
+        <!-- Derecha 30% — control del docente. En modo presentación
+             (SPRINT 8, Parte C) esta aside se vuelve un panel flotante
+             plegable sobre la diapositiva, en vez de restarle ancho. -->
+        <aside id="control-docente-aside" class="w-full lg:w-[30%] bg-white p-6 flex flex-col gap-5 border-l border-gray-100">
             <div class="flex items-center justify-between">
                 <span id="control-slide-pos" class="text-xs font-bold uppercase tracking-wide text-gray-400"></span>
-                <span id="control-codigo" class="text-xs font-mono bg-gray-100 px-2 py-1 rounded"></span>
+                <div class="flex items-center gap-2">
+                    <span id="control-codigo" class="text-xs font-mono bg-gray-100 px-2 py-1 rounded"></span>
+                    <button onclick="alternarModoPresentacion()" class="text-gray-400 hover:text-gray-700" aria-label="Modo presentación (tecla F)" title="Modo presentación (F)">
+                        <i id="icono-pantalla-completa" class="fas fa-expand"></i>
+                    </button>
+                    <button id="btn-plegar-control" onclick="alternarPliegueControl()" class="hidden text-gray-400 hover:text-gray-700" aria-label="Plegar panel">
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                </div>
             </div>
+
+            <div id="control-plegable" class="flex flex-col gap-5">
 
             <button onclick="alternarPanelPosiciones()" class="flex items-center justify-between bg-gray-50 hover:bg-gray-100 rounded-xl px-4 py-2.5 text-sm font-semibold text-gray-700">
                 <span><i class="fas fa-ranking-star mr-2" style="color: var(--brand-primary, #1D9E75);"></i>Tabla de posiciones</span>
-                <span class="text-xs text-gray-400 font-mono">T</span>
+                <span class="text-xs text-gray-400 font-mono">P</span>
             </button>
 
             <div id="control-contador" class="hidden bg-gray-50 rounded-xl p-4 text-center">
@@ -177,6 +216,8 @@
                 <p class="text-xs font-bold uppercase tracking-wide text-amber-700 mb-1"><i class="fas fa-comment-dots mr-1"></i>Qué decir</p>
                 <p id="control-notas-texto" class="text-sm text-amber-900"></p>
             </div>
+
+            </div><!-- /control-plegable -->
 
             <div class="mt-auto flex flex-col gap-2">
                 <button id="btn-iniciar-pregunta" onclick="iniciarPregunta()" class="hidden w-full py-3 rounded-xl font-bold text-white" style="background: var(--brand-amber, #F5B731); color: var(--brand-dark, #0B3D2E);">
@@ -1046,14 +1087,60 @@
         document.getElementById('panel-posiciones').classList.toggle('hidden', !abierto);
     }
 
-    // Atajo de teclado "T" — sólo mientras la sesión en vivo está en
+    // ── SPRINT 8, Parte C — modo presentación (pantalla completa) ───
+    function _elementoFullscreen() {
+        return document.fullscreenElement || document.webkitFullscreenElement || null;
+    }
+
+    function alternarModoPresentacion() {
+        if (_elementoFullscreen()) {
+            if (document.exitFullscreen) document.exitFullscreen();
+            else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+            return;
+        }
+        const el = document.getElementById('pantalla-vivo');
+        // Prefijos webkit — Safari todavía los requiere.
+        if (el.requestFullscreen) el.requestFullscreen();
+        else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+    }
+
+    function _sincronizarEstadoModoPresentacion() {
+        const activo = !!_elementoFullscreen();
+        document.getElementById('pantalla-vivo').classList.toggle('modo-presentacion', activo);
+        const icono = document.getElementById('icono-pantalla-completa');
+        if (icono) icono.className = activo ? 'fas fa-compress' : 'fas fa-expand';
+        // Si el navegador salió de pantalla completa por su cuenta (Esc,
+        // gesto del sistema), el panel de control vuelve a su estado
+        // normal — nunca queda plegado-y-flotante sin la clase que lo
+        // hace plegable.
+        if (!activo) document.getElementById('control-docente-aside').classList.remove('control-plegado');
+    }
+    document.addEventListener('fullscreenchange', _sincronizarEstadoModoPresentacion);
+    document.addEventListener('webkitfullscreenchange', _sincronizarEstadoModoPresentacion);
+
+    function alternarPliegueControl() {
+        document.getElementById('control-docente-aside').classList.toggle('control-plegado');
+    }
+
+    // Atajos de teclado — sólo mientras la sesión en vivo está en
     // pantalla, y nunca si el foco está en un campo de texto.
     document.addEventListener('keydown', (e) => {
-        if (e.key.toLowerCase() !== 't') return;
         if (!document.getElementById('pantalla-vivo').classList.contains('activa')) return;
         const activo = document.activeElement;
         if (activo && (activo.tagName === 'INPUT' || activo.tagName === 'TEXTAREA' || activo.isContentEditable)) return;
-        alternarPanelPosiciones();
+
+        const tecla = e.key.toLowerCase();
+        if (tecla === 'p') {
+            alternarPanelPosiciones();
+        } else if (tecla === 'f') {
+            alternarModoPresentacion();
+        } else if (e.key === 'ArrowRight') {
+            irSiguiente();
+        } else if (e.key === 'ArrowLeft') {
+            if (PD.slideIndex > 0) irASlide(PD.slideIndex - 1);
+        }
+        // Esc lo maneja el navegador solo (sale de fullscreen); el
+        // listener de fullscreenchange arriba deja la interfaz normal.
     });
 
     // SPRINT 7, Parte C — podio PARCIAL al cerrar la última pregunta de

@@ -782,6 +782,13 @@ class SesionPresentacion(Base):
     estado = Column(String(20), nullable=False, default="esperando")  # esperando/activa/finalizada
     slide_actual = Column(Integer, nullable=False, default=0)
     slide_abierto = Column(Boolean, nullable=False, default=False)
+    # SPRINT 8, Parte A: momento en que se abrió el slide_actual — fuente
+    # de verdad del lado del SERVIDOR para calcular tiempo restante de
+    # una pregunta. Un celular suspendido/reconectado no puede confiar en
+    # su propio setInterval (se detiene en background); el cliente pide
+    # el estado real vía presentacion:sincronizar y este campo es de
+    # dónde sale "cuánto falta".
+    slide_abierto_en = Column(DateTime, nullable=True)
     iniciado_en = Column(DateTime, nullable=True)
     finalizado_en = Column(DateTime, nullable=True)
     creado_en = Column(DateTime, default=datetime.utcnow, nullable=False)
