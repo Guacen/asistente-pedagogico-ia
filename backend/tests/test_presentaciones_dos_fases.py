@@ -38,10 +38,25 @@ def _patch_session_local(monkeypatch, test_engine):
     monkeypatch.setattr(presentaciones_module, "SessionLocal", Session)
 
 
-def _crear_presentacion_generando(db_session, docente, grupo):
+def _crear_presentacion_generando(db_session, docente, grupo, n_contenido=1, n_preguntas=0):
+    """SPRINT 7: presentacion.diapositivas ya no arranca vacío — el
+    endpoint real lo pre-llena con la separadora + placeholders
+    "pendiente" del tamaño exacto de la sección ANTES de lanzar el
+    background (necesario para que las escrituras por índice de
+    _ejecutar_generacion_seccion caigan en el lugar correcto). Se
+    replica esa construcción acá a mano, sin pasar por
+    SeccionRequest/pydantic, para poder usar los mismos conteos que
+    cada test ya usaba (algunos por debajo del mínimo ge=4 del schema
+    HTTP, que no aplica en estos tests de bajo nivel)."""
+    diapositivas = [{"tipo": "separador", "titulo": "T"}]
+    diapositivas.extend({"tipo": "pendiente", "titulo": "T"} for _ in range(n_contenido + n_preguntas))
+    secciones = [{
+        "tema": "T", "n_slides_contenido": n_contenido, "n_preguntas": n_preguntas,
+        "inicio": 0, "fin": len(diapositivas) - 1, "estado": "generando", "error_generacion": None,
+    }]
     presentacion = Presentacion(
         id_docente=docente.id_docente, id_grupo=grupo.id_grupo,
-        titulo="T", tema="T", diapositivas=[], estado="generando",
+        titulo="T", tema="T", diapositivas=diapositivas, secciones=secciones, estado="generando",
     )
     db_session.add(presentacion)
     db_session.commit()
@@ -81,10 +96,10 @@ def test_quince_diapositivas_disparan_quince_llamadas_de_relleno(db_session, tes
 
     docente = seed_docente["docente"]
     grupo = seed_docente["grupo"]
-    presentacion = _crear_presentacion_generando(db_session, docente, grupo)
+    presentacion = _crear_presentacion_generando(db_session, docente, grupo, n_contenido=10, n_preguntas=5)
 
     asyncio.run(presentaciones_module._ejecutar_generacion_en_background(
-        presentacion.id_presentacion, grupo.id_grupo, "T", 10, 5, ["multiple"], docente.id_docente,
+        presentacion.id_presentacion, grupo.id_grupo, ["multiple"], docente.id_docente,
     ))
 
     # 1 sola llamada de fase 1 (el índice completo en un solo pedido)...
@@ -96,7 +111,8 @@ def test_quince_diapositivas_disparan_quince_llamadas_de_relleno(db_session, tes
 
     db_session.refresh(presentacion)
     assert presentacion.estado == "lista"
-    assert len(presentacion.diapositivas) == 15
+    # 15 diapositivas + 1 separadora de sección.
+    assert len(presentacion.diapositivas) == 16
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -124,23 +140,23 @@ def test_fallo_de_una_diapositiva_no_aborta_las_demas(db_session, test_engine, s
 
     docente = seed_docente["docente"]
     grupo = seed_docente["grupo"]
-    presentacion = _crear_presentacion_generando(db_session, docente, grupo)
+    presentacion = _crear_presentacion_generando(db_session, docente, grupo, n_contenido=3, n_preguntas=0)
 
     asyncio.run(presentaciones_module._ejecutar_generacion_en_background(
-        presentacion.id_presentacion, grupo.id_grupo, "T", 3, 0, ["multiple"], docente.id_docente,
+        presentacion.id_presentacion, grupo.id_grupo, ["multiple"], docente.id_docente,
     ))
 
     db_session.refresh(presentacion)
     # La presentación entera NO se aborta — sigue quedando 'lista'.
     assert presentacion.estado == "lista"
     tipos = [d["tipo"] for d in presentacion.diapositivas]
-    assert tipos == ["contenido", "error", "contenido"]
-    assert presentacion.diapositivas[1]["titulo"] == "SIEMPRE FALLA"
-    assert "mensaje" in presentacion.diapositivas[1]
+    assert tipos == ["separador", "contenido", "error", "contenido"]
+    assert presentacion.diapositivas[2]["titulo"] == "SIEMPRE FALLA"
+    assert "mensaje" in presentacion.diapositivas[2]
     # Las otras dos diapositivas sí llegaron completas, sin verse
     # afectadas por el fallo de la del medio.
-    assert presentacion.diapositivas[0]["titulo"] == "Buena 1"
-    assert presentacion.diapositivas[2]["titulo"] == "Buena 2"
+    assert presentacion.diapositivas[1]["titulo"] == "Buena 1"
+    assert presentacion.diapositivas[3]["titulo"] == "Buena 2"
     # Reintentó exactamente 1 vez la que siempre falla + 1 intento cada
     # una de las 2 buenas = 4 llamadas totales (no más, no cuelga en un
     # loop infinito de reintentos).
@@ -167,15 +183,15 @@ def test_diapositiva_que_falla_una_vez_y_luego_funciona_se_recupera(db_session, 
 
     docente = seed_docente["docente"]
     grupo = seed_docente["grupo"]
-    presentacion = _crear_presentacion_generando(db_session, docente, grupo)
+    presentacion = _crear_presentacion_generando(db_session, docente, grupo, n_contenido=1, n_preguntas=0)
 
     asyncio.run(presentaciones_module._ejecutar_generacion_en_background(
-        presentacion.id_presentacion, grupo.id_grupo, "T", 1, 0, ["multiple"], docente.id_docente,
+        presentacion.id_presentacion, grupo.id_grupo, ["multiple"], docente.id_docente,
     ))
 
     db_session.refresh(presentacion)
     assert presentacion.estado == "lista"
-    assert presentacion.diapositivas[0]["tipo"] == "contenido"
+    assert presentacion.diapositivas[1]["tipo"] == "contenido"
     assert llamadas["n"] == 2
 
 
@@ -208,10 +224,10 @@ def test_respeta_el_limite_de_concurrencia_en_fase_2(db_session, test_engine, se
 
     docente = seed_docente["docente"]
     grupo = seed_docente["grupo"]
-    presentacion = _crear_presentacion_generando(db_session, docente, grupo)
+    presentacion = _crear_presentacion_generando(db_session, docente, grupo, n_contenido=n_slides, n_preguntas=0)
 
     asyncio.run(presentaciones_module._ejecutar_generacion_en_background(
-        presentacion.id_presentacion, grupo.id_grupo, "T", n_slides, 0, ["multiple"], docente.id_docente,
+        presentacion.id_presentacion, grupo.id_grupo, ["multiple"], docente.id_docente,
     ))
 
     assert estado["maximo"] <= presentaciones_module._CONCURRENCIA_MAXIMA_RELLENO
@@ -221,7 +237,7 @@ def test_respeta_el_limite_de_concurrencia_en_fase_2(db_session, test_engine, se
 
     db_session.refresh(presentacion)
     assert presentacion.estado == "lista"
-    assert len(presentacion.diapositivas) == n_slides
+    assert len(presentacion.diapositivas) == n_slides + 1  # + separadora
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -244,10 +260,10 @@ def test_emite_esqueleto_y_slide_lista_progresivamente(db_session, test_engine, 
 
     docente = seed_docente["docente"]
     grupo = seed_docente["grupo"]
-    presentacion = _crear_presentacion_generando(db_session, docente, grupo)
+    presentacion = _crear_presentacion_generando(db_session, docente, grupo, n_contenido=2, n_preguntas=0)
 
     asyncio.run(presentaciones_module._ejecutar_generacion_en_background(
-        presentacion.id_presentacion, grupo.id_grupo, "T", 2, 0, ["multiple"], docente.id_docente,
+        presentacion.id_presentacion, grupo.id_grupo, ["multiple"], docente.id_docente,
     ))
 
     eventos = [c.args[0] for c in emit_mock.call_args_list]

@@ -60,14 +60,40 @@ def _slides_canned() -> list[dict]:
 
 
 def _esqueleto_canned() -> list[dict]:
-    """Esqueleto (fase 1) canned — 2 contenido + 2 pregunta,
-    intercalados, que _generar_relleno_* de abajo sabe rellenar."""
+    """Esqueleto (fase 1) canned — 4 contenido + 2 pregunta,
+    intercalados, que _generar_relleno_* de abajo sabe rellenar. 4
+    contenido a propósito: SeccionRequest.n_slides_contenido exige
+    ge=4, así que el default de _body_generar() (abajo) tiene que
+    poder pasar la validación del schema Y calzar con este mock fijo."""
     return [
         {"tipo": "contenido", "titulo": "Qué es la media aritmética"},
         {"tipo": "pregunta", "titulo": "¿Cuál es la media de 2, 4 y 6?"},
         {"tipo": "contenido", "titulo": "Para qué sirve la media"},
+        {"tipo": "contenido", "titulo": "Cómo se calcula paso a paso"},
+        {"tipo": "contenido", "titulo": "Errores comunes al calcularla"},
         {"tipo": "pregunta", "titulo": "¿Es útil la media?"},
     ]
+
+
+def _body_generar(grupo_id: str, tema: str = "Media aritmética", n_slides_contenido: int = 4, n_preguntas: int = 2, **extra) -> dict:
+    """SPRINT 7: el endpoint ahora recibe `secciones` (1 a 5 temas) en
+    vez de tema/n_slides_contenido/n_preguntas sueltos — este helper
+    arma el body de una sola sección (el caso más común en estos tests,
+    que no son específicos de multi-sección) sin repetir la estructura
+    en cada test.
+
+    Default 2 contenido / 2 preguntas para que calce EXACTO con
+    _esqueleto_canned() (el mock autouse de este archivo siempre
+    devuelve ese conteo fijo sin importar lo pedido) — si no calzan, el
+    array pre-reservado según lo pedido queda con posiciones "pendiente"
+    que nadie llena nunca (el mock no simula el reintento/validación de
+    conteo del _generar_esqueleto_ia real)."""
+    body = {
+        "grupo_id": grupo_id,
+        "secciones": [{"tema": tema, "n_slides_contenido": n_slides_contenido, "n_preguntas": n_preguntas}],
+    }
+    body.update(extra)
+    return body
 
 
 @pytest.fixture(autouse=True)
@@ -142,17 +168,18 @@ def _crear_sesion(db_session, presentacion, codigo="ABC234"):
 # ya está disponible en un GET inmediatamente después.
 
 def test_generar_presentacion(client, seed_docente):
-    r = client.post("/api/presentaciones/generar", json={
-        "grupo_id": seed_docente["grupo"].id_grupo,
-        "tema": "Media aritmética",
-        "n_slides_contenido": 4,
-    })
+    r = client.post("/api/presentaciones/generar", json=_body_generar(
+        seed_docente["grupo"].id_grupo, tema="Media aritmética",
+    ))
     assert r.status_code == 202, r.text
     body = r.json()
     assert body["titulo"]
     assert body["tema"] == "Media aritmética"
     assert body["estado"] == "generando"
-    assert body["diapositivas"] == []
+    # SPRINT 7: la separadora de la (única) sección ya se conoce sin IA
+    # y se persiste desde la creación — el array NO arranca vacío.
+    assert body["diapositivas"][0] == {"tipo": "separador", "titulo": "Media aritmética"}
+    assert len(body["secciones"]) == 1
     pid = body["id_presentacion"]
 
     r2 = client.get(f"/api/presentaciones/{pid}")
@@ -160,15 +187,15 @@ def test_generar_presentacion(client, seed_docente):
     body2 = r2.json()
     assert body2["estado"] == "lista"
     tipos = [d["tipo"] for d in body2["diapositivas"]]
-    assert tipos == ["contenido", "multiple", "contenido", "multiple"]
+    assert tipos[0] == "separador"
+    assert tipos.count("contenido") == 4
+    assert tipos.count("multiple") == 2
+    assert len(tipos) == 7
 
 
 def test_generar_presentacion_grupo_ajeno_devuelve_404(client, seed_docente_b):
     """Un docente no puede generar presentaciones para un grupo que no es suyo."""
-    r = client.post("/api/presentaciones/generar", json={
-        "grupo_id": seed_docente_b["grupo"].id_grupo,
-        "tema": "Media aritmética",
-    })
+    r = client.post("/api/presentaciones/generar", json=_body_generar(seed_docente_b["grupo"].id_grupo))
     assert r.status_code == 404
 
 
@@ -183,10 +210,7 @@ def test_generar_presentacion_sin_slides_validas_deja_estado_error(client, seed_
     monkeypatch.setattr(
         presentaciones_module, "_generar_esqueleto_ia", AsyncMock(return_value=[]),
     )
-    r = client.post("/api/presentaciones/generar", json={
-        "grupo_id": seed_docente["grupo"].id_grupo,
-        "tema": "Tema random",
-    })
+    r = client.post("/api/presentaciones/generar", json=_body_generar(seed_docente["grupo"].id_grupo, tema="Tema random"))
     assert r.status_code == 202
     pid = r.json()["id_presentacion"]
 
@@ -211,10 +235,7 @@ def test_generar_presentacion_error_proveedor_ia_deja_estado_error_con_mensaje_r
         presentaciones_module, "_generar_esqueleto_ia",
         AsyncMock(side_effect=RuntimeError("proveedor no configurado")),
     )
-    r = client.post("/api/presentaciones/generar", json={
-        "grupo_id": seed_docente["grupo"].id_grupo,
-        "tema": "Tema random",
-    })
+    r = client.post("/api/presentaciones/generar", json=_body_generar(seed_docente["grupo"].id_grupo, tema="Tema random"))
     assert r.status_code == 202
     pid = r.json()["id_presentacion"]
 
@@ -233,10 +254,7 @@ def test_join_codigo_invalido(client_no_auth):
 
 
 def test_join_codigo_valido_devuelve_datos_publicos(client, client_no_auth, seed_docente, db_session):
-    r_gen = client.post("/api/presentaciones/generar", json={
-        "grupo_id": seed_docente["grupo"].id_grupo,
-        "tema": "Media aritmética",
-    })
+    r_gen = client.post("/api/presentaciones/generar", json=_body_generar(seed_docente["grupo"].id_grupo))
     presentacion_id = r_gen.json()["id_presentacion"]
 
     r_iniciar = client.post(f"/api/presentaciones/{presentacion_id}/iniciar")
@@ -258,10 +276,7 @@ def test_iniciar_sesion_presentacion_ajena_devuelve_404(client_two_docentes):
     grupo_a = client_two_docentes["data"]["a"]["grupo"]
 
     client_two_docentes["as_a"]()
-    r_gen = c.post("/api/presentaciones/generar", json={
-        "grupo_id": grupo_a.id_grupo,
-        "tema": "Media aritmética",
-    })
+    r_gen = c.post("/api/presentaciones/generar", json=_body_generar(grupo_a.id_grupo))
     assert r_gen.status_code == 202, r_gen.text
     presentacion_id = r_gen.json()["id_presentacion"]
 
@@ -271,15 +286,14 @@ def test_iniciar_sesion_presentacion_ajena_devuelve_404(client_two_docentes):
 
 
 def test_obtener_presentacion_incluye_diapositivas(client, seed_docente):
-    r_gen = client.post("/api/presentaciones/generar", json={
-        "grupo_id": seed_docente["grupo"].id_grupo,
-        "tema": "Media aritmética",
-    })
+    r_gen = client.post("/api/presentaciones/generar", json=_body_generar(seed_docente["grupo"].id_grupo))
     presentacion_id = r_gen.json()["id_presentacion"]
 
     r = client.get(f"/api/presentaciones/{presentacion_id}")
     assert r.status_code == 200, r.text
-    assert len(r.json()["diapositivas"]) == 4
+    # separadora + 6 diapositivas — el mock de esqueleto (autouse)
+    # siempre devuelve 4 contenido + 2 pregunta sin importar lo pedido.
+    assert len(r.json()["diapositivas"]) == 7
 
 
 def test_obtener_presentacion_ajena_devuelve_404(client_two_docentes):
@@ -287,9 +301,7 @@ def test_obtener_presentacion_ajena_devuelve_404(client_two_docentes):
     grupo_a = client_two_docentes["data"]["a"]["grupo"]
 
     client_two_docentes["as_a"]()
-    r_gen = c.post("/api/presentaciones/generar", json={
-        "grupo_id": grupo_a.id_grupo, "tema": "Media aritmética",
-    })
+    r_gen = c.post("/api/presentaciones/generar", json=_body_generar(grupo_a.id_grupo))
     presentacion_id = r_gen.json()["id_presentacion"]
 
     client_two_docentes["as_b"]()
@@ -298,10 +310,7 @@ def test_obtener_presentacion_ajena_devuelve_404(client_two_docentes):
 
 
 def test_listar_presentaciones_incluye_sesiones(client, seed_docente):
-    r_gen = client.post("/api/presentaciones/generar", json={
-        "grupo_id": seed_docente["grupo"].id_grupo,
-        "tema": "Media aritmética",
-    })
+    r_gen = client.post("/api/presentaciones/generar", json=_body_generar(seed_docente["grupo"].id_grupo))
     presentacion_id = r_gen.json()["id_presentacion"]
     client.post(f"/api/presentaciones/{presentacion_id}/iniciar")
 
@@ -310,7 +319,8 @@ def test_listar_presentaciones_incluye_sesiones(client, seed_docente):
     body = r_lista.json()
     assert len(body) == 1
     assert body[0]["id_presentacion"] == presentacion_id
-    assert body[0]["n_slides"] == 4
+    assert body[0]["n_slides"] == 7
+    assert body[0]["n_secciones"] == 1
     assert len(body[0]["sesiones"]) == 1
 
 
@@ -569,12 +579,9 @@ def test_generar_presentacion_deja_estado_error_si_esqueleto_nunca_coincide(clie
     monkeypatch.setattr(
         presentaciones_module, "_generar_esqueleto_ia", AsyncMock(return_value=[]),
     )
-    r = client.post("/api/presentaciones/generar", json={
-        "grupo_id": seed_docente["grupo"].id_grupo,
-        "tema": "Tema random",
-        "n_slides_contenido": 8,
-        "n_preguntas": 4,
-    })
+    r = client.post("/api/presentaciones/generar", json=_body_generar(
+        seed_docente["grupo"].id_grupo, tema="Tema random", n_slides_contenido=8, n_preguntas=4,
+    ))
     assert r.status_code == 202
     pid = r.json()["id_presentacion"]
     r2 = client.get(f"/api/presentaciones/{pid}/estado")
@@ -582,43 +589,95 @@ def test_generar_presentacion_deja_estado_error_si_esqueleto_nunca_coincide(clie
 
 
 def test_generar_presentacion_rechaza_rango_invalido_de_conteos(client, seed_docente):
-    r = client.post("/api/presentaciones/generar", json={
-        "grupo_id": seed_docente["grupo"].id_grupo,
-        "tema": "Tema random",
-        "n_slides_contenido": 2,  # por debajo del mínimo (4)
-    })
+    r = client.post("/api/presentaciones/generar", json=_body_generar(
+        seed_docente["grupo"].id_grupo, tema="Tema random", n_slides_contenido=2,  # por debajo del mínimo (4)
+    ))
     assert r.status_code == 422
 
 
 def test_generar_presentacion_rechaza_tipos_pregunta_vacios(client, seed_docente):
-    r = client.post("/api/presentaciones/generar", json={
-        "grupo_id": seed_docente["grupo"].id_grupo,
-        "tema": "Tema random",
-        "tipos_pregunta": [],
-    })
+    r = client.post("/api/presentaciones/generar", json=_body_generar(
+        seed_docente["grupo"].id_grupo, tema="Tema random", tipos_pregunta=[],
+    ))
     assert r.status_code == 422
 
 
 def test_generar_presentacion_rechaza_mas_preguntas_que_contenido(client, seed_docente):
     """SPRINT 5, Parte A: no puede pedirse más preguntas que
-    diapositivas de contenido."""
-    r = client.post("/api/presentaciones/generar", json={
-        "grupo_id": seed_docente["grupo"].id_grupo,
-        "tema": "Tema random",
-        "n_slides_contenido": 4,
-        "n_preguntas": 5,
-    })
+    diapositivas de contenido EN LA MISMA SECCIÓN."""
+    r = client.post("/api/presentaciones/generar", json=_body_generar(
+        seed_docente["grupo"].id_grupo, tema="Tema random", n_slides_contenido=4, n_preguntas=5,
+    ))
     assert r.status_code == 422
 
 
 def test_generar_presentacion_acepta_preguntas_igual_a_contenido(client, seed_docente):
+    r = client.post("/api/presentaciones/generar", json=_body_generar(
+        seed_docente["grupo"].id_grupo, tema="Tema random", n_slides_contenido=4, n_preguntas=4,
+    ))
+    assert r.status_code == 202, r.text
+
+
+# ═══════════════════════════════════════════════════════════════
+# 8b. SPRINT 7, Parte A/B — validaciones específicas de secciones
+# ═══════════════════════════════════════════════════════════════
+
+def test_generar_presentacion_acepta_hasta_5_secciones(client, seed_docente):
+    secciones = [{"tema": f"Tema {i}", "n_slides_contenido": 4, "n_preguntas": 2} for i in range(5)]
     r = client.post("/api/presentaciones/generar", json={
-        "grupo_id": seed_docente["grupo"].id_grupo,
-        "tema": "Tema random",
-        "n_slides_contenido": 4,
-        "n_preguntas": 4,
+        "grupo_id": seed_docente["grupo"].id_grupo, "secciones": secciones,
     })
     assert r.status_code == 202, r.text
+    assert len(r.json()["secciones"]) == 5
+
+
+def test_generar_presentacion_rechaza_mas_de_5_secciones(client, seed_docente):
+    secciones = [{"tema": f"Tema {i}", "n_slides_contenido": 4, "n_preguntas": 2} for i in range(6)]
+    r = client.post("/api/presentaciones/generar", json={
+        "grupo_id": seed_docente["grupo"].id_grupo, "secciones": secciones,
+    })
+    assert r.status_code == 422
+
+
+def test_generar_presentacion_rechaza_cero_secciones(client, seed_docente):
+    r = client.post("/api/presentaciones/generar", json={
+        "grupo_id": seed_docente["grupo"].id_grupo, "secciones": [],
+    })
+    assert r.status_code == 422
+
+
+def test_generar_presentacion_rechaza_mas_de_60_diapositivas_en_total(client, seed_docente):
+    # 5 secciones de 25 contenido + 10 preguntas = 175, muy por encima de 60.
+    secciones = [{"tema": f"Tema {i}", "n_slides_contenido": 25, "n_preguntas": 10} for i in range(5)]
+    r = client.post("/api/presentaciones/generar", json={
+        "grupo_id": seed_docente["grupo"].id_grupo, "secciones": secciones,
+    })
+    assert r.status_code == 422
+
+
+def test_generar_presentacion_acepta_exactamente_60_diapositivas(client, seed_docente):
+    # 3 secciones de 15 contenido + 5 preguntas = 60 exacto.
+    secciones = [{"tema": f"Tema {i}", "n_slides_contenido": 15, "n_preguntas": 5} for i in range(3)]
+    r = client.post("/api/presentaciones/generar", json={
+        "grupo_id": seed_docente["grupo"].id_grupo, "secciones": secciones,
+    })
+    assert r.status_code == 202, r.text
+
+
+def test_generar_presentacion_acepta_25_de_contenido_por_seccion(client, seed_docente):
+    """SPRINT 7, Parte B: el máximo de contenido POR SECCIÓN subió de
+    15 a 25."""
+    r = client.post("/api/presentaciones/generar", json=_body_generar(
+        seed_docente["grupo"].id_grupo, tema="Tema random", n_slides_contenido=25, n_preguntas=10,
+    ))
+    assert r.status_code == 202, r.text
+
+
+def test_generar_presentacion_rechaza_mas_de_25_de_contenido_por_seccion(client, seed_docente):
+    r = client.post("/api/presentaciones/generar", json=_body_generar(
+        seed_docente["grupo"].id_grupo, tema="Tema random", n_slides_contenido=26, n_preguntas=10,
+    ))
+    assert r.status_code == 422
 
 
 # ═══════════════════════════════════════════════════════════════
