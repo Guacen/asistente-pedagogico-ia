@@ -47,7 +47,9 @@
             class="flex items-center gap-2 px-3 py-2 rounded-lg border border-blue-600 text-blue-600 hover:bg-blue-50 text-sm font-semibold">
             <i class="fas fa-file-word"></i>Boletín grupo
           </button>
-          <button id="btn-crear-presentacion" onclick="abrirModalPresentacion()" title="Crear una presentación interactiva con IA"
+          <!-- sprint archivar-presentaciones-flag: oculto por default,
+               sólo se muestra si GET /api/features dice presentaciones=true. -->
+          <button id="btn-crear-presentacion" hidden onclick="abrirModalPresentacion()" title="Crear una presentación interactiva con IA"
             class="flex items-center gap-2 px-3 py-2 rounded-lg text-white hover:opacity-90 text-sm font-semibold" style="background: var(--brand-primary);">
             <i class="fas fa-gamepad"></i>Crear presentación
           </button>
@@ -796,6 +798,24 @@ function escapeAttrMalla(s) {
 }
 
 cargar();
+
+// ── Feature flags (sprint archivar-presentaciones-flag) ─────────────
+// Presentaciones Interactivas está congelada detrás de
+// FEATURE_PRESENTACIONES — el botón nace oculto (hidden en el HTML) y
+// sólo se muestra si el backend confirma que está prendida. Público,
+// sin auth — falla en silencio (el botón se queda oculto, el default
+// seguro) si /api/features no responde.
+async function aplicarFeatureFlags() {
+    try {
+        const r = await fetch(`${window.APP_CONFIG.API_URL}/api/features`);
+        if (!r.ok) return;
+        const flags = await r.json();
+        document.getElementById('btn-crear-presentacion').hidden = !flags.presentaciones;
+    } catch (err) {
+        console.error('[grupo-panel] no se pudo consultar /api/features:', err);
+    }
+}
+aplicarFeatureFlags();
 
 // ── SPRINT 7, Parte A: secciones (temas) dinámicas del modal ────────
 const MAX_SECCIONES = 5;

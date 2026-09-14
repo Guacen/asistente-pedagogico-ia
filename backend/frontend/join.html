@@ -192,8 +192,25 @@
             <img src="assets/logo-blanco.png" alt="Maestr.ia" class="logo" onerror="this.style.display='none'">
         </div>
 
-        <!-- ═══ 1. ENTRADA ═══ -->
-        <div id="pantalla-entrada" class="pantalla activa tarjeta">
+        <!-- ═══ 0. FUNCIÓN NO DISPONIBLE (sprint archivar-presentaciones-flag) ═══
+             join.html sigue siendo accesible por URL directa incluso con
+             FEATURE_PRESENTACIONES apagado — en vez de un formulario que
+             nunca podría unirse a nada, muestra este mensaje. -->
+        <div id="pantalla-no-disponible" class="pantalla activa tarjeta centrado">
+            <div class="icono-caja">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/>
+                </svg>
+            </div>
+            <h1 class="titulo">Función no disponible</h1>
+            <p class="subtitulo">Las presentaciones interactivas no están habilitadas por ahora. Consultá con tu docente.</p>
+        </div>
+
+        <!-- ═══ 1. ENTRADA ═══ (arranca SIN 'activa' — sprint
+             archivar-presentaciones-flag: el default seguro es mostrar
+             "no disponible" hasta confirmar que el flag está prendido,
+             ver aplicarFeatureFlagJoin() más abajo.) -->
+        <div id="pantalla-entrada" class="pantalla tarjeta">
             <div class="cabecera-entrada">
                 <div class="icono-caja">
                     <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -399,12 +416,31 @@
         return (qs.get('codigo') || '').toUpperCase();
     }
 
-    document.addEventListener('DOMContentLoaded', () => {
-        const codigo = codigoDesdeUrl();
-        if (codigo) {
-            document.getElementById('input-codigo').value = codigo;
-            document.getElementById('input-nombre').focus();
+    // ── Feature flag (sprint archivar-presentaciones-flag) ─────────────
+    // Default seguro: la pantalla "no disponible" arranca activa (ver
+    // HTML arriba) y ésta es la ÚNICA que puede activar la de entrada —
+    // si /api/features no responde, el estudiante se queda con el
+    // mensaje claro, nunca con un formulario que no podría unirse a
+    // nada de todos modos (la API real igual respondería 404).
+    async function aplicarFeatureFlagJoin() {
+        try {
+            const r = await fetch(`${window.location.origin}/api/features`);
+            if (!r.ok) return;
+            const flags = await r.json();
+            if (!flags.presentaciones) return;
+            const codigo = codigoDesdeUrl();
+            if (codigo) {
+                document.getElementById('input-codigo').value = codigo;
+            }
+            mostrarPantalla('pantalla-entrada');
+            if (codigo) document.getElementById('input-nombre').focus();
+        } catch (err) {
+            console.error('[join] no se pudo consultar /api/features:', err);
         }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        aplicarFeatureFlagJoin();
     });
 
     function mostrarPantalla(id) {
