@@ -36,7 +36,23 @@ from models import Docente, Grupo, Presentacion, RespuestaPresentacion, SesionPr
 from rate_limiter import limiter
 from security_utils import sanitizar_texto
 
-router = APIRouter(prefix="/api/presentaciones", tags=["presentaciones"])
+def _verificar_feature_habilitada() -> None:
+    """
+    Feature flag (sprint archivar-presentaciones-flag) — con
+    FEATURE_PRESENTACIONES apagado (default), TODA esta API responde
+    404, indistinguible de una ruta que no existe. Es una dependency de
+    router (aplica a cada endpoint de acá, incluido el público
+    GET /join/{codigo}) — código, modelos y tablas siguen intactos, sólo
+    queda inalcanzable hasta que se prenda la env var de nuevo.
+    """
+    if not settings.FEATURE_PRESENTACIONES:
+        raise HTTPException(status_code=404, detail="Not Found")
+
+
+router = APIRouter(
+    prefix="/api/presentaciones", tags=["presentaciones"],
+    dependencies=[Depends(_verificar_feature_habilitada)],
+)
 logger = logging.getLogger(__name__)
 
 

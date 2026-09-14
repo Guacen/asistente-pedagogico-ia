@@ -23,6 +23,7 @@ import json
 import sys
 from pathlib import Path
 
+import pytest
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
@@ -30,6 +31,14 @@ from sqlalchemy.pool import StaticPool
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
+
+
+@pytest.fixture(autouse=True)
+def _feature_presentaciones_activa(monkeypatch):
+    """Ver test_presentaciones.py — este archivo también golpea
+    /api/presentaciones/* vía TestClient (test #2 más abajo)."""
+    from config import settings
+    monkeypatch.setattr(settings, "FEATURE_PRESENTACIONES", True)
 
 
 # ═══════════════════════════════════════════════════════════════

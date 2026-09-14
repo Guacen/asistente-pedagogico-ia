@@ -26,6 +26,7 @@ import time
 from pathlib import Path
 from unittest.mock import AsyncMock
 
+import pytest
 from sqlalchemy.orm import sessionmaker
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
@@ -34,6 +35,14 @@ if str(BACKEND_DIR) not in sys.path:
 
 import presentaciones as presentaciones_module  # noqa: E402
 from models import Presentacion  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def _feature_presentaciones_activa(monkeypatch):
+    """Ver test_presentaciones.py — mismo criterio, este archivo también
+    golpea /api/presentaciones/* vía TestClient."""
+    from config import settings
+    monkeypatch.setattr(settings, "FEATURE_PRESENTACIONES", True)
 
 
 def _patch_session_local(monkeypatch, test_engine):
