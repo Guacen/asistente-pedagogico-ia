@@ -348,6 +348,17 @@ def version():
     return body
 
 # ============================================================
+# FEATURE FLAGS PÚBLICOS — sprint archivar-presentaciones-flag
+# El frontend (dashboard.html, grupo-panel.html, join.html) consulta
+# esto para decidir si muestra entradas a Presentaciones Interactivas.
+# Público a propósito (sin auth): join.html lo necesita sin sesión.
+# ============================================================
+
+@app.get("/api/features")
+def features():
+    return {"presentaciones": settings.FEATURE_PRESENTACIONES}
+
+# ============================================================
 # STARTUP: crear tablas
 # ============================================================
 

@@ -48,6 +48,15 @@ class Settings(BaseSettings):
     PRESENTACIONES_MODELO_ESQUELETO: str = "claude-opus-4-5"
     PRESENTACIONES_MODELO_CONTENIDO: str = "claude-sonnet-4-5"
 
+    # Feature flag — sprint archivar-presentaciones-flag (lanzamiento de
+    # la beta gratuita). La función se CONGELA, no se borra: código,
+    # modelos, tablas y migraciones quedan intactos para retomarla
+    # después sin rehacer nada. Apagado (default) → los endpoints
+    # /api/presentaciones/* responden 404 y el frontend oculta toda
+    # entrada a la función. Se prende explícito con la env var
+    # FEATURE_PRESENTACIONES=true.
+    FEATURE_PRESENTACIONES: bool = False
+
     # Stripe
     STRIPE_SECRET_KEY: str = ""
     STRIPE_WEBHOOK_SECRET: str = ""
