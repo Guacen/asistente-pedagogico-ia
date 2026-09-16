@@ -756,6 +756,12 @@ class ApiClient {
         return this.request('/api/perfil/plan');
     }
 
+    // Sprint migraciones-aisladas — público, sin auth (ver main.py), pero
+    // el dashboard sólo lo consulta/muestra para es_admin=true.
+    async getVersion() {
+        return this.request('/api/version');
+    }
+
     // ==========================================
     // PAGOS — WOMPI (sprint wompi-pagos)
     // ==========================================
