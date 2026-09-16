@@ -235,14 +235,29 @@ async def no_cache_para_html_y_assets_estaticos(request: Request, call_next):
 #
 # ALLOWED_HOSTS_EXTRA (env var): ver config.py — para sumar el host
 # interno del healthcheck de Railway si hiciera falta, sin otro deploy.
+#
+# ⚠️ INCIDENTE POST-PR#87 (P0, sin acotar todavía): la allowlist de abajo
+# (_ALLOWED_HOSTS_OBJETIVO) devolvió 502 en TODAS las rutas justo después
+# del deploy — el healthcheck de Railway pega con un Host que no está en
+# esa lista (candidatos documentados: *.railway.internal,
+# *.up.railway.app, healthcheck.railway.app — ninguno confirmado, no hay
+# acceso a los logs de Railway desde acá para verificar cuál es el real).
+# Mientras tanto allowed_hosts=["*"] — equivale a NO validar Host, el
+# mismo comportamiento que tenía la app ANTES del PR#87 — para
+# garantizar que el sitio quede arriba. Volver a _ALLOWED_HOSTS_OBJETIVO
+# en cuanto se confirme el host real del healthcheck (mirar el log de
+# arranque del deploy que falló, o Railway → Settings → Healthcheck).
 # ============================================================
 
-_ALLOWED_HOSTS = ["usemaestria.co", "www.usemaestria.co", "testserver"]
+_ALLOWED_HOSTS_OBJETIVO = [
+    "usemaestria.co", "www.usemaestria.co", "testserver",
+    "*.railway.internal", "*.up.railway.app", "healthcheck.railway.app",
+]
 if settings.ENVIRONMENT == "development":
-    _ALLOWED_HOSTS += ["localhost", "127.0.0.1"]
-_ALLOWED_HOSTS += [h.strip() for h in settings.ALLOWED_HOSTS_EXTRA.split(",") if h.strip()]
+    _ALLOWED_HOSTS_OBJETIVO += ["localhost", "127.0.0.1"]
+_ALLOWED_HOSTS_OBJETIVO += [h.strip() for h in settings.ALLOWED_HOSTS_EXTRA.split(",") if h.strip()]
 
-app.add_middleware(TrustedHostMiddleware, allowed_hosts=_ALLOWED_HOSTS)
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=["*"])
 
 # ============================================================
 # ROUTERS API  (/api/...)
