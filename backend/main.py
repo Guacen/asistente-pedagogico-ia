@@ -15,6 +15,7 @@ Para Railway/Render (Procfile):
 """
 
 import os
+from datetime import datetime
 from pathlib import Path
 
 import socketio
@@ -289,6 +290,33 @@ app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads"
 @app.get("/health")
 def health():
     return {"status": "healthy", "app": "Asistente Pedagógico IA"}
+
+# ============================================================
+# VERSIÓN DESPLEGADA — para confirmar en una sola petición si un commit
+# ya está vivo en producción, en vez de adivinar comparando contenidos
+# de archivos (perdimos horas depurando código correcto que en realidad
+# nunca había llegado a desplegarse).
+#
+# RAILWAY_GIT_COMMIT_SHA la inyecta Railway solo en cada build — no
+# existe en dev local ni en un deploy fuera de Railway, por eso el
+# fallback a "desconocido" en vez de fallar.
+#
+# "desplegado" es el momento en que ESTE proceso arrancó (se calcula una
+# sola vez, al importar main.py) — no la hora de la request. Aproxima la
+# hora real del deploy sin depender de otra env var de Railway que no se
+# pudo confirmar que existe.
+# ============================================================
+
+_DESPLEGADO_EN = datetime.utcnow().isoformat() + "Z"
+
+
+@app.get("/api/version")
+def version():
+    commit = settings.RAILWAY_GIT_COMMIT_SHA
+    return {
+        "commit": commit[:7] if commit else "desconocido",
+        "desplegado": _DESPLEGADO_EN,
+    }
 
 # ============================================================
 # STARTUP: crear tablas

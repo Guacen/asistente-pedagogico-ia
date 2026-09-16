@@ -111,6 +111,11 @@ class Settings(BaseSettings):
     # Entorno
     ENVIRONMENT: str = "development"
 
+    # GET /api/version — Railway inyecta esta env var automáticamente con
+    # el SHA del commit que está corriendo en cada build; no hace falta
+    # (ni se debe) setearla a mano. None en dev local, donde no existe.
+    RAILWAY_GIT_COMMIT_SHA: Optional[str] = None
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
 
