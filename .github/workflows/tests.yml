@@ -8,6 +8,27 @@ on:
 jobs:
   pytest:
     runs-on: ubuntu-latest
+    # Sprint migraciones-aisladas: producción real corre en Postgres, pero
+    # toda la suite corre en SQLite, que acepta cualquier nombre de tipo
+    # por afinidad de columna sin quejarse — así fue como una migración
+    # con DATETIME (sintaxis SQLite/MySQL, inválida en Postgres) pasó por
+    # 568 tests en verde y tumbó el arranque completo en producción.
+    # Este servicio le da a tests/test_migraciones_postgres.py un
+    # Postgres real contra el cual correr TODAS las migraciones.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: maestria_test
+          POSTGRES_PASSWORD: maestria_test
+          POSTGRES_DB: maestria_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -27,6 +48,8 @@ jobs:
 
       - name: Run pytest
         working-directory: backend
+        env:
+          TEST_DATABASE_URL_POSTGRES: postgresql://maestria_test:maestria_test@localhost:5432/maestria_test
         run: python -m pytest tests/ -v
 
       - name: Dependency vulnerability scan (pip-audit)
