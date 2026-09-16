@@ -244,13 +244,13 @@ def verify_token_for_socket(token: str, db: Session) -> Optional[Docente]:
 # ENDPOINTS
 # ============================================================
 
-def _crear_token_verificacion(
-    db: Session, docente: Docente, request: Request,
-) -> str:
+def _crear_token_verificacion(db: Session, docente: Docente) -> str:
     """
     Crea un EmailVerification (24h TTL) y devuelve el link absoluto que
-    debe ir al correo. Extrae la URL base del request para que funcione
-    detrás de proxies (Railway, Cloudflare) sin hardcodear el host.
+    debe ir al correo. El dominio viene de settings.BASE_URL, NUNCA del
+    header Host de la request — Starlette arma request.base_url a partir
+    de ese header sin validarlo (CVE-2026-48710 / PYSEC-2026-161), lo que
+    permitía envenenar el link con un Host falsificado.
     """
     token = secrets.token_urlsafe(32)  # 43 chars — cabe en VARCHAR(64)
     verificacion = EmailVerification(
@@ -261,13 +261,11 @@ def _crear_token_verificacion(
     db.add(verificacion)
     db.commit()
 
-    base = str(request.base_url).rstrip("/")
+    base = settings.BASE_URL.rstrip("/")
     return f"{base}/verificar-email.html?token={token}"
 
 
-def _crear_token_reset_password(
-    db: Session, docente: Docente, request: Request,
-) -> str:
+def _crear_token_reset_password(db: Session, docente: Docente) -> str:
     """
     Crea un PasswordResetToken (1h TTL) y devuelve el link absoluto que
     debe ir al correo. Mismo patrón que `_crear_token_verificacion`.
@@ -281,7 +279,7 @@ def _crear_token_reset_password(
     db.add(reset)
     db.commit()
 
-    base = str(request.base_url).rstrip("/")
+    base = settings.BASE_URL.rstrip("/")
     return f"{base}/nueva-password.html?token={token}"
 
 
@@ -333,7 +331,7 @@ def register(
 
     # Enviar correo de verificación. Un fallo en el envío NO aborta el
     # registro — el docente puede pedir reenviar después. Loguea si falla.
-    link = _crear_token_verificacion(db, docente, request)
+    link = _crear_token_verificacion(db, docente)
     enviar_correo_verificacion(docente.email, docente.nombre_completo, link)
 
     # Emitimos el JWT igual — el frontend redirige a "verifica tu correo"
@@ -408,7 +406,7 @@ def reenviar_verificacion(
     """
     docente = db.query(Docente).filter(Docente.email == data.email).first()
     if docente and not docente.email_verificado:
-        link = _crear_token_verificacion(db, docente, request)
+        link = _crear_token_verificacion(db, docente)
         enviar_correo_verificacion(docente.email, docente.nombre_completo, link)
 
     return {"mensaje": "Si el correo existe y no está verificado, te enviamos un nuevo enlace."}
@@ -613,7 +611,7 @@ def forgot_password(
     """
     docente = db.query(Docente).filter(Docente.email == data.email).first()
     if docente:
-        link = _crear_token_reset_password(db, docente, request)
+        link = _crear_token_reset_password(db, docente)
         enviar_correo_reset_password(docente.email, docente.nombre_completo, link)
 
     return {"mensaje": "Si el correo está registrado, te enviamos un enlace para restablecer tu contraseña."}
