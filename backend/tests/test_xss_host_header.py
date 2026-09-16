@@ -6,7 +6,8 @@ el hallazgo independiente de Host header sin validar en los links de
 verificación/reset (CVE-2026-48710 / PYSEC-2026-161).
 
 Este archivo cubre:
-- TrustedHostMiddleware rechaza un Host falsificado (transporte).
+- TrustedHostMiddleware — ver ⚠️ INCIDENTE abajo, temporalmente NO
+  rechaza ningún Host (allowed_hosts=["*"]).
 - Los links de verificación/reset se arman desde settings.BASE_URL, NUNCA
   desde el header Host de la request — verificado incluso con un Host
   que SÍ está en la allowlist (testserver), para probar que ni siquiera
@@ -21,10 +22,21 @@ Este archivo cubre:
   (No hay runner de JS en este repo — pytest no ejecuta el navegador;
   éste es el mismo nivel de garantía que ya usa test_security_headers.py
   para el CSP: estático, sobre el archivo real que se sirve.)
+
+⚠️ INCIDENTE POST-PR#87 (P0, sin acotar todavía): la allowlist original
+de TrustedHostMiddleware devolvió 502 en TODAS las rutas de producción
+— el healthcheck de Railway pega con un Host que no estaba en la lista.
+Mientras tanto main.py usa allowed_hosts=["*"] (no valida Host, mismo
+comportamiento que ANTES del PR#87). test_host_falsificado_es_rechazado
+queda marcada xfail con la razón de por qué, en vez de borrada — al
+volver a _ALLOWED_HOSTS_OBJETIVO en main.py, este test debe volver a
+pasar solo (si no, es la señal de que el fix real no se aplicó).
 """
 from __future__ import annotations
 
 from pathlib import Path
+
+import pytest
 
 FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
 
@@ -33,6 +45,12 @@ FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
 # TrustedHostMiddleware
 # ═══════════════════════════════════════════════════════════════
 
+@pytest.mark.xfail(
+    reason="P0 incidente post-PR#87: allowed_hosts=['*'] temporal en main.py "
+           "mientras se confirma el Host real del healthcheck de Railway — "
+           "ver ⚠️ INCIDENTE en main.py y en el docstring de este archivo.",
+    strict=True,
+)
 def test_host_falsificado_es_rechazado(client_no_auth):
     r = client_no_auth.get("/health", headers={"Host": "evil.test"})
     assert r.status_code == 400
