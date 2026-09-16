@@ -325,7 +325,7 @@ def apply_migrations():
     cols_sesion = [c["name"] for c in inspect(engine).get_columns("sesiones_presentacion")]
     if "slide_abierto_en" not in cols_sesion:
         with engine.connect() as conn:
-            conn.execute(text("ALTER TABLE sesiones_presentacion ADD COLUMN slide_abierto_en DATETIME"))
+            conn.execute(text("ALTER TABLE sesiones_presentacion ADD COLUMN slide_abierto_en TIMESTAMP"))
             conn.commit()
         print("✅ Migración: columna 'slide_abierto_en' agregada a 'sesiones_presentacion'")
 
