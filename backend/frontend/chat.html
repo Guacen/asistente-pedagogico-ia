@@ -17,6 +17,11 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- DOMPurify se sirve local (js/vendor/), no desde CDN: es la capa
+         que evita que una respuesta de la IA con HTML/script embebido se
+         ejecute al renderizarse — si el CDN fallara, esa protección no
+         puede quedar en veremos. -->
+    <script src="js/vendor/dompurify.min.js"></script>
     <link rel="stylesheet" href="css/main.css?v=20260803">
     <link rel="stylesheet" href="css/brand.css?v=20260803">
     <link rel="stylesheet" href="css/chat.css?v=20260803">
@@ -551,7 +556,7 @@ function renderEstudiantes(lista) {
                 <i class="fas fa-user text-gray-400 text-xs"></i>
             </div>
             <div>
-                <p class="font-medium text-gray-700">${e.codigo_estudiante}</p>
+                <p class="font-medium text-gray-700">${escapeHtml(e.codigo_estudiante)}</p>
                 ${e.tiene_piar ? '<p class="text-orange-500 text-xs">⚠ PIAR</p>' : ''}
             </div>
         </div>`).join('') +
@@ -563,7 +568,7 @@ function renderNotas(lista) {
     if (!lista.length) { el.innerHTML = '<p class="text-gray-400 text-xs">Sin notas</p>'; return; }
     el.innerHTML = lista.map(n => `
         <div class="bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2 text-xs text-gray-700">
-            ${n.contenido}
+            ${escapeHtml(n.contenido)}
         </div>`).join('');
 }
 
@@ -596,7 +601,7 @@ function addMsgDOM(remitente, contenido, timestamp) {
 
         const body = document.createElement('div');
         body.className = 'msg-ia-body text-gray-800 text-sm leading-relaxed';
-        body.innerHTML = marked.parse(contenido);
+        body.innerHTML = renderMarkdownSeguro(contenido);
         bubble.appendChild(body);
 
         const meta = document.createElement('div');
@@ -658,7 +663,7 @@ function iniciarStreaming() {
 function agregarChunk(chunk) {
     if (!_streamBody) iniciarStreaming();
     _streamRaw += chunk;
-    _streamBody.innerHTML = marked.parse(_streamRaw);
+    _streamBody.innerHTML = renderMarkdownSeguro(_streamRaw);
     scrollBottom();
 }
 
@@ -1567,6 +1572,33 @@ function escapeHtml(str) {
     return str
         .replace(/&/g, '&amp;').replace(/</g, '&lt;')
         .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// ══════════════════════════════════════════════════════════════
+// RENDER SEGURO DE MARKDOWN DE LA IA
+// marked.parse() no filtra HTML crudo embebido en el markdown — sin
+// esto, una respuesta de la IA que termine repitiendo un payload
+// inyectado (p.ej. desde un nombre de estudiante importado por CSV que
+// aparezca en el contexto de la conversación) se ejecutaría al asignarse
+// a innerHTML. Allowlist estricta: sólo las etiquetas que el markdown de
+// una planeación necesita (ver .msg-ia-body en el <style> del head) —
+// nada de <script>, <iframe>, atributos on*, ni href con javascript:
+// (DOMPurify bloquea ese esquema por defecto en los atributos permitidos).
+// ══════════════════════════════════════════════════════════════
+const DOMPURIFY_CONFIG_MARKDOWN = {
+    ALLOWED_TAGS: [
+        'h1', 'h2', 'h3', 'h4', 'p', 'br', 'hr',
+        'ul', 'ol', 'li', 'strong', 'em', 'b', 'i', 'del', 'sup', 'sub',
+        'code', 'pre', 'blockquote',
+        'table', 'thead', 'tbody', 'tr', 'th', 'td', 'a',
+    ],
+    ALLOWED_ATTR: ['href', 'class'],
+    ALLOW_DATA_ATTR: false,
+};
+
+function renderMarkdownSeguro(texto) {
+    const html = marked.parse(texto);
+    return DOMPurify.sanitize(html, DOMPURIFY_CONFIG_MARKDOWN);
 }
 function cerrarSesion() {
     if (socket) socket.disconnect();

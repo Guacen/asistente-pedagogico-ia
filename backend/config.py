@@ -68,6 +68,24 @@ class Settings(BaseSettings):
     # CORS
     FRONTEND_URL: str = "http://localhost:8080"
 
+    # Dominio canónico público — sprint xss-host-header (AUDITORIA-BETA.md
+    # #3). Reemplaza el uso de request.base_url para construir los links
+    # absolutos de verificación de correo y reset de contraseña: Starlette
+    # arma request.base_url a partir del header Host tal cual llega, SIN
+    # validarlo (CVE-2026-48710 / PYSEC-2026-161 — ya reconocida y
+    # aplazada en el pipeline de pip-audit). Default de producción a
+    # propósito: si esta env var no llega a estar seteada en Railway, es
+    # más seguro que los links apunten al dominio real que a localhost.
+    BASE_URL: str = "https://usemaestria.co"
+
+    # Hosts extra para TrustedHostMiddleware (coma-separado), además de
+    # usemaestria.co/www.usemaestria.co (siempre permitidos) y de
+    # localhost/127.0.0.1 (sólo si ENVIRONMENT=development). Para agregar
+    # el host interno que use el healthcheck de Railway sin necesitar
+    # otro deploy si resulta ser distinto del dominio público — no se
+    # pudo verificar cuál es ese host sin acceso a Railway.
+    ALLOWED_HOSTS_EXTRA: str = ""
+
     # ── Envío de correo (sprint email-verification-consent) ──
     # Adapter con fallback automático: Resend > SendGrid > SMTP > LogOnly.
     # En dev local nada está configurado y cae al LogOnly, que sólo

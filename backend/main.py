@@ -25,6 +25,7 @@ from fastapi.staticfiles import StaticFiles
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from config import settings
 from database import create_tables
@@ -213,6 +214,34 @@ async def no_cache_para_html_y_assets_estaticos(request: Request, call_next):
     elif path.startswith("/assets/") or path.startswith("/css/"):
         response.headers["Cache-Control"] = "no-cache"
     return response
+
+# ============================================================
+# TRUSTED HOST — sprint xss-host-header (AUDITORIA-BETA.md #3)
+# Sin esto, cualquier Host header llega sin validar y Starlette lo usa
+# tal cual para armar request.base_url — ya no se usa eso para los links
+# de verificación/reset (ver settings.BASE_URL en auth.py), pero este
+# middleware además rechaza con 400 cualquier request cuyo Host no esté
+# en la allowlist, cerrando el vector también a nivel de transporte, no
+# sólo en el único lugar donde hoy se explotaba.
+#
+# Se agrega AL FINAL (después de CORS/SecurityHeaders/no-cache) a
+# propósito: en Starlette el último middleware agregado queda más
+# externo y corre primero, así que un Host inválido se rechaza antes de
+# tocar cualquier otra lógica.
+#
+# "testserver" es el Host que manda TestClient de FastAPI/Starlette en
+# toda la suite de tests — no es un dominio real.
+#
+# ALLOWED_HOSTS_EXTRA (env var): ver config.py — para sumar el host
+# interno del healthcheck de Railway si hiciera falta, sin otro deploy.
+# ============================================================
+
+_ALLOWED_HOSTS = ["usemaestria.co", "www.usemaestria.co", "testserver"]
+if settings.ENVIRONMENT == "development":
+    _ALLOWED_HOSTS += ["localhost", "127.0.0.1"]
+_ALLOWED_HOSTS += [h.strip() for h in settings.ALLOWED_HOSTS_EXTRA.split(",") if h.strip()]
+
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=_ALLOWED_HOSTS)
 
 # ============================================================
 # ROUTERS API  (/api/...)

@@ -9,6 +9,7 @@ de forma consistente en todos los endpoints que las necesitan.
 """
 from __future__ import annotations
 
+import re
 from datetime import datetime
 from typing import Optional
 
@@ -39,6 +40,43 @@ def sanitizar_texto(texto: Optional[str], max_len: int) -> Optional[str]:
         return None
     limpio = bleach.clean(texto, tags=[], attributes={}, strip=True).strip()
     return limpio[:max_len]
+
+
+# ============================================================
+# VALIDACIÓN DE CELDAS CSV IMPORTADAS (inyección de fórmulas / control)
+# ============================================================
+
+# Excel/Sheets interpreta como fórmula cualquier celda que empiece con
+# uno de estos caracteres al abrir el archivo — incluso si el CSV nunca
+# pasó por una hoja de cálculo al crearse. Es un vector clásico ("CSV/
+# Formula injection", CWE-1236) independiente de XSS: sanitizar_texto
+# (que sólo quita HTML) no lo cubre.
+_PREFIJOS_FORMULA_CSV = ("=", "+", "-", "@")
+
+_CARACTERES_CONTROL_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
+
+
+def celda_csv_es_riesgosa(valor: Optional[str]) -> Optional[str]:
+    """
+    Revisa una celda cruda de un CSV importado por el usuario en busca de
+    dos clases de contenido peligroso que sanitizar_texto no cubre
+    (sanitizar_texto sólo quita HTML/XSS):
+
+      - Inyección de fórmulas: la celda empieza (ignorando espacios al
+        inicio) con =, +, - o @.
+      - Caracteres de control no imprimibles.
+
+    Devuelve una razón legible en español si encuentra algo, o None si la
+    celda es segura. No modifica `valor` — la fila se rechaza entera en
+    vez de guardarse "pelada" (ver importar_estudiantes_csv en grupos.py).
+    """
+    if not valor:
+        return None
+    if valor.lstrip().startswith(_PREFIJOS_FORMULA_CSV):
+        return "empieza con un carácter que Excel/Sheets interpreta como fórmula (=, +, - o @)"
+    if _CARACTERES_CONTROL_RE.search(valor):
+        return "contiene caracteres de control no permitidos"
+    return None
 
 
 # ============================================================

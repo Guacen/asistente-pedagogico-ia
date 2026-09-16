@@ -6,7 +6,7 @@ from typing import List
 
 import aiofiles
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File, status
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from sqlalchemy.orm import Session
 
 from auth import verify_trial_active
@@ -24,7 +24,7 @@ from schemas import (
     EvaluacionColumnaCreate, EvaluacionColumnaOut, EvaluacionColumnaUpdate,
     GrupoCreate, GrupoOut, GrupoUpdate, NotaCreate, NotaOut,
 )
-from security_utils import obtener_ip_cliente, registrar_auditoria
+from security_utils import celda_csv_es_riesgosa, obtener_ip_cliente, registrar_auditoria
 
 router = APIRouter(prefix="/api", tags=["grupos"])
 
@@ -325,6 +325,15 @@ async def importar_estudiantes_csv(
         raise HTTPException(status_code=400, detail="Se esperaba un archivo .csv")
 
     raw = (await file.read()).decode("utf-8-sig", errors="replace")
+    if "\x00" in raw:
+        # El propio módulo csv de la stdlib no puede parsear una línea
+        # con NUL ("line contains NUL") — falla duro en vez de dejarlo
+        # pasar. Se rechaza el archivo entero con un mensaje claro en vez
+        # de que el cliente reciba un 500 sin explicación.
+        raise HTTPException(
+            status_code=400,
+            detail="El archivo contiene caracteres de control no permitidos (NUL) y no pudo procesarse.",
+        )
     reader = csv.DictReader(io.StringIO(raw))
     headers = {(h or "").lower().strip() for h in (reader.fieldnames or [])}
     if "codigo_estudiante" not in headers:
@@ -367,15 +376,45 @@ async def importar_estudiantes_csv(
             )
             continue
 
-        payload = {
-            "codigo_estudiante": codigo,
-            "genero": r.get("genero") or None,
-            "tiene_piar": piar_value,
-            "diagnostico": r.get("diagnostico") or None,
-            "ajustes": r.get("ajustes") or None,
-        }
+        # Inyección de fórmulas de hoja de cálculo / caracteres de control
+        # — un ataque distinto de XSS (no lo cubre sanitizar_texto). La
+        # fila se rechaza ENTERA: no tiene sentido guardar el resto de la
+        # fila "pelando" sólo la celda riesgosa.
+        fila_rechazada = False
+        for campo in ("codigo_estudiante", "genero", "diagnostico", "ajustes"):
+            razon = celda_csv_es_riesgosa(r.get(campo))
+            if razon:
+                fallidos += 1
+                errores.append(f"Fila {i}: columna '{campo}' {razon}")
+                fila_rechazada = True
+                break
+        if fila_rechazada:
+            continue
 
-        est = existentes.get(codigo)
+        # Mismo tratamiento que la creación/edición individual de un
+        # estudiante: sanitización bleach + límites de longitud vía
+        # EstudianteCreate. El CSV NUNCA debe construir el ORM directo
+        # desde valores crudos — ese bypass es justo lo que permitía que
+        # un CSV malicioso guardara HTML/script sin pasar por bleach.
+        try:
+            validado = EstudianteCreate(
+                codigo_estudiante=codigo,
+                genero=r.get("genero") or None,
+                tiene_piar=piar_value,
+                diagnostico=r.get("diagnostico") or None,
+                ajustes=r.get("ajustes") or None,
+            )
+        except ValidationError as exc:
+            fallidos += 1
+            primer_error = exc.errors()[0]
+            campo = primer_error["loc"][-1] if primer_error.get("loc") else "?"
+            errores.append(f"Fila {i}: columna '{campo}' inválida — {primer_error['msg']}")
+            continue
+
+        payload = validado.model_dump()
+        codigo_limpio = payload["codigo_estudiante"]
+
+        est = existentes.get(codigo_limpio)
         try:
             if est:
                 for k, v in payload.items():
@@ -384,7 +423,7 @@ async def importar_estudiantes_csv(
             else:
                 nuevo = Estudiante(id_grupo=grupo_id, **payload)
                 db.add(nuevo)
-                existentes[codigo] = nuevo
+                existentes[codigo_limpio] = nuevo
                 creados += 1
         except Exception as exc:  # pragma: no cover — defensivo
             fallidos += 1
