@@ -30,7 +30,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from config import settings
 from database import create_tables
-from migrate import apply_migrations, seed_pro_user
+from migrate import apply_migrations, MIGRATION_ERRORS, seed_pro_user
 from rate_limiter import limiter
 
 # Importar routers
@@ -300,11 +300,22 @@ app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads"
 
 # ============================================================
 # HEALTH CHECK
+#
+# SIEMPRE 200 con status "healthy", incluso si alguna migración falló al
+# arrancar (sprint migraciones-aisladas, post-incidente) — el objetivo
+# explícito de aislar migraciones es que el healthcheck de Railway siga
+# pasando y el sitio quede arriba aunque una migración puntual se haya
+# roto; devolver algo distinto de 200 acá reintroduciría el mismo tipo
+# de outage total que este sprint existe para evitar. Los fallos, si los
+# hay, van en `migraciones_fallidas` — visibles sin entrar a los logs.
 # ============================================================
 
 @app.get("/health")
 def health():
-    return {"status": "healthy", "app": "Asistente Pedagógico IA"}
+    body = {"status": "healthy", "app": "Asistente Pedagógico IA"}
+    if MIGRATION_ERRORS:
+        body["migraciones_fallidas"] = MIGRATION_ERRORS
+    return body
 
 # ============================================================
 # VERSIÓN DESPLEGADA — para confirmar en una sola petición si un commit
@@ -328,10 +339,13 @@ _DESPLEGADO_EN = datetime.utcnow().isoformat() + "Z"
 @app.get("/api/version")
 def version():
     commit = settings.RAILWAY_GIT_COMMIT_SHA
-    return {
+    body = {
         "commit": commit[:7] if commit else "desconocido",
         "desplegado": _DESPLEGADO_EN,
     }
+    if MIGRATION_ERRORS:
+        body["migraciones_fallidas"] = MIGRATION_ERRORS
+    return body
 
 # ============================================================
 # STARTUP: crear tablas
