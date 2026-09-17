@@ -52,6 +52,21 @@ jobs:
           TEST_DATABASE_URL_POSTGRES: postgresql://maestria_test:maestria_test@localhost:5432/maestria_test
         run: python -m pytest tests/ -v
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Run frontend JS tests (auto-refresh de JWT — api.js/auth.js)
+        working-directory: backend
+        # Sprint auto-refresh-jwt-frontend: la orquestación de refresh-y-
+        # reintento (dedup de refrescos concurrentes, distinguir token
+        # revocado de fallo de red, etc.) es lógica async de navegador —
+        # no se puede probar honestamente con pytest. Usa el test runner
+        # nativo de Node (node --test), sin dependencias nuevas: no hay
+        # package.json en este repo y no se le agrega uno para esto.
+        run: node --test tests/js/test_*.js
+
       - name: Dependency vulnerability scan (pip-audit)
         working-directory: backend
         run: |

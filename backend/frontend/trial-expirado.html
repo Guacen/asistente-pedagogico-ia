@@ -73,9 +73,10 @@
     <script>
         requireAuth();
         document.getElementById('btn-logout').addEventListener('click', () => {
-            api.removeToken();
-            localStorage.clear();
-            window.location.replace('login.html');
+            // Auth.logout() (sprint auto-refresh-jwt-frontend) avisa al
+            // backend para blacklistear access + refresh token antes de
+            // limpiar localStorage y redirigir.
+            Auth.logout();
         });
     </script>
 </body>

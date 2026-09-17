@@ -13,49 +13,75 @@ const Auth = {
     // ==========================================
     
     /**
-     * Verifica si el usuario está autenticado
-     * @returns {boolean} true si hay token válido
+     * Verifica si el usuario tiene credenciales guardadas.
+     *
+     * Sprint auto-refresh-jwt-frontend: YA NO decide acá si el access
+     * token está vencido según su propio `exp`. Antes, si había pasado,
+     * esta función llamaba a logoutSilent() (que borra TAMBIÉN el
+     * refresh token) sin intentar refrescar primero — eso es
+     * literalmente lo que le hacía perder la sesión a un docente que
+     * volvía a una pestaña vieja con el access token ya vencido (60 min)
+     * pero el refresh token (30 días) todavía perfectamente vivo. La
+     * validez real, y si vale la pena intentar un refresh, la decide
+     * requireAuth() — acá sólo se confirma que HAY algo guardado.
+     * @returns {boolean} true si hay un access token guardado
      */
     isAuthenticated() {
-        const token = this.getToken();
-
-        if (!token) {
-            return false;
-        }
-
-        // Verificar si el token ha expirado (opcional)
-        const tokenData = this.parseToken(token);
-        if (tokenData && tokenData.exp) {
-            const now = Math.floor(Date.now() / 1000);
-            if (now > tokenData.exp) {
-                // Token expirado: limpiamos estado SIN navegar. Si esta
-                // función se llama desde login.html, un redirect acá
-                // provoca ping-pong con la propia login.html. El caller
-                // (requireAuth, requireGuest, o el guard de la página)
-                // decide qué hacer con el resultado.
-                this.logoutSilent();
-                return false;
-            }
-        }
-
-        return true;
+        return !!this.getToken();
     },
-    
+
     /**
-     * Protege una página requiriendo autenticación
-     * Si no está autenticado, redirige a login
+     * Protege una página requiriendo autenticación.
+     *
+     * Sprint auto-refresh-jwt-frontend: si el access token está vencido
+     * pero HAY uno guardado, ya NO desloguea de inmediato — intenta
+     * refrescarlo en background primero. La página sigue cargando y
+     * renderizando normal mientras tanto (sin bloquear, sin esperar):
+     * cualquier llamada a la API que dispare mientras el refresh está en
+     * vuelo recibe su propio 401 y el retry reactivo de api.js la
+     * reintenta sola, compartiendo el MISMO refresh en curso
+     * (_refreshInFlight) — nunca dispara un segundo POST /api/auth/refresh.
+     * Sólo si el refresh falla de verdad (token también inválido o
+     * revocado) manda recién a login.
      * @param {string} redirectTo - URL de redirección (default: login.html)
      */
     requireAuth(redirectTo = 'login.html') {
-        if (!this.isAuthenticated()) {
-            // Guardar URL actual para volver después del login
-            const currentUrl = window.location.pathname + window.location.search;
-            localStorage.setItem('redirect_after_login', currentUrl);
-
-            // Redirigir a login con replace() — no queremos que la página
-            // protegida quede en el historial cuando la sesión no existe.
-            window.location.replace(redirectTo);
+        const token = this.getToken();
+        if (!token) {
+            this._irALogin(redirectTo);
+            return;
         }
+
+        const tokenData = this.parseToken(token);
+        const vencido = tokenData && tokenData.exp &&
+            Math.floor(Date.now() / 1000) > tokenData.exp;
+        if (!vencido) {
+            return; // token vigente — nada que hacer, comportamiento de siempre.
+        }
+
+        this.refreshToken().then((ok) => {
+            if (!ok) {
+                this.logoutSilent();
+                this._irALogin(redirectTo);
+            }
+            // Si ok: el token ya quedó renovado en localStorage (mismas
+            // keys que usa el resto de la app) — no hace falta hacer
+            // nada más, la página sigue su curso normal.
+        });
+    },
+
+    /**
+     * Guarda la URL actual para volver después del login y redirige.
+     * Extraído de requireAuth() porque ahora tiene dos puntos de salida
+     * (sin token, y refresh fallido).
+     * @param {string} redirectTo
+     */
+    _irALogin(redirectTo) {
+        const currentUrl = window.location.pathname + window.location.search;
+        localStorage.setItem('redirect_after_login', currentUrl);
+        // replace() — no queremos que la página protegida quede en el
+        // historial cuando la sesión no existe.
+        window.location.replace(redirectTo);
     },
     
     /**
@@ -266,22 +292,37 @@ const Auth = {
     },
     
     /**
-     * Cierra la sesión del usuario
+     * Cierra la sesión del usuario.
+     *
+     * Sprint auto-refresh-jwt-frontend: ahora SÍ avisa al backend
+     * (api.logout) para blacklistear access + refresh token — antes
+     * esta función sólo limpiaba localStorage, así que un token filtrado
+     * seguía sirviendo hasta su expiración natural aunque el docente
+     * hubiera "cerrado sesión". Best-effort y no bloqueante: no espera
+     * la respuesta antes de limpiar/redirigir, así que la experiencia
+     * del docente no depende de la red en ese instante.
      * @param {string} redirectTo - URL de redirección (default: login.html)
      */
     logout(redirectTo = 'login.html') {
-        // Obtener usuario antes de eliminar
+        // Obtener usuario y refresh token ANTES de eliminarlos.
         const user = this.getUser();
+        const refreshToken = this.getRefreshToken();
+
+        if (typeof api !== 'undefined' && api.logout) {
+            api.logout(refreshToken).catch((err) => {
+                console.warn('No se pudo notificar el logout al backend:', err);
+            });
+        }
 
         // Limpiar datos
         this.removeToken();
         this.removeRefreshToken();
         this.removeUser();
         localStorage.removeItem('redirect_after_login');
-        
+
         // Disparar evento personalizado
         this.dispatchAuthEvent('logout', { user });
-        
+
         // Redirigir — replace() para no dejar la sesión anterior en historial
         if (redirectTo) {
             window.location.replace(redirectTo);
@@ -610,20 +651,32 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// Interceptar errores 401 de la API para logout automático.
-// No re-navegar si ya estamos en una página de guest (login/registro) —
+// Interceptar errores 401 no manejados para logout automático — red de
+// seguridad para llamadas que golpean al backend SIN pasar por
+// api.request() (p.ej. los fetch() directos de descarga de archivos),
+// que por lo tanto no pasaron por el refresh-y-reintento de
+// _retryWithRefresh. Antes de este sprint esto desloguéaba directo con
+// sólo ver un 401 — ahora, igual que requireAuth(), le da a la sesión la
+// misma oportunidad de refrescarse antes de rendirse (si no hay refresh
+// token guardado, Auth.refreshToken() resuelve a false casi al toque,
+// sin red de por medio, así que el caso "login con contraseña
+// incorrecta" no queda más lento).
+// No re-navega si ya estamos en una página de guest (login/registro) —
 // un POST /login fallido con 401 dispararía redirect a login.html →
 // recarga → potencial loop si el usuario reintenta con credenciales
 // inválidas.
 window.addEventListener('unhandledrejection', (event) => {
     if (event.reason?.status === 401 || event.reason?.message?.includes('401')) {
-        console.warn('Token inválido detectado, cerrando sesión...');
-        Auth.logoutSilent();
-        const path = window.location.pathname;
-        const enPaginaGuest = path.endsWith('/login.html') || path.endsWith('/registro.html');
-        if (!enPaginaGuest) {
-            window.location.replace('login.html');
-        }
+        console.warn('401 no manejado detectado — intentando refrescar antes de cerrar sesión...');
+        Auth.refreshToken().then((ok) => {
+            if (ok) return;
+            Auth.logoutSilent();
+            const path = window.location.pathname;
+            const enPaginaGuest = path.endsWith('/login.html') || path.endsWith('/registro.html');
+            if (!enPaginaGuest) {
+                window.location.replace('login.html');
+            }
+        });
     }
 });
 

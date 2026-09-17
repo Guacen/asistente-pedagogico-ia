@@ -682,6 +682,18 @@ async def send_message(sid, data):
         # 10. Incrementar uso mensual
         _incrementar_uso(docente_id, db)
 
+    except asyncio.TimeoutError:
+        # llm.stream_respuesta ya logueó proveedor/duración — acá sólo
+        # nos toca avisarle al docente con un mensaje que explique QUÉ
+        # pasó (no "algo se rompió") y dejar el chat listo para
+        # reintentar, nunca la conexión de socket colgada esperando un
+        # evento que ya no va a llegar.
+        print(f"⏱️  Timeout generando respuesta en send_message (grupo={grupo_id})")
+        await sio.emit("ia_error", {
+            "code": "timeout",
+            "message": "La IA está tardando más de lo esperado. Intenta de nuevo en unos segundos.",
+        }, to=sid)
+
     except Exception as e:
         print(f"❌ Error en send_message: {e}")
         await sio.emit("ia_error", {"message": "Error generando respuesta. Intenta nuevamente."}, to=sid)

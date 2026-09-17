@@ -19,8 +19,8 @@ from models import (
 from rate_limiter import limiter
 from schemas import (
     AceptarConsentimiento, ChangePassword, DocenteCreate, DocenteOut,
-    DocenteUpdate, ForgotPassword, ReenviarVerificacion, RefreshTokenRequest,
-    ResetPassword, Token,
+    DocenteUpdate, ForgotPassword, LogoutRequest, ReenviarVerificacion,
+    RefreshTokenRequest, ResetPassword, Token,
 )
 from security_utils import obtener_ip_cliente, registrar_auditoria
 
@@ -513,34 +513,54 @@ def refresh_token_endpoint(
     )
 
 
+def _blacklistear_jti(db: Session, jti: Optional[str], exp: Optional[int]) -> None:
+    """Inserta (jti, expires_at) en TokenBlacklist si no está ya — helper
+    compartido por logout (access + opcionalmente refresh)."""
+    if not (jti and exp):
+        return
+    ya_blacklisteado = db.query(TokenBlacklist).filter(TokenBlacklist.jti == jti).first()
+    if not ya_blacklisteado:
+        db.add(TokenBlacklist(jti=jti, expires_at=datetime.utcfromtimestamp(exp)))
+        db.commit()
+
+
 @router.post("/logout")
 def logout(
     request: Request,
+    data: LogoutRequest = LogoutRequest(),
     token: str = Depends(oauth2_scheme),
     docente: Docente = Depends(get_current_docente),
     db: Session = Depends(get_db),
 ):
     """
     Blacklistea el access token actual — cualquier request posterior con
-    este mismo token (incluidas conexiones de socket) recibe 401. El
-    refresh token asociado sigue vivo (el frontend puede pedir uno
-    nuevo); si se quiere cerrar sesión "en todos lados" hay que además
-    descartar el refresh token del lado del cliente.
+    este mismo token (incluidas conexiones de socket) recibe 401.
+
+    Sprint auto-refresh-jwt-frontend: si el cliente manda su
+    refresh_token en el body (el frontend lo hace desde este sprint),
+    TAMBIÉN se blacklistea — antes sólo se invalidaba el access token y
+    "el refresh token asociado seguía vivo", así que un logout no cerraba
+    la sesión de verdad (un token filtrado seguía sirviendo para pedir
+    access tokens nuevos indefinidamente). Un refresh_token ausente,
+    garbage, o que no sea de type=refresh no aborta el logout del access
+    token — best-effort, nunca bloquea cerrar sesión.
     """
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
     except JWTError:
         raise HTTPException(status_code=401, detail="Token inválido")
 
-    jti = payload.get("jti")
-    exp = payload.get("exp")
-    if jti and exp:
-        ya_blacklisteado = db.query(TokenBlacklist).filter(TokenBlacklist.jti == jti).first()
-        if not ya_blacklisteado:
-            db.add(TokenBlacklist(
-                jti=jti, expires_at=datetime.utcfromtimestamp(exp),
-            ))
-            db.commit()
+    _blacklistear_jti(db, payload.get("jti"), payload.get("exp"))
+
+    if data.refresh_token:
+        try:
+            refresh_payload = jwt.decode(
+                data.refresh_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM],
+            )
+            if refresh_payload.get("type") == "refresh":
+                _blacklistear_jti(db, refresh_payload.get("jti"), refresh_payload.get("exp"))
+        except JWTError:
+            pass  # refresh token ya inválido/garbage — nada que blacklistear
 
     registrar_auditoria(
         db, docente.id_docente, "logout", ip=obtener_ip_cliente(request),
