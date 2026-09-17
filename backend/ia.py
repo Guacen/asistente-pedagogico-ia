@@ -381,6 +381,13 @@ def construir_system_prompt(
 # GENERACIÓN DE RESPUESTA CON STREAMING
 # ============================================================
 
+# Post-incidente P0 (mismo patrón que _TIMEOUT_GENERACION_S en
+# presentaciones.py desde el Sprint 4): el chat es la función que más se
+# usa en toda la app — sin límite propio, un stream colgado deja la
+# conexión de socket esperando un evento que nunca llega.
+_TIMEOUT_CHAT_S = 60.0
+
+
 async def generar_respuesta(
     mensaje_docente: str,
     historial: List[Mensaje],
@@ -440,7 +447,10 @@ async def generar_respuesta(
     # Gemini si hay GOOGLE_API_KEY). Si no hay ninguno, llm.stream_respuesta
     # levanta ProveedorNoConfiguradoError que el socket handler debe capturar.
     import llm
-    return await llm.stream_respuesta(system_prompt, messages, on_chunk, max_tokens=2048)
+    return await llm.stream_respuesta(
+        system_prompt, messages, on_chunk,
+        max_tokens=2048, timeout_s=_TIMEOUT_CHAT_S,
+    )
 
 
 # ============================================================

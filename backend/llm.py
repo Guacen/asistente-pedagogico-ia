@@ -22,7 +22,9 @@ Los adapters lo traducen al formato de cada SDK.
 """
 from __future__ import annotations
 
+import asyncio
 import logging
+import time
 from typing import Awaitable, Callable, List, Optional
 
 from config import settings
@@ -257,12 +259,47 @@ async def stream_respuesta(
     *,
     max_tokens: int = 2048,
     model: Optional[str] = None,
+    timeout_s: Optional[float] = None,
 ) -> str:
-    """Streaming con callback por chunk. Levanta ProveedorNoConfiguradoError."""
+    """
+    Streaming con callback por chunk. Levanta ProveedorNoConfiguradoError.
+
+    timeout_s (post-incidente P0, mismo patrón que respuesta_completa desde
+    el Sprint 4): límite de PARED completo para la llamada entera —
+    conexión + todo el streaming, no sólo el primer byte. Sin esto, un
+    stream que se queda mandando chunks de a poquito (o que nunca arranca)
+    deja la conexión de socket colgada indefinidamente; es exactamente el
+    bug que ya causó un 502 de Cloudflare en presentaciones antes de que
+    ese endpoint tuviera este mismo límite (PR #81). None (default) =
+    sin límite propio, usa el timeout default del SDK — el caller
+    (ia.py) pasa un valor explícito para el chat.
+
+    Si se excede, levanta asyncio.TimeoutError. El `async with` del SDK
+    dentro de _stream_claude/_stream_gemini se cierra limpio durante el
+    cancel de asyncio.wait_for (unwind normal de context manager), no
+    deja la conexión HTTP colgando del lado del proceso.
+    """
     p = _asegurar_proveedor()
-    if p == "claude":
-        return await _stream_claude(system_prompt, messages, on_chunk, max_tokens, model)
-    return await _stream_gemini(system_prompt, messages, on_chunk, max_tokens, model)
+    inicio = time.monotonic()
+    try:
+        if p == "claude":
+            coro = _stream_claude(system_prompt, messages, on_chunk, max_tokens, model)
+        else:
+            coro = _stream_gemini(system_prompt, messages, on_chunk, max_tokens, model)
+        resultado = await asyncio.wait_for(coro, timeout=timeout_s)
+    except asyncio.TimeoutError:
+        duracion = time.monotonic() - inicio
+        logger.warning(
+            "stream_respuesta TIMEOUT — proveedor=%s duracion_s=%.2f timeout_s=%s",
+            p, duracion, timeout_s,
+        )
+        raise
+    duracion = time.monotonic() - inicio
+    logger.info(
+        "stream_respuesta OK — proveedor=%s duracion_s=%.2f chars_salida=%d",
+        p, duracion, len(resultado),
+    )
+    return resultado
 
 
 async def respuesta_completa(

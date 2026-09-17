@@ -45,10 +45,30 @@ class ApiClient {
 
     // Intercambia el refresh_token guardado por un access_token nuevo.
     // Devuelve true/false — nunca lanza (los llamadores sólo necesitan
-    // saber si pueden reintentar o no).
+    // saber si pueden reintentar o no). Ver _refreshTokenDetailed() para
+    // distinguir POR QUÉ falló (network vs. token inválido/revocado).
     async refreshToken() {
+        return (await this._refreshTokenDetailed()) === 'ok';
+    }
+
+    // Igual que refreshToken() pero devuelve el estado detallado en vez
+    // de un boolean — lo usa _retryWithRefresh() para decidir si cerrar
+    // sesión (token inválido/revocado, 'invalid') o dejar la sesión
+    // intacta y simplemente fallar esta petición (fallo de red,
+    // 'network_error': el refresh token en sí podría seguir siendo
+    // válido, no hay motivo para desloguear por un problema de conexión
+    // pasajero).
+    //
+    // Dedup: si dos o cinco peticiones llegan casi a la vez con el token
+    // vencido, TODAS pasan por acá — pero sólo la primera crea la
+    // promesa en _refreshInFlight; las demás la encuentran ya puesta
+    // (código síncrono entre awaits, sin corte posible en medio del
+    // check-and-set) y esperan exactamente ese mismo resultado en vez de
+    // disparar un POST /api/auth/refresh cada una (limitado a 10/hora en
+    // el backend, y cada llamada de más es una carrera innecesaria).
+    async _refreshTokenDetailed() {
         const refreshToken = this.getRefreshToken();
-        if (!refreshToken) return false;
+        if (!refreshToken) return 'invalid';
 
         if (!this._refreshInFlight) {
             this._refreshInFlight = this._doRefresh(refreshToken).finally(() => {
@@ -58,22 +78,34 @@ class ApiClient {
         return this._refreshInFlight;
     }
 
+    // Devuelve 'ok' | 'invalid' | 'network_error' — nunca lanza.
     async _doRefresh(refreshToken) {
+        let response;
         try {
-            const response = await fetch(`${this.baseUrl}/api/auth/refresh`, {
+            response = await fetch(`${this.baseUrl}/api/auth/refresh`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ refresh_token: refreshToken }),
             });
-            if (!response.ok) return false;
-            const data = await response.json();
-            this.setToken(data.access_token);
-            this.setRefreshToken(data.refresh_token);
-            return true;
         } catch (error) {
-            console.error('Error refrescando token:', error);
-            return false;
+            // Sin conexión, DNS, CORS, etc. — el refresh token en sí
+            // podría seguir siendo válido, el problema es no poder
+            // preguntarle al servidor. NO se cierra sesión por esto.
+            console.error('Error de red refrescando token:', error);
+            return 'network_error';
         }
+
+        if (!response.ok) {
+            // El servidor respondió explícito: inválido, vencido o
+            // revocado (blacklist) — acá sí, no hay nada que
+            // reintentar, la sesión terminó de verdad.
+            return 'invalid';
+        }
+
+        const data = await response.json();
+        this.setToken(data.access_token);
+        this.setRefreshToken(data.refresh_token);
+        return 'ok';
     }
 
     // Limpia la sesión local y redirige a login — última instancia
@@ -139,12 +171,22 @@ class ApiClient {
     }
 
     // Maneja un 401 de `request()`: intenta refrescar el access token y
-    // reintenta la llamada original UNA vez. Si el 401 es por email no
+    // reintenta la llamada original UNA vez (config._isAuthRetry evita
+    // que ese reintento pueda volver a entrar acá — máximo un intento de
+    // refresh por petición, nunca un loop). Si el 401 es por email no
     // verificado, reintentar no cambia nada (es el mismo docente, sólo
     // que no verificó su correo) — lo dejamos pasar tal cual para no
-    // gastar cuota de /api/auth/refresh sin necesidad. Si el refresh
-    // falla (refresh token vencido/inválido/ausente), cierra la sesión
-    // local y redirige a login.html.
+    // gastar cuota de /api/auth/refresh sin necesidad.
+    //
+    // Distingue el motivo del fallo del refresh (_refreshTokenDetailed):
+    // - 'invalid'        → el refresh token también murió de verdad.
+    //                       Cierra sesión y manda a login.
+    // - 'network_error'  → no se pudo ni preguntar. La sesión sigue
+    //                       intacta (no se toca localStorage); esta
+    //                       petición puntual falla con el 401 original,
+    //                       pero el docente NO pierde la sesión — la
+    //                       próxima acción (o el timer de
+    //                       Auth.startAutoRefresh) vuelve a intentarlo.
     async _retryWithRefresh(endpoint, config, response401) {
         const bodyText = await response401.text();
         let code = null;
@@ -162,8 +204,9 @@ class ApiClient {
             });
         }
 
-        const refreshed = await this.refreshToken();
-        if (!refreshed) {
+        const estado = await this._refreshTokenDetailed();
+
+        if (estado === 'invalid') {
             this._handleAuthFailure();
             return new Response(bodyText, {
                 status: response401.status,
@@ -172,6 +215,15 @@ class ApiClient {
             });
         }
 
+        if (estado === 'network_error') {
+            return new Response(bodyText, {
+                status: response401.status,
+                statusText: response401.statusText,
+                headers: response401.headers,
+            });
+        }
+
+        // estado === 'ok'
         return fetch(`${this.baseUrl}${endpoint}`, {
             ...config,
             _isAuthRetry: true,
@@ -180,6 +232,30 @@ class ApiClient {
                 Authorization: `Bearer ${this.getToken()}`,
             },
         });
+    }
+
+    // Best-effort: blacklistea el access + refresh token en el backend
+    // al cerrar sesión. Nunca lanza — Auth.logout() sigue adelante y
+    // limpia localStorage/redirige igual aunque esto falle (la
+    // experiencia del docente no depende de la red en ese instante). NO
+    // pasa por this.request(): un 401 acá (token ya vencido) no debe
+    // disparar el flujo de refresh-y-reintentar, sería contradictorio
+    // estar refrescando una sesión que se está cerrando.
+    async logout(refreshToken) {
+        const token = this.getToken();
+        if (!token) return;
+        try {
+            await fetch(`${this.baseUrl}/api/auth/logout`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ refresh_token: refreshToken || null }),
+            });
+        } catch (error) {
+            console.warn('Error llamando a /api/auth/logout:', error);
+        }
     }
 
     // Sprint trial-7-dias: navega a la pantalla de bloqueo. No repite el

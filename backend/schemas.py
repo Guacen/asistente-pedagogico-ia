@@ -110,6 +110,14 @@ class RefreshTokenRequest(BaseModel):
     refresh_token: str
 
 
+# ── Sprint auto-refresh-jwt-frontend — logout invalida ambos tokens ──
+class LogoutRequest(BaseModel):
+    # Opcional: docentes con sesiones creadas antes de este sprint pueden
+    # no mandarlo. Si viene, se blacklistea también — antes sólo se
+    # invalidaba el access token y el refresh token asociado seguía vivo.
+    refresh_token: Optional[str] = None
+
+
 # ── Sprint trial-7-dias ──
 class PlanStatusOut(BaseModel):
     plan: str

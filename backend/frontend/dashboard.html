@@ -902,9 +902,12 @@
 
     // ── Logout ────────────────────────────────────────────────────────
     function cerrarSesion() {
-        api.removeToken();
-        localStorage.clear();
-        window.location.replace('login.html');
+        // Auth.logout() (sprint auto-refresh-jwt-frontend) avisa al
+        // backend para blacklistear access + refresh token ANTES de
+        // limpiar localStorage y redirigir — antes esta función sólo
+        // limpiaba local, así que un token filtrado seguía sirviendo
+        // hasta expirar solo.
+        Auth.logout();
     }
 
     // ── Feature flags (sprint archivar-presentaciones-flag) ────────────

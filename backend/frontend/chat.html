@@ -289,6 +289,19 @@
                         <span id="rate-limit-msg"></span>
                     </div>
 
+                    <!-- Error genérico de generación (incluye timeout) — sprint
+                         auto-refresh-jwt-frontend Parte B. Nunca dejamos un
+                         spinner mudo indefinido: siempre mensaje claro +
+                         botón para reintentar el MISMO mensaje sin retipearlo. -->
+                    <div id="chat-error-retry" class="hidden mb-2 p-2.5 bg-red-50 border border-red-200 rounded-lg text-sm text-red-800 flex items-center gap-2">
+                        <i class="fas fa-triangle-exclamation"></i>
+                        <span id="chat-error-retry-msg"></span>
+                        <button type="button" id="btn-reintentar-mensaje"
+                            class="ml-auto text-red-700 font-semibold hover:underline whitespace-nowrap">
+                            Reintentar
+                        </button>
+                    </div>
+
                     <form id="chat-form" class="flex items-end gap-2">
                         <div class="flex-1">
                             <textarea
@@ -842,11 +855,13 @@ function connectSocket() {
         else if (data && data.code && data.code.startsWith('piar_')) {
             alert(data.message || 'Error de PIAR');
         }
-        else if (_streamBody) {
-            _streamBody.innerHTML = `<p class="text-red-500 text-sm">⚠ ${data.message}</p>`;
-            _streamRaw = '';
-        } else {
-            mostrarPlanError(data.message);
+        // Genérico — incluye code === 'timeout' (Parte B). Nunca dejamos
+        // sólo un spinner que desaparece sin explicación: mensaje claro +
+        // botón para reintentar el mismo mensaje. Si ya había texto
+        // parcial transmitido en _streamBody, se deja tal cual (no se
+        // pisa) — lo único que se agrega es el banner con la explicación.
+        else {
+            mostrarErrorConReintentar(data.message || 'Ocurrió un error generando la respuesta.');
         }
         _streamWrap = null; _streamBody = null; _streamRaw = '';
         enableInput();
@@ -883,15 +898,29 @@ function ocultarTyping() {
 }
 
 // ── Envío de mensaje ──────────────────────────────────────────
+// _ultimoPayloadEnviado: sprint auto-refresh-jwt-frontend Parte B — el
+// botón "Reintentar" del banner de error reenvía este mismo payload sin
+// que el docente tenga que retipear el mensaje (el input ya se vació al
+// enviar, como siempre).
+let _ultimoPayloadEnviado = null;
+
+function _enviarPayload(payload) {
+    disableInput();
+    ocultarPlanError();
+    ocultarRateLimit();
+    ocultarErrorConReintentar();
+    _ultimoPayloadEnviado = payload;
+    socket.emit('send_message', payload);
+    _streamWrap = null;
+    _streamBody = null;
+    _streamRaw  = '';
+}
+
 document.getElementById('chat-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const input = document.getElementById('msg-input');
     const texto = input.value.trim();
     if (!texto) return;
-
-    disableInput();
-    ocultarPlanError();
-    ocultarRateLimit();
 
     const modoEnvio = getModoActivo();
     const payload = {
@@ -909,11 +938,13 @@ document.getElementById('chat-form').addEventListener('submit', async (e) => {
     if (sesionActivaId) {
         payload.id_sesion = sesionActivaId;
     }
-    socket.emit('send_message', payload);
+    _enviarPayload(payload);
     input.value = '';
-    _streamWrap = null;
-    _streamBody = null;
-    _streamRaw  = '';
+});
+
+document.getElementById('btn-reintentar-mensaje').addEventListener('click', () => {
+    if (!_ultimoPayloadEnviado) return;
+    _enviarPayload(_ultimoPayloadEnviado);
 });
 
 document.getElementById('msg-input').addEventListener('keydown', (e) => {
@@ -951,6 +982,16 @@ function mostrarRateLimit(msg) {
 }
 function ocultarRateLimit() {
     document.getElementById('rate-limit-banner').classList.add('hidden');
+}
+
+// ── Error genérico con reintentar (sprint auto-refresh-jwt-frontend,
+// Parte B — incluye el timeout del streaming) ──────────────────
+function mostrarErrorConReintentar(msg) {
+    document.getElementById('chat-error-retry-msg').textContent = msg;
+    document.getElementById('chat-error-retry').classList.remove('hidden');
+}
+function ocultarErrorConReintentar() {
+    document.getElementById('chat-error-retry').classList.add('hidden');
 }
 
 // ── Selector de modo (Fase B) ─────────────────────────────────
@@ -1602,9 +1643,11 @@ function renderMarkdownSeguro(texto) {
 }
 function cerrarSesion() {
     if (socket) socket.disconnect();
-    api.removeToken();
-    localStorage.clear();
-    window.location.href = 'login.html';
+    // Auth.logout() (sprint auto-refresh-jwt-frontend) avisa al backend
+    // para blacklistear access + refresh token ANTES de limpiar
+    // localStorage y redirigir — antes esta función sólo limpiaba local,
+    // así que un token filtrado seguía sirviendo hasta expirar solo.
+    Auth.logout();
 }
 
 // ── Arranque ───────────────────────────────────────────────────
