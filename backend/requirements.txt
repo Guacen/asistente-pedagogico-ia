@@ -1,4 +1,11 @@
-fastapi==0.111.0
+fastapi==0.141.1
+# starlette es transitiva de fastapi (no la elige pip por su cuenta —
+# fastapi==0.141.1 sólo exige starlette>=0.46.0) pero se pinnea acá
+# explícito, a propósito: cierra 7 CVEs (PYSEC-2026-161/248/249/1943/
+# 1941/2280/2281, sprint dependencias-fastapi-starlette) y sin el pin
+# un futuro "pip install -r requirements.txt" podría resolver una
+# versión distinta a la que de verdad se probó en este sprint.
+starlette==1.6.0
 uvicorn[standard]==0.29.0
 python-socketio==5.16.4
 sqlalchemy==2.0.41

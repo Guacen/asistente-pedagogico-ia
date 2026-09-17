@@ -78,9 +78,8 @@ jobs:
           # obligatorio: cualquier CVE nuevo (no triado abajo) corta el
           # pipeline.
           #
-          # Hallazgos triados y excluidos deliberadamente (sprint
-          # seguridad-avanzada), cada uno con su razón — NO son "ignorados
-          # sin más", son decisiones explícitas:
+          # Hallazgos triados y excluidos deliberadamente, cada uno con su
+          # razón — NO son "ignorados sin más", son decisiones explícitas:
           #   - PYSEC-2026-1325 (ecdsa): advisory de timing attack (Minerva)
           #     sin versión corregida publicada por el proyecto — no hay
           #     bump posible. Transitiva de python-jose[cryptography]; esta
@@ -88,27 +87,23 @@ jobs:
           #   - PYSEC-2026-1845 (pytest): sólo se usa en CI/dev, nunca se
           #     despliega a producción. El fix es un bump de major version
           #     (8→9) que amerita su propia validación de regresión sobre
-          #     ~330 tests, fuera de alcance de este sprint de seguridad.
+          #     ~330+ tests, fuera de alcance — mismo criterio que el sprint
+          #     de seguridad original.
           #   - PYSEC-2026-3447 (setuptools): tooling del entorno Python
           #     del runner, no es una dependencia declarada en
           #     requirements.txt.
-          #   - starlette (PYSEC-2026-161/248/249/1943/1941/2280/2281):
-          #     transitiva de fastapi==0.111.0. Requiere bump de fastapi a
-          #     una versión con rango de starlette compatible más nuevo —
-          #     cambio de mayor alcance (afecta CORS/middleware/StaticFiles/
-          #     streaming en todo el backend) que merece su propio PR con
-          #     validación dedicada, no mezclado en este sprint.
+          #
+          # sprint dependencias-fastapi-starlette: las 7 de starlette
+          # (PYSEC-2026-161/248/249/1943/1941/2280/2281) que estaban acá
+          # ignoradas quedaron CERRADAS con el bump a fastapi==0.141.1 +
+          # starlette==1.6.0 — se sacan de la lista a propósito, no por
+          # olvido: si alguna reaparece (regresión de versión, o un CVE
+          # nuevo con el mismo ID por error), este --strict debe cortar
+          # el pipeline en vez de seguir ignorándola en silencio.
           pip-audit --strict \
             --ignore-vuln PYSEC-2026-1325 \
             --ignore-vuln PYSEC-2026-1845 \
-            --ignore-vuln PYSEC-2026-3447 \
-            --ignore-vuln PYSEC-2026-161 \
-            --ignore-vuln PYSEC-2026-248 \
-            --ignore-vuln PYSEC-2026-249 \
-            --ignore-vuln PYSEC-2026-1943 \
-            --ignore-vuln PYSEC-2026-1941 \
-            --ignore-vuln PYSEC-2026-2280 \
-            --ignore-vuln PYSEC-2026-2281
+            --ignore-vuln PYSEC-2026-3447
 
       - name: Dependency vulnerability scan (safety)
         working-directory: backend

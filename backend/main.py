@@ -15,6 +15,7 @@ Para Railway/Render (Procfile):
 """
 
 import os
+from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
 
@@ -60,6 +61,45 @@ import presentacion_events  # noqa: F401
 FRONTEND_DIR = Path(__file__).parent / "frontend"
 
 # ============================================================
+# STARTUP — lifespan (sprint dependencias-fastapi-starlette)
+#
+# Starlette >=1.0.0rc1 ELIMINÓ @app.on_event()/@app.middleware() por
+# completo (no quedó deprecado, dejó de existir) — FastAPI nunca los
+# reimplementa por su cuenta, los hereda tal cual de Starlette. Migrar a
+# `lifespan` era obligatorio para poder cerrar los CVEs de starlette
+# (PYSEC-2026-161/248/249/1943/1941/2280/2281), no una mejora aparte.
+#
+# Mismo cuerpo que el on_startup() de antes, sin cambios de lógica —
+# sólo el mecanismo de registro cambia. Sin lógica de shutdown todavía
+# (el `yield` sin nada después es exactamente equivalente a no tener
+# shutdown handler, que es lo que había).
+# ============================================================
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    create_tables()
+    print("✅ Tablas creadas / verificadas")
+    apply_migrations()
+    seed_pro_user()
+    from cleanup_token_blacklist import limpiar_blacklist_expirados
+    limpiar_blacklist_expirados()
+    print(f"🌐 Frontend servido desde: {FRONTEND_DIR}")
+    import llm
+    proveedor = llm.proveedor_activo()
+    if proveedor == "claude":
+        print(f"🤖 Proveedor IA: Claude (Anthropic) — {settings.CLAUDE_MODEL}")
+    elif proveedor == "gemini":
+        print(f"🤖 Proveedor IA: Gemini (Google) — {settings.GEMINI_MODEL} (modo gratuito)")
+    else:
+        print("❌ Sin proveedor IA configurado — set ANTHROPIC_API_KEY (o CLAUDE_API_KEY) o GOOGLE_API_KEY")
+    if not settings.STRIPE_SECRET_KEY:
+        print("⚠️  WARNING: STRIPE_SECRET_KEY vacío — /api/suscripciones/checkout y el webhook fallarán (503) hasta configurarlo")
+    print("📖 Docs: http://localhost:8000/docs")
+    print("🚀 App:  http://localhost:8000")
+    yield
+
+
+# ============================================================
 # FASTAPI APP
 # ============================================================
 
@@ -69,6 +109,7 @@ app = FastAPI(
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
+    lifespan=lifespan,
 )
 
 # ============================================================
@@ -205,7 +246,14 @@ app.add_middleware(SecurityHeadersMiddleware)
 # siquiera en modo offline/error de red — debe ir al origen sí o sí.
 # ============================================================
 
-@app.middleware("http")
+# sprint dependencias-fastapi-starlette: @app.middleware("http") ya no
+# existe en Starlette >=1.0 — app.add_middleware(BaseHTTPMiddleware,
+# dispatch=...) es el mecanismo que lo reemplaza (mismo dispatch(request,
+# call_next), sin cambios de lógica). Se registra en el MISMO lugar del
+# archivo donde vivía el decorador, a propósito: el orden de
+# app.add_middleware(...) importa (el último agregado queda más externo
+# — ver el comentario de TRUSTED HOST más abajo), y este cambio no debe
+# alterar ese orden.
 async def no_cache_para_html_y_assets_estaticos(request: Request, call_next):
     response = await call_next(request)
     path = request.url.path
@@ -215,6 +263,9 @@ async def no_cache_para_html_y_assets_estaticos(request: Request, call_next):
     elif path.startswith("/assets/") or path.startswith("/css/"):
         response.headers["Cache-Control"] = "no-cache"
     return response
+
+
+app.add_middleware(BaseHTTPMiddleware, dispatch=no_cache_para_html_y_assets_estaticos)
 
 # ============================================================
 # TRUSTED HOST — sprint xss-host-header (AUDITORIA-BETA.md #3)
@@ -357,32 +408,6 @@ def version():
 @app.get("/api/features")
 def features():
     return {"presentaciones": settings.FEATURE_PRESENTACIONES}
-
-# ============================================================
-# STARTUP: crear tablas
-# ============================================================
-
-@app.on_event("startup")
-def on_startup():
-    create_tables()
-    print("✅ Tablas creadas / verificadas")
-    apply_migrations()
-    seed_pro_user()
-    from cleanup_token_blacklist import limpiar_blacklist_expirados
-    limpiar_blacklist_expirados()
-    print(f"🌐 Frontend servido desde: {FRONTEND_DIR}")
-    import llm
-    proveedor = llm.proveedor_activo()
-    if proveedor == "claude":
-        print(f"🤖 Proveedor IA: Claude (Anthropic) — {settings.CLAUDE_MODEL}")
-    elif proveedor == "gemini":
-        print(f"🤖 Proveedor IA: Gemini (Google) — {settings.GEMINI_MODEL} (modo gratuito)")
-    else:
-        print("❌ Sin proveedor IA configurado — set ANTHROPIC_API_KEY (o CLAUDE_API_KEY) o GOOGLE_API_KEY")
-    if not settings.STRIPE_SECRET_KEY:
-        print("⚠️  WARNING: STRIPE_SECRET_KEY vacío — /api/suscripciones/checkout y el webhook fallarán (503) hasta configurarlo")
-    print("📖 Docs: http://localhost:8000/docs")
-    print("🚀 App:  http://localhost:8000")
 
 # ============================================================
 # FRONTEND ESTÁTICO — DEBE IR AL FINAL (catch-all)
