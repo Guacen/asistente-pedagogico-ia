@@ -26,6 +26,20 @@ if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
 
+@pytest.fixture(autouse=True)
+def _feature_presentaciones_activa(monkeypatch):
+    """
+    Sprint archivar-presentaciones-flag: FEATURE_PRESENTACIONES apagado
+    es el default de producción (la función está congelada), pero la
+    funcionalidad SIGUE existiendo y sigue necesitando cobertura — este
+    archivo prende el flag para poder seguir probando /api/presentaciones/*
+    de punta a punta. El comportamiento "apagado → 404" se prueba aparte,
+    en test_feature_flag_presentaciones.py.
+    """
+    from config import settings
+    monkeypatch.setattr(settings, "FEATURE_PRESENTACIONES", True)
+
+
 def _slides_canned() -> list[dict]:
     """Diapositivas ya RELLENAS (formato final), usadas por
     _crear_presentacion para las pruebas de sesión en vivo — no pasan

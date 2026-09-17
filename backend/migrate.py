@@ -10,9 +10,20 @@ inválido en Postgres (`DATETIME` en vez de `TIMESTAMP`, sesiones_presentacion
 .slide_abierto_en) tumbó el arranque COMPLETO de la app en producción — el
 startup no llegaba ni a levantar el servidor HTTP, así que Railway nunca
 pudo enrutar tráfico. La función a la que pertenecía esa columna
-(Presentaciones Interactivas) ni siquiera está activa (FEATURE_PRESENTACIONES
-default False) — un bug en una migración de una función apagada dejó fuera
-de servicio TODO, incluyendo login, grupos, chat.
+(Presentaciones Interactivas) llevaba días construida para archivarse
+detrás de FEATURE_PRESENTACIONES (default False, ver config.py y
+presentaciones.py) pero ese PR seguía sin mergear cuando ocurrió el
+incidente — la función estaba en producción sin querer, sin que hiciera
+falta: un bug en una migración de una función que nadie debería poder
+tocar todavía dejó fuera de servicio TODO, incluyendo login, grupos, chat.
+
+Importante: el flag SÓLO apaga la API (/api/presentaciones/*) y la UI —
+"tablas y migraciones quedan intactas" es explícito desde que se diseñó
+el archivado. `apply_migrations()` corre las migraciones de Presentaciones
+SIEMPRE, esté el flag prendido o no. El aislamiento de abajo (_paso) es lo
+que realmente evita que un bug como éste vuelva a tumbar el arranque —
+el flag resuelve un problema distinto (que la función no sea usable en
+producción todavía), no éste.
 
 Por eso cada paso de apply_migrations() corre aislado vía _paso(): si uno
 falla, se registra con detalle completo (traceback) en MIGRATION_ERRORS y

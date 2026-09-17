@@ -287,8 +287,10 @@
                             <p class="text-gray-500 text-sm">Gestiona las calificaciones de tus estudiantes</p>
                         </button>
 
-                        <!-- Presentación Interactiva -->
-                        <button onclick="window.location.href='presentacion-docente.html'"
+                        <!-- Presentación Interactiva — sprint archivar-presentaciones-flag:
+                             oculta por default (hidden), sólo se muestra si
+                             GET /api/features dice presentaciones=true. -->
+                        <button id="btn-presentacion-interactiva" hidden onclick="window.location.href='presentacion-docente.html'"
                             class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 hover:shadow-md hover:border-[var(--brand-primary)] transition-all text-left group">
                             <div class="w-11 h-11 rounded-xl flex items-center justify-center mb-3 transition-colors" style="background: var(--brand-mint);">
                                 <i class="fas fa-gamepad text-lg transition-colors" style="color: var(--brand-primary);"></i>
@@ -905,8 +907,26 @@
         window.location.replace('login.html');
     }
 
+    // ── Feature flags (sprint archivar-presentaciones-flag) ────────────
+    // Presentaciones Interactivas está congelada detrás de
+    // FEATURE_PRESENTACIONES — la tarjeta nace oculta (hidden en el
+    // HTML) y sólo se muestra si el backend confirma que está prendida.
+    // Público, sin auth — falla en silencio (la tarjeta se queda oculta,
+    // que es el default seguro) si /api/features no responde.
+    async function aplicarFeatureFlags() {
+        try {
+            const r = await fetch(`${window.APP_CONFIG.API_URL}/api/features`);
+            if (!r.ok) return;
+            const flags = await r.json();
+            document.getElementById('btn-presentacion-interactiva').hidden = !flags.presentaciones;
+        } catch (err) {
+            console.error('[dashboard] no se pudo consultar /api/features:', err);
+        }
+    }
+
     // ── Arranque ──────────────────────────────────────────────────────
     cargarDatos();
+    aplicarFeatureFlags();
     </script>
     <script>
     if ('serviceWorker' in navigator) {
