@@ -210,3 +210,73 @@ def test_grupo_ejemplo_distinguible(db_session, client_fresh):
     
     assert grupo_real.es_ejemplo is False
     assert grupo_ejemplo.es_ejemplo is True
+
+
+def test_planeacion_en_grupo_ejemplo_distinguible_de_real(db_session, client_fresh):
+    """
+    Test 6: el gap que quedaba del Test 5 — que Grupo.es_ejemplo sea
+    correcto en el grupo no prueba nada sobre las PLANEACIONES que se
+    crean dentro. Sprint E va a contar activación a partir de mensajes
+    de modo='planeacion', así que lo que hay que probar es que ESOS
+    mensajes son excluibles/identificables vía join a Grupo.es_ejemplo
+    — exactamente la consulta que Sprint E va a necesitar hacer.
+    """
+    from models import Grupo, Mensaje
+
+    c = client_fresh["client"]
+
+    # Grupo real, con una planeación real dentro.
+    res = c.post("/api/grupos", json={
+        "nombre_grupo": "Matematicas",
+        "grado": "1",
+        "asignatura": "Matematicas",
+        "anio_lectivo": 2024,
+        "periodo_actual": 1,
+        "cantidad_estudiantes": 30
+    })
+    assert res.status_code == 201
+    grupo_real_id = res.json()["id_grupo"]
+
+    # Grupo de ejemplo, con una "planeación" dentro (el docente explorando).
+    res = c.post("/api/grupos/ejemplo")
+    assert res.status_code == 201
+    grupo_ejemplo_id = res.json()["id_grupo"]
+
+    msg_real = Mensaje(
+        id_grupo=grupo_real_id,
+        remitente="sistema",
+        contenido="Planeación real generada por IA para Matematicas.",
+        modo="planeacion",
+    )
+    msg_ejemplo = Mensaje(
+        id_grupo=grupo_ejemplo_id,
+        remitente="sistema",
+        contenido="Planeación generada dentro del grupo de ejemplo.",
+        modo="planeacion",
+    )
+    db_session.add_all([msg_real, msg_ejemplo])
+    db_session.commit()
+
+    # La consulta que Sprint E necesita: planeaciones de grupos REALES
+    # solamente, excluyendo cualquier mensaje que viva en un grupo
+    # es_ejemplo=True, sin importar cuántos mensajes de ejemplo existan.
+    planeaciones_reales = (
+        db_session.query(Mensaje)
+        .join(Grupo, Mensaje.id_grupo == Grupo.id_grupo)
+        .filter(Mensaje.modo == "planeacion", Grupo.es_ejemplo.is_(False))
+        .all()
+    )
+    ids_reales = {m.id_mensaje for m in planeaciones_reales}
+
+    assert msg_real.id_mensaje in ids_reales
+    assert msg_ejemplo.id_mensaje not in ids_reales
+
+    planeaciones_ejemplo = (
+        db_session.query(Mensaje)
+        .join(Grupo, Mensaje.id_grupo == Grupo.id_grupo)
+        .filter(Mensaje.modo == "planeacion", Grupo.es_ejemplo.is_(True))
+        .all()
+    )
+    ids_ejemplo = {m.id_mensaje for m in planeaciones_ejemplo}
+    assert msg_ejemplo.id_mensaje in ids_ejemplo
+    assert msg_real.id_mensaje not in ids_ejemplo

@@ -156,7 +156,7 @@
                         <div>
                             <div class="flex items-center gap-2 mb-1">
                                 <h3 class="font-bold text-gray-900">Bienvenido a Maestr.ia</h3>
-                                <span class="bg-blue-100 text-blue-700 text-xs font-semibold px-2 py-0.5 rounded-full">Paso <span id="onboarding-step-num">1</span> de 3</span>
+                                <span class="text-xs font-semibold px-2 py-0.5 rounded-full" style="background: var(--brand-mint, #E1F5EE); color: var(--brand-dark, #0B3D2E);">Paso <span id="onboarding-step-num">1</span> de 3</span>
                             </div>
                             <p id="onboarding-step-desc" class="text-sm text-gray-500">Comienza a organizar tu trabajo. Siguiente paso: Crear tu primer grupo.</p>
                         </div>
@@ -164,13 +164,13 @@
                             <button onclick="actualizarOnboardingUI('omitido')" class="text-sm text-gray-500 hover:text-gray-700 px-3 py-2 text-center">
                                 Saltar por ahora
                             </button>
-                            <button id="btn-onboarding-action" onclick="abrirOnboardingAction()" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm text-center">
+                            <button id="btn-onboarding-action" onclick="abrirOnboardingAction()" class="text-white px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity shadow-sm text-center" style="background: var(--brand-primary, #1D9E75);">
                                 Continuar
                             </button>
                         </div>
                     </div>
                     <div class="h-1.5 w-full bg-gray-100">
-                        <div id="onboarding-progress-bar" class="h-1.5 bg-blue-600 rounded-r-full transition-all duration-500" style="width: 33%"></div>
+                        <div id="onboarding-progress-bar" class="h-1.5 rounded-r-full transition-all duration-500" style="width: 33%; background: var(--brand-primary, #1D9E75);"></div>
                     </div>
                 </div>
 
@@ -427,7 +427,7 @@
     <!-- ── Modal: onboarding completado ────────────────────────────── -->
     <div id="modal-onboarding-done" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
         <div class="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden text-center">
-            <div class="bg-blue-600 p-8 flex justify-center">
+            <div class="p-8 flex justify-center" style="background: var(--brand-primary, #1D9E75);">
                 <div class="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center">
                     <i class="fas fa-check-circle text-5xl text-white"></i>
                 </div>
@@ -435,17 +435,24 @@
             <div class="p-6 sm:p-8">
                 <h3 class="text-2xl font-bold text-gray-900 mb-2">¡Recorrido completado!</h3>
                 <p class="text-gray-600 mb-6">Ya diste tus primeros pasos en Maestr.ia. Aquí tienes otras herramientas para explorar:</p>
-                
+
                 <div class="space-y-3 mb-8 text-left">
                     <div class="flex items-start gap-3">
-                        <div class="w-8 h-8 rounded bg-green-100 text-green-700 flex items-center justify-center flex-shrink-0 mt-0.5"><i class="fas fa-book-open"></i></div>
+                        <div class="w-8 h-8 rounded flex items-center justify-center flex-shrink-0 mt-0.5" style="background: var(--brand-mint, #E1F5EE); color: var(--brand-dark, #0B3D2E);"><i class="fas fa-comments"></i></div>
+                        <div>
+                            <p class="font-bold text-gray-900 text-sm">Chat con IA</p>
+                            <p class="text-xs text-gray-500">Sigue generando planeaciones y consultas en otros grupos.</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-3">
+                        <div class="w-8 h-8 rounded flex items-center justify-center flex-shrink-0 mt-0.5" style="background: var(--brand-mint, #E1F5EE); color: var(--brand-dark, #0B3D2E);"><i class="fas fa-book-open"></i></div>
                         <div>
                             <p class="font-bold text-gray-900 text-sm">Libro de notas</p>
                             <p class="text-xs text-gray-500">Registra y calcula calificaciones por grupo.</p>
                         </div>
                     </div>
                     <div class="flex items-start gap-3">
-                        <div class="w-8 h-8 rounded bg-purple-100 text-purple-700 flex items-center justify-center flex-shrink-0 mt-0.5"><i class="fas fa-chalkboard-teacher"></i></div>
+                        <div class="w-8 h-8 rounded flex items-center justify-center flex-shrink-0 mt-0.5" style="background: var(--brand-mint, #E1F5EE); color: var(--brand-dark, #0B3D2E);"><i class="fas fa-chalkboard-teacher"></i></div>
                         <div>
                             <p class="font-bold text-gray-900 text-sm">Panel Docente</p>
                             <p class="text-xs text-gray-500">Maneja tu calendario, seguimiento y tareas pendientes.</p>
@@ -453,7 +460,7 @@
                     </div>
                 </div>
 
-                <button onclick="document.getElementById('modal-onboarding-done').classList.add('hidden')" class="w-full bg-blue-600 text-white font-medium py-3 rounded-xl hover:bg-blue-700 transition-colors">
+                <button onclick="document.getElementById('modal-onboarding-done').classList.add('hidden')" class="w-full text-white font-medium py-3 rounded-xl hover:opacity-90 transition-opacity" style="background: var(--brand-primary, #1D9E75);">
                     Continuar al Dashboard
                 </button>
             </div>
@@ -960,10 +967,6 @@
         }
 
         if (u.onboarding_estado === 'pendiente') {
-            if (u.onboarding_paso === 3 && dashGrupos.length > 0) {
-                // If it just arrived to step 3, they did an action, we might have just completed step 2
-                // Wait, if step is 3, they should create the planning
-            }
             progress.classList.remove('hidden');
             const stepNum = document.getElementById('onboarding-step-num');
             const stepDesc = document.getElementById('onboarding-step-desc');
