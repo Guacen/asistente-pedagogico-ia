@@ -153,3 +153,52 @@ def test_apply_migrations_es_idempotente_en_postgres(postgres_engine, monkeypatc
 
     migrate.apply_migrations()  # segunda corrida — todo ya existe
     assert migrate.MIGRATION_ERRORS == []
+
+
+def test_tabla_reportes_problema_se_crea_limpia_contra_postgres(postgres_engine, monkeypatch):
+    """
+    Sprint primer-uso, Parte D — verificación obligatoria #4: la tabla
+    reportes_problema (sin ALTER TABLE, sólo Base.metadata.create_all)
+    se crea de verdad contra Postgres real, con los tipos correctos
+    (TIMESTAMP para creado_en, no DATETIME).
+
+    A diferencia de _preparar_esquema_viejo() (que crea el esquema
+    COMPLETO primero, dejando este create_all como no-op), acá se crea
+    todo MENOS esta tabla, para forzar que el paso de migrate.py la
+    cree de cero — igual que pasaría la primera vez que este código
+    corra contra la Postgres real de producción.
+    """
+    import migrate
+    from sqlalchemy import inspect
+    from sqlalchemy.orm import sessionmaker
+    from sqlalchemy import text as sa_text
+    from database import Base
+    from models import ReporteProblema
+
+    # Esquema completo, y ENTONCES se borra sólo la tabla nueva — simula
+    # una Postgres de producción que nunca llegó a este sprint todavía.
+    Base.metadata.create_all(bind=postgres_engine)
+    with postgres_engine.connect() as conn:
+        conn.execute(sa_text("DROP TABLE reportes_problema"))
+        conn.commit()
+
+    monkeypatch.setattr(migrate, "engine", postgres_engine)
+    monkeypatch.setattr(
+        migrate, "SessionLocal",
+        sessionmaker(bind=postgres_engine, autocommit=False, autoflush=False),
+    )
+
+    migrate.apply_migrations()
+    assert migrate.MIGRATION_ERRORS == [], migrate.MIGRATION_ERRORS
+
+    inspector = inspect(postgres_engine)
+    assert "reportes_problema" in inspector.get_table_names()
+    columnas = {c["name"]: c for c in inspector.get_columns("reportes_problema")}
+    assert set(columnas) == {
+        "id_reporte", "id_docente", "descripcion", "pantalla",
+        "correlation_id", "navegador", "es_movil", "creado_en",
+    }
+    # El tipo real que Postgres le asignó a creado_en — si algún día
+    # alguien reemplaza el Column(DateTime) por SQL crudo con "DATETIME"
+    # (el bug del #89), esto lo atrapa igual que a cualquier otra columna.
+    assert "TIMESTAMP" in str(columnas["creado_en"]["type"]).upper()

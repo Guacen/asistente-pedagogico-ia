@@ -48,6 +48,7 @@ import pagos
 import perfil
 import piar
 import presentaciones
+import reportes
 import sesiones
 import suscripciones
 
@@ -361,6 +362,7 @@ app.include_router(observaciones.router)
 app.include_router(pagos.router)
 app.include_router(perfil.router)
 app.include_router(presentaciones.router)
+app.include_router(reportes.router)
 app.include_router(sesiones.router)
 app.include_router(suscripciones.router)
 

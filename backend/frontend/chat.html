@@ -374,6 +374,7 @@
 <script src="js/config.js?v=20260803"></script>
 <script src="js/api.js?v=20260803"></script>
 <script src="js/auth.js?v=20260803"></script>
+<script src="js/reportar-problema.js?v=20260928"></script>
 
 <script>
 // ══════════════════════════════════════════════════════════════
@@ -841,6 +842,15 @@ function connectSocket() {
 
     socket.on('ia_error', (data) => {
         ocultarTyping();
+        // Sprint primer-uso, Parte D: captura el correlation_id de
+        // cualquier ia_error (socket_events.py lo manda en timeout y en
+        // el genérico) — es lo que "Reportar un problema" adjunta sin
+        // que el docente escriba nada. Mismo storage que usa api.js
+        // para los errores REST, a propósito: "el último error" es uno
+        // solo sin importar el canal por el que llegó.
+        if (data && data.correlation_id) {
+            localStorage.setItem('ultimo_correlation_id', data.correlation_id);
+        }
         // Prueba gratuita vencida (sprint trial-7-dias) → pantalla de bloqueo.
         if (data && data.code === 'trial_expirado') {
             window.location.href = 'trial-expirado.html';

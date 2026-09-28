@@ -157,6 +157,11 @@ class ApiClient {
                 if (response.status === 402) {
                     this._redirigirTrialExpirado();
                 }
+                // Sprint primer-uso, Parte D: si el error trae correlation_id
+                // (errores.error_manejable() / el handler global de main.py
+                // siempre lo incluyen), lo guardamos — es lo que "Reportar un
+                // problema" adjunta sin que el docente tenga que hacer nada.
+                this._capturarCorrelationId(error);
                 throw new Error(error || `Error ${response.status}`);
             }
 
@@ -268,6 +273,22 @@ class ApiClient {
             return;
         }
         window.location.href = 'trial-expirado.html';
+    }
+
+    // Sprint primer-uso, Parte D — "Reportar un problema". Guarda el
+    // correlation_id del último error en localStorage (sobrevive
+    // navegación entre páginas dentro de la misma sesión, a propósito:
+    // el docente puede ver el error en una pantalla y reportarlo desde
+    // otra). `error` es el texto crudo de la respuesta — puede no ser
+    // JSON (network error, 502 de un proxy, etc.), nunca debe lanzar.
+    _capturarCorrelationId(errorText) {
+        try {
+            const body = JSON.parse(errorText);
+            const cid = body && body.detail && body.detail.correlation_id;
+            if (cid) localStorage.setItem('ultimo_correlation_id', cid);
+        } catch (_) {
+            // No era JSON — no hay correlation_id que capturar, no pasa nada.
+        }
     }
 
     // ==========================================
@@ -836,6 +857,23 @@ class ApiClient {
     // el dashboard sólo lo consulta/muestra para es_admin=true.
     async getVersion() {
         return this.request('/api/version');
+    }
+
+    // ==========================================
+    // REPORTAR UN PROBLEMA (sprint primer-uso, Parte D)
+    // ==========================================
+
+    async crearReporteProblema(data) {
+        return this.request('/api/reportes', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        });
+    }
+
+    // Sólo funciona para es_admin=true — el backend devuelve 403 para
+    // cualquier otro docente.
+    async listarReportesProblema() {
+        return this.request('/api/reportes');
     }
 
     // ==========================================

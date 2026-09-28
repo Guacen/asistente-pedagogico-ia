@@ -892,3 +892,33 @@ class SeguimientoDBA(Base):
 
     grupo = relationship("Grupo", back_populates="seguimientos_dba")
     dba = relationship("DBA")
+
+
+class ReporteProblema(Base):
+    """
+    Sprint primer-uso, Parte D — "Reportar un problema". Minimización de
+    datos a propósito: sólo lo necesario para investigar (quién, dónde,
+    cuándo, con qué correlation_id si hubo un error visible, y qué
+    escribió el docente) — nunca capturas de pantalla, contenido de otros
+    campos que estuviera llenando, ni datos de estudiantes.
+
+    `navegador`/`es_movil` los deriva el FRONTEND de `navigator.userAgent`
+    antes de mandarlos — no se guarda el user-agent crudo (fingerprinting
+    más específico del necesario para el propósito de diagnóstico).
+    """
+    __tablename__ = "reportes_problema"
+
+    id_reporte = Column(String(36), primary_key=True, default=new_uuid)
+    id_docente = Column(
+        String(36), ForeignKey("docentes.id_docente"), nullable=False, index=True,
+    )
+    descripcion = Column(Text, nullable=False)
+    pantalla = Column(String(300), nullable=True)
+    # 8 hex mayúsculas de errores.nuevo_correlation_id() — nullable: el
+    # docente puede reportar algo sin que haya habido ningún error visible.
+    correlation_id = Column(String(16), nullable=True, index=True)
+    navegador = Column(String(50), nullable=True)
+    es_movil = Column(Boolean, nullable=True)
+    creado_en = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    docente = relationship("Docente")

@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reportes de problemas · Maestr.ia</title>
+    <link rel="icon" type="image/png" href="assets/icon.png">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0B3D2E">
+    <link rel="apple-touch-icon" href="/assets/icon.png">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/main.css?v=20260928">
+    <link rel="stylesheet" href="css/brand.css?v=20260928">
+
+    <style>
+        body { background: #F9FAFB; min-height: 100vh; }
+    </style>
+</head>
+<body>
+
+    <nav class="bg-white border-b border-gray-200 shadow-sm">
+        <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+            <a href="dashboard.html" class="flex items-center gap-3">
+                <img src="assets/logo.png" alt="Maestr.ia" class="brand-logo-sm">
+            </a>
+            <a href="dashboard.html" class="text-sm text-gray-500 hover:text-gray-800 inline-flex items-center">
+                <i class="fas fa-arrow-left mr-2"></i>Volver al dashboard
+            </a>
+        </div>
+    </nav>
+
+    <main class="max-w-5xl mx-auto px-4 py-8">
+        <h1 class="text-xl font-bold text-gray-900 mb-1">Reportes de problemas</h1>
+        <p class="text-sm text-gray-500 mb-6">Sólo visible para administradores. Muestra los últimos 200 reportes.</p>
+
+        <div id="sin-permiso" class="hidden bg-amber-50 border border-amber-200 rounded-xl p-6 text-center">
+            <i class="fas fa-lock text-amber-500 text-2xl mb-2"></i>
+            <p class="text-amber-800 font-medium">No tenés permiso para ver esta página.</p>
+        </div>
+
+        <div id="cargando" class="text-center py-16 text-gray-400">
+            <i class="fas fa-spinner fa-spin text-2xl"></i>
+        </div>
+
+        <div id="sin-reportes" class="hidden bg-white border border-gray-200 rounded-xl p-10 text-center">
+            <i class="fas fa-circle-check text-3xl text-green-500 mb-3"></i>
+            <p class="text-gray-700 font-medium">Todavía no hay reportes.</p>
+            <p class="text-sm text-gray-500 mt-1">Cuando un docente reporte un problema, aparece acá.</p>
+        </div>
+
+        <div id="tabla-wrap" class="hidden bg-white border border-gray-200 rounded-xl overflow-hidden overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="bg-gray-50 text-gray-500 text-xs uppercase">
+                    <tr>
+                        <th class="px-4 py-3 text-left">Fecha</th>
+                        <th class="px-4 py-3 text-left">Docente</th>
+                        <th class="px-4 py-3 text-left">Pantalla</th>
+                        <th class="px-4 py-3 text-left">Correlation ID</th>
+                        <th class="px-4 py-3 text-left">Dispositivo</th>
+                        <th class="px-4 py-3 text-left">Descripción</th>
+                    </tr>
+                </thead>
+                <tbody id="tabla-reportes" class="divide-y divide-gray-100"></tbody>
+            </table>
+        </div>
+    </main>
+
+    <script src="js/config.js?v=20260928"></script>
+    <script src="js/api.js?v=20260928"></script>
+    <script src="js/auth.js?v=20260928"></script>
+    <script>
+        requireAuth();
+
+        async function cargar() {
+            const cargando = document.getElementById('cargando');
+            try {
+                const reportes = await api.listarReportesProblema();
+                cargando.classList.add('hidden');
+
+                if (reportes.length === 0) {
+                    document.getElementById('sin-reportes').classList.remove('hidden');
+                    return;
+                }
+
+                const tbody = document.getElementById('tabla-reportes');
+                tbody.innerHTML = reportes.map((r) => `
+                    <tr>
+                        <td class="px-4 py-3 whitespace-nowrap text-gray-500">${new Date(r.creado_en).toLocaleString('es-CO')}</td>
+                        <td class="px-4 py-3 whitespace-nowrap">
+                            <div class="font-medium text-gray-800">${escapeHtml(r.docente_nombre)}</div>
+                            <div class="text-xs text-gray-400">${escapeHtml(r.docente_email)}</div>
+                        </td>
+                        <td class="px-4 py-3 text-gray-600">${escapeHtml(r.pantalla || '—')}</td>
+                        <td class="px-4 py-3 font-mono text-xs text-gray-500">${escapeHtml(r.correlation_id || '—')}</td>
+                        <td class="px-4 py-3 whitespace-nowrap text-gray-500">${escapeHtml(r.navegador || '—')}${r.es_movil === true ? ' · móvil' : (r.es_movil === false ? ' · escritorio' : '')}</td>
+                        <td class="px-4 py-3 text-gray-700 max-w-md">${escapeHtml(r.descripcion)}</td>
+                    </tr>
+                `).join('');
+                document.getElementById('tabla-wrap').classList.remove('hidden');
+            } catch (err) {
+                cargando.classList.add('hidden');
+                const msg = err.message || '';
+                if (msg.includes('403')) {
+                    document.getElementById('sin-permiso').classList.remove('hidden');
+                } else {
+                    document.getElementById('sin-permiso').classList.remove('hidden');
+                    document.getElementById('sin-permiso').querySelector('p').textContent =
+                        'No pudimos cargar los reportes. Intenta recargar la página.';
+                }
+            }
+        }
+
+        function escapeHtml(str) {
+            return String(str)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        cargar();
+    </script>
+</body>
+</html>
