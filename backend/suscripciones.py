@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from auth import get_current_docente
 from config import LIMITES_PLAN, settings
 from database import get_db
+from errores import error_manejable
 from models import Docente, Grupo, Suscripcion, UsoMensual
 from schemas import CheckoutCreate, SuscripcionOut
 
@@ -120,7 +121,10 @@ def create_checkout(
         return {"checkout_url": session.url, "session_id": session.id}
 
     except stripe.StripeError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise error_manejable(
+            400, "No pudimos iniciar el pago. Intenta nuevamente.",
+            contexto="suscripciones.py checkout", exc=e,
+        )
 
 
 @router.post("/api/suscripciones/cancelar")
@@ -142,7 +146,10 @@ def cancelar_suscripcion(
         db.commit()
         return {"mensaje": "Suscripción cancelada. Activa hasta fin del período."}
     except stripe.StripeError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise error_manejable(
+            400, "No pudimos cancelar la suscripción. Intenta nuevamente.",
+            contexto="suscripciones.py cancelar", exc=e,
+        )
 
 
 @router.post("/webhook/stripe")

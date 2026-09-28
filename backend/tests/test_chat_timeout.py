@@ -155,6 +155,10 @@ def test_send_message_con_timeout_emite_ia_error_code_timeout(monkeypatch, test_
     assert payload["code"] == "timeout"
     assert payload["message"]  # mensaje no vacío, claro para el docente
     assert "intenta" in payload["message"].lower() or "tardando" in payload["message"].lower()
+    # Sprint primer-uso, Parte C/D: todo ia_error lleva correlation_id —
+    # sin esto, "Reportar un problema" no tiene nada que adjuntar.
+    assert payload.get("correlation_id")
+    assert len(payload["correlation_id"]) == 8
 
     # Nunca queda "nada" — o hay un ia_complete, o hay un ia_error, jamás
     # ningún evento en absoluto (eso es el spinner mudo indefinido).
@@ -191,3 +195,43 @@ def test_send_message_con_error_generico_sigue_emitiendo_ia_error_normal(monkeyp
     payload = _payload_de(emit_mock, "ia_error")
     assert payload is not None
     assert payload.get("code") != "timeout"
+    assert payload.get("correlation_id")
+    assert len(payload["correlation_id"]) == 8
+
+
+def test_correlation_id_del_ia_error_queda_en_el_log(monkeypatch, test_engine, db_session, seed_docente, caplog):
+    """Verificación obligatoria #3 del sprint primer-uso: el mismo
+    correlation_id que ve el docente en el chat debe poder cruzarse
+    contra el log del servidor — si no, un reporte de "no me funcionó
+    la planeación" no sirve para investigar nada."""
+    import logging
+
+    TestSessionLocal = sessionmaker(bind=test_engine, autocommit=False, autoflush=False)
+    monkeypatch.setattr(socket_events, "SessionLocal", TestSessionLocal)
+
+    sid = "sid-correlation-log-test"
+    socket_events._sesiones[sid] = seed_docente["docente"].id_docente
+
+    async def _generar_respuesta_rompe(*args, **kwargs):
+        raise ValueError("boom para el log")
+
+    monkeypatch.setattr(socket_events, "generar_respuesta", _generar_respuesta_rompe)
+    emit_mock = _mock_sio(monkeypatch)
+
+    async def _run():
+        await socket_events.send_message(sid, {
+            "grupo_id": seed_docente["grupo"].id_grupo,
+            "mensaje": "Hola",
+            "modo": "planeacion",
+        })
+    try:
+        with caplog.at_level(logging.ERROR, logger="errores"):
+            asyncio.run(_run())
+    finally:
+        socket_events._sesiones.pop(sid, None)
+
+    payload = _payload_de(emit_mock, "ia_error")
+    correlation_id = payload["correlation_id"]
+
+    logueado = [rec for rec in caplog.records if correlation_id in rec.message]
+    assert logueado, f"el correlation_id {correlation_id} del ia_error no aparece en el log"
