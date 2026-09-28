@@ -25,6 +25,7 @@ from sqlalchemy.orm import Session
 
 from auth import verify_trial_active
 from database import get_db
+from errores import error_manejable
 from models import Calificacion, Docente, Estudiante, EvaluacionColumna, Grupo
 from security_utils import obtener_ip_cliente, registrar_auditoria
 
@@ -579,7 +580,10 @@ async def generar_documento(
             grupo=grupo,
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error generando DOCX: {e}")
+        raise error_manejable(
+            500, "No pudimos generar el documento. Intenta nuevamente.",
+            contexto="documento.py generar_docx", exc=e,
+        )
 
     # Nombre de archivo seguro
     safe = re.sub(r'[^\w\s-]', '', titulo).strip().replace(' ', '_')[:60] or 'documento'
@@ -1023,7 +1027,10 @@ def boletin_estudiante(
             docente, grupo, estudiante, periodo, columnas, notas_col
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error generando boletín: {e}")
+        raise error_manejable(
+            500, "No pudimos generar el boletín. Intenta nuevamente.",
+            contexto="documento.py boletin_estudiante", exc=e,
+        )
 
     fname = _safe_filename(
         f'Boletin_{estudiante.codigo_estudiante}_{grupo.nombre_grupo}_P{periodo}',
@@ -1070,7 +1077,10 @@ def boletin_grupo(
             docente, grupo, periodo, columnas, notas_por_est, estudiantes
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error generando boletín de grupo: {e}")
+        raise error_manejable(
+            500, "No pudimos generar los boletines del grupo. Intenta nuevamente.",
+            contexto="documento.py boletin_grupo", exc=e,
+        )
 
     fname = _safe_filename(
         f'Boletin_{grupo.nombre_grupo}_P{periodo}',

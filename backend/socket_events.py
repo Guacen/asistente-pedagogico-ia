@@ -21,6 +21,7 @@ import socketio
 
 from auth import trial_vencido, verify_token_for_socket
 from database import SessionLocal
+from errores import loggear_error, nuevo_correlation_id
 from ia import generar_respuesta
 from models import (
     Calificacion,
@@ -688,15 +689,21 @@ async def send_message(sid, data):
         # pasó (no "algo se rompió") y dejar el chat listo para
         # reintentar, nunca la conexión de socket colgada esperando un
         # evento que ya no va a llegar.
-        print(f"⏱️  Timeout generando respuesta en send_message (grupo={grupo_id})")
+        correlation_id = nuevo_correlation_id()
+        loggear_error(correlation_id, f"Timeout en send_message (grupo={grupo_id})")
         await sio.emit("ia_error", {
             "code": "timeout",
             "message": "La IA está tardando más de lo esperado. Intenta de nuevo en unos segundos.",
+            "correlation_id": correlation_id,
         }, to=sid)
 
     except Exception as e:
-        print(f"❌ Error en send_message: {e}")
-        await sio.emit("ia_error", {"message": "Error generando respuesta. Intenta nuevamente."}, to=sid)
+        correlation_id = nuevo_correlation_id()
+        loggear_error(correlation_id, f"Error en send_message (grupo={grupo_id})", e)
+        await sio.emit("ia_error", {
+            "message": "Error generando respuesta. Intenta nuevamente.",
+            "correlation_id": correlation_id,
+        }, to=sid)
 
     finally:
         db.close()

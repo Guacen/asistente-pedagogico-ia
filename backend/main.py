@@ -22,7 +22,7 @@ from pathlib import Path
 import socketio
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -31,6 +31,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from config import settings
 from database import create_tables
+from errores import loggear_error, nuevo_correlation_id
 from migrate import apply_migrations, MIGRATION_ERRORS, seed_pro_user
 from rate_limiter import limiter
 
@@ -122,6 +123,40 @@ app = FastAPI(
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# ============================================================
+# ERRORES NO MANEJADOS — sprint primer-uso
+# Red de seguridad final: cualquier excepción que un endpoint no haya
+# capturado por su cuenta (los try/except puntuales de documento.py,
+# grupos.py, piar.py, etc. usan errores.error_manejable() directo, esto
+# es sólo para lo que se escape de todos esos). Nunca deja pasar detalle
+# técnico a la pantalla — ni el texto de la excepción, ni "Internal
+# Server Error" — y siempre da un correlation_id: sin eso, un reporte
+# de "no me funcionó" del sprint de Reportar un problema no sirve para
+# investigar nada.
+#
+# HTTPException/RequestValidationError siguen su propio camino (FastAPI
+# ya las registra específicas por tipo antes de caer acá) — esto sólo
+# atrapa lo verdaderamente inesperado.
+# ============================================================
+
+@app.exception_handler(Exception)
+async def excepcion_no_manejada(request: Request, exc: Exception):
+    correlation_id = nuevo_correlation_id()
+    loggear_error(
+        correlation_id,
+        f"Excepción no manejada en {request.method} {request.url.path}",
+        exc,
+    )
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": {
+                "message": "Ocurrió un error inesperado. Intenta nuevamente.",
+                "correlation_id": correlation_id,
+            }
+        },
+    )
 
 # ============================================================
 # CORS — restrictivo (sprint seguridad-avanzada)

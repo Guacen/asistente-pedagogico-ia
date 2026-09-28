@@ -29,6 +29,7 @@ from sqlalchemy.orm import Session
 
 from auth import verify_trial_active
 from database import get_db
+from errores import error_manejable
 from ia import client as anthropic_client
 from config import settings
 from models import Docente, Estudiante, Grupo, Mensaje, PIAR
@@ -595,8 +596,10 @@ async def crear_piar(
             docente, grupo, estudiante, historial,
         )
     except RuntimeError as exc:
-        # Fallo del modelo — devolvemos skeleton + status distinto para debug
-        raise HTTPException(status_code=502, detail=str(exc))
+        raise error_manejable(
+            502, "No pudimos generar el PIAR en este momento. Intenta nuevamente en unos minutos.",
+            contexto="piar.py generar sintesis IA", exc=exc,
+        )
 
     # 4. Calcular versión y persistir
     anio = body.anio or grupo.anio_lectivo
@@ -732,7 +735,10 @@ def descargar_docx(
     try:
         docx_bytes = _construir_piar_docx(docente, grupo, estudiante, piar)
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Error generando DOCX del PIAR: {exc}")
+        raise error_manejable(
+            500, "No pudimos generar el documento del PIAR. Intenta nuevamente.",
+            contexto="piar.py descargar_docx", exc=exc,
+        )
 
     safe = re.sub(r"[^\w\s-]", "", estudiante.codigo_estudiante).strip().replace(" ", "_")[:40]
     filename = f"PIAR_{safe or 'estudiante'}_P{piar.periodo}_v{piar.version}.docx"

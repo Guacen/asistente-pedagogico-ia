@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from auth import verify_trial_active
 from config import settings
 from database import get_db
+from errores import error_manejable
 from models import Archivo, Calificacion, EvaluacionColumna, Estudiante, Grupo, Mensaje, Nota
 from permisos import (
     es_admin_institucion,
@@ -98,9 +99,9 @@ def create_grupo(
         # etc.), el grupo tampoco se persiste — atomicidad requerida por
         # el contrato del endpoint.
         db.rollback()
-        raise HTTPException(
-            status_code=400,
-            detail=f"Error creando estudiantes iniciales; grupo no guardado: {exc}",
+        raise error_manejable(
+            400, "No pudimos crear el grupo con esos estudiantes. Revisa los datos e intenta nuevamente.",
+            contexto="grupos.py create_grupo estudiantes_iniciales", exc=exc,
         )
     db.refresh(grupo)
     return grupo

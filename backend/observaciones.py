@@ -32,6 +32,7 @@ from sqlalchemy.orm import Session
 from auth import verify_trial_active
 from database import get_db
 from documento import _docx_bytes
+from errores import error_manejable
 from models import Docente, Estudiante, Grupo, Observacion
 from prompts import PROMPT_BASE, PROMPT_MODO_OBSERVACIONES
 from security_utils import sanitizar_texto
@@ -377,7 +378,10 @@ def exportar_observacion(
             grupo=grupo,
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error generando DOCX: {e}")
+        raise error_manejable(
+            500, "No pudimos generar el documento. Intenta nuevamente.",
+            contexto="observaciones.py descargar_docx", exc=e,
+        )
 
     filename = f"observacion_{obs.id_observacion[:8]}.docx"
     import io
