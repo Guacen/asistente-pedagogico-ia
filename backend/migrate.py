@@ -487,6 +487,19 @@ def apply_migrations():
     # Institucion nueva a su nombre. Idempotente — si ya tiene, no toca.
     _paso("backfill instituciones unipersonales", _backfill_instituciones_unipersonales)
 
+    # ── Sprint primer-uso, Parte D — "Reportar un problema" ──
+    # Tabla nueva, sin ALTER TABLE necesario — create_all idempotente. A
+    # propósito: create_all usa los tipos de SQLAlchemy (DateTime, etc.),
+    # que se compilan solos al dialecto correcto por motor — TIMESTAMP en
+    # Postgres, DATETIME en SQLite — nunca un string crudo de SQL como el
+    # que causó el incidente del #89. Ésta es justamente la razón por la
+    # que las tablas nuevas de este archivo casi nunca necesitan ALTER
+    # TABLE a mano.
+    def _paso_tabla_reportes_problema():
+        from models import ReporteProblema  # noqa: F401
+        Base.metadata.create_all(bind=engine, tables=[ReporteProblema.__table__])
+    _paso("tabla reportes_problema", _paso_tabla_reportes_problema)
+
     # Refrescar inspector para verificar que quedó creada (log claro) —
     # sólo lectura, pero igual aislado: un problema de conectividad acá
     # no debe tumbar el resto del startup tampoco.
@@ -496,7 +509,7 @@ def apply_migrations():
             "rate_limit_counter", "piar", "instituciones", "chat_sesiones",
             "email_verifications", "password_reset_tokens", "observaciones",
             "dbas", "mallas_curriculares", "token_blacklist", "audit_log",
-            "presentaciones",
+            "presentaciones", "reportes_problema",
         )
         for tabla in tablas_nuevas:
             if tabla in inspector.get_table_names():

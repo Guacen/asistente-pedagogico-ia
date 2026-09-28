@@ -113,6 +113,13 @@ class Settings(BaseSettings):
     FROM_EMAIL: str = "no-reply@maestria.co"
     FROM_NAME: str = "Maestr.ia"
 
+    # Sprint primer-uso, Parte D — "Reportar un problema" le avisa a este
+    # correo cada vez que un docente manda un reporte. Vacío por default:
+    # si no está configurada, enviar_correo_reporte_problema() loguea y
+    # devuelve False sin intentar enviar — el reporte igual se guarda en
+    # la tabla, nunca se pierde por falta de esta env var.
+    ADMIN_EMAIL: str = ""
+
     # Archivos
     UPLOAD_DIR: str = "uploads"
     MAX_FILE_SIZE_MB: int = 10

@@ -22,6 +22,7 @@ después), y logueamos el error server-side para debugging.
 from __future__ import annotations
 
 import logging
+from datetime import datetime
 from typing import Optional, Protocol
 
 from config import settings
@@ -245,6 +246,84 @@ def enviar_correo_reset_password(
     )
     html = _plantilla_html_reset_password(nombre, link_reset)
     return prov.enviar(email, nombre, asunto, html, texto)
+
+
+def enviar_correo_reporte_problema(
+    descripcion: str,
+    docente_nombre: str,
+    docente_email: str,
+    pantalla: Optional[str],
+    correlation_id: Optional[str],
+    navegador: Optional[str],
+    es_movil: Optional[bool],
+    creado_en: datetime,
+    provider: Optional[EmailProvider] = None,
+) -> bool:
+    """
+    Sprint primer-uso, Parte D. Le avisa a settings.ADMIN_EMAIL cada vez
+    que un docente manda un reporte — un reporte que sólo queda en una
+    tabla que nadie abre no sirve (mismo problema que ya tuvimos con
+    migraciones_fallidas). Si ADMIN_EMAIL no está configurada, no
+    intenta enviar — devuelve False de inmediato, el caller ya guardó el
+    reporte en la DB antes de llamar acá, así que nunca se pierde nada
+    por esto.
+    """
+    if not settings.ADMIN_EMAIL:
+        logger.warning("ADMIN_EMAIL no configurado — reporte guardado pero sin avisar por correo")
+        return False
+
+    prov = provider or _elegir_provider()
+    asunto = f"[Maestr.ia] Reporte de problema — {docente_nombre}"
+    dispositivo = "celular" if es_movil else ("computador" if es_movil is False else "desconocido")
+    texto = (
+        f"Nuevo reporte de problema.\n\n"
+        f"Docente: {docente_nombre} <{docente_email}>\n"
+        f"Pantalla: {pantalla or '(no capturada)'}\n"
+        f"Fecha: {creado_en.isoformat()}\n"
+        f"Correlation ID: {correlation_id or '(sin error asociado)'}\n"
+        f"Navegador: {navegador or 'desconocido'} ({dispositivo})\n\n"
+        f"Descripción del docente:\n{descripcion}\n"
+    )
+    html = _plantilla_html_reporte_problema(
+        docente_nombre, docente_email, pantalla, correlation_id, navegador, dispositivo, creado_en, descripcion,
+    )
+    return prov.enviar(settings.ADMIN_EMAIL, "Administrador", asunto, html, texto)
+
+
+def _plantilla_html_reporte_problema(
+    docente_nombre: str, docente_email: str, pantalla: Optional[str],
+    correlation_id: Optional[str], navegador: Optional[str], dispositivo: str,
+    creado_en: datetime, descripcion: str,
+) -> str:
+    from html import escape
+    nombre_esc = escape(docente_nombre)
+    email_esc = escape(docente_email)
+    pantalla_esc = escape(pantalla or "(no capturada)")
+    cid_esc = escape(correlation_id or "(sin error asociado)")
+    navegador_esc = escape(navegador or "desconocido")
+    descripcion_esc = escape(descripcion).replace("\n", "<br>")
+    return f"""<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"></head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #F5F7FA; margin: 0; padding: 32px 16px;">
+  <div style="max-width: 560px; margin: 0 auto; background: #FFFFFF; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
+    <div style="background: #DC2626; padding: 24px 32px; color: #FFFFFF;">
+      <h1 style="margin: 0; font-size: 20px; font-weight: 600;">Reporte de problema</h1>
+    </div>
+    <div style="padding: 32px;">
+      <table style="width: 100%; font-size: 14px; color: #374151; border-collapse: collapse;">
+        <tr><td style="padding: 4px 0; color: #6B7280;">Docente</td><td style="padding: 4px 0;">{nombre_esc} &lt;{email_esc}&gt;</td></tr>
+        <tr><td style="padding: 4px 0; color: #6B7280;">Pantalla</td><td style="padding: 4px 0;">{pantalla_esc}</td></tr>
+        <tr><td style="padding: 4px 0; color: #6B7280;">Fecha</td><td style="padding: 4px 0;">{creado_en.isoformat()}</td></tr>
+        <tr><td style="padding: 4px 0; color: #6B7280;">Correlation ID</td><td style="padding: 4px 0; font-family: monospace;">{cid_esc}</td></tr>
+        <tr><td style="padding: 4px 0; color: #6B7280;">Navegador</td><td style="padding: 4px 0;">{navegador_esc} ({dispositivo})</td></tr>
+      </table>
+      <hr style="border: none; border-top: 1px solid #E5E7EB; margin: 20px 0;">
+      <p style="font-size: 15px; color: #1F2937; line-height: 1.55; white-space: pre-wrap;">{descripcion_esc}</p>
+    </div>
+  </div>
+</body>
+</html>"""
 
 
 def _plantilla_html_reset_password(nombre: str, link: str) -> str:

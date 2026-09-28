@@ -130,6 +130,13 @@
                                class="flex items-center px-4 py-2 hover:bg-gray-50 text-sm text-gray-700 transition-colors">
                                 <i class="fas fa-lock mr-3 text-gray-400 w-4"></i>Seguridad
                             </a>
+                            <!-- Sprint primer-uso, Parte D — sólo es_admin=true. Oculto por
+                                 default (hidden en el HTML), se revela en cargarDatos() si
+                                 dashUser.es_admin. -->
+                            <a id="link-reportes-admin" href="reportes.html" hidden
+                               class="flex items-center px-4 py-2 hover:bg-gray-50 text-sm text-gray-700 transition-colors">
+                                <i class="fas fa-flag mr-3 text-gray-400 w-4"></i>Reportes de problemas
+                            </a>
                             <hr class="my-1">
                             <button onclick="cerrarSesion()"
                                 class="w-full flex items-center px-4 py-2 hover:bg-red-50 text-sm text-red-600 transition-colors">
@@ -385,6 +392,7 @@
     <script src="js/config.js?v=20260803"></script>
     <script src="js/api.js?v=20260803"></script>
     <script src="js/auth.js?v=20260803"></script>
+    <script src="js/reportar-problema.js?v=20260928"></script>
 
     <script>
     // Sidebar como drawer en móvil (<768px, breakpoint md de Tailwind).
@@ -485,6 +493,7 @@
             renderSidebar();
             if (sub) renderPlan();
             renderStats();
+            document.getElementById('link-reportes-admin').hidden = !u.es_admin;
             mostrarBannerConsentimientoSiAplica(u);
             mostrarBannerSeguimientosPendientes();
             mostrarBannerTrialSiAplica();
