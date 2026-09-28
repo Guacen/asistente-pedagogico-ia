@@ -351,6 +351,20 @@ class Estudiante(Base):
 
     grupo = relationship("Grupo", back_populates="estudiantes")
     calificaciones = relationship("Calificacion", back_populates="estudiante", cascade="all, delete")
+    # Sprint F, Parte B2: sin estas 4, borrar un Estudiante dejaba huérfanos
+    # en piar/observaciones/mensajes/chat_sesiones — ninguna tenía cascada
+    # de ORM ni `ondelete` en la FK, así que en Postgres real el borrado
+    # directamente fallaba con ForeignKeyViolation si el estudiante tenía
+    # historial (en SQLite, sin PRAGMA foreign_keys=ON, el borrado "pasaba"
+    # pero dejaba las filas hijas apuntando a un id_estudiante inexistente
+    # — el mismo patrón SQLite-permisivo/Postgres-estricto de otros
+    # incidentes de este proyecto, nunca antes probado contra Postgres
+    # real para este endpoint). "Todo lo asociado" del estudiante se borra
+    # con él, a propósito — es lo que pide habeas data.
+    piars = relationship("PIAR", cascade="all, delete")
+    observaciones = relationship("Observacion", cascade="all, delete")
+    mensajes = relationship("Mensaje", cascade="all, delete")
+    chat_sesiones = relationship("ChatSesion", cascade="all, delete")
 
 
 class ChatSesion(Base):

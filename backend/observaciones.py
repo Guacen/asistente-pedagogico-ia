@@ -98,13 +98,19 @@ class ObservacionOut(BaseModel):
 # ═══════════════════════════════════════════════════════════════
 
 def _contexto_estudiante(estudiante: Optional[Estudiante]) -> str:
+    """
+    Sprint F, Parte B1: NO incluye `diagnostico`/`ajustes` — son dato de
+    salud (Ley 1581) que sólo puede viajar al prompt en modo PIAR ("Ajustes
+    de aula"). La generación de observaciones es un flujo separado, de un
+    solo turno, que nunca es ese modo — sólo necesita saber SI el
+    estudiante tiene PIAR activo.
+    """
     if not estudiante:
         return "\n• Esta observación es GRUPAL — no apunta a un estudiante específico.\n"
     ctx = f"\n• Estudiante: {estudiante.codigo_estudiante}"
     if estudiante.tiene_piar:
         ctx += (
-            f"\n• Tiene PIAR activo — diagnóstico: {estudiante.diagnostico or 'no especificado'}"
-            f"\n• Ajustes PIAR vigentes: {estudiante.ajustes or 'no especificados'}"
+            "\n• Tiene PIAR activo."
             "\n• Recordá: esta observación es insumo obligatorio para la próxima "
             "actualización de su PIAR (Decreto 1421)."
         )
