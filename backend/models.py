@@ -118,6 +118,22 @@ class Docente(Base):
     trial_ends_at = Column(DateTime, nullable=True)
     plan = Column(String(20), nullable=False, default="trial")
 
+    # ── Onboarding de primer uso — sprint primer-uso, Parte D3 ──
+    # 'pendiente' (banner visible) | 'completado' (creó su primera
+    # planeación con IA de verdad — ver socket_events.py send_message) |
+    # 'omitido' (saltó el recorrido; puede "retomarlo" y vuelve a
+    # 'pendiente', el link es discreto pero existe). Grandfathered al
+    # deploy de este sprint quedan en 'completado' — ya conocen el
+    # producto, no tiene sentido mostrarles el recorrido de bienvenida.
+    #
+    # onboarding_paso (1, 2 o 3) SIEMPRE lo mueve el backend como efecto
+    # secundario de una acción real (crear grupo, agregar estudiante,
+    # grupo de ejemplo) — nunca lo escribe el cliente directo, así que no
+    # puede quedar desincronizado con la realidad ni "adelantarse" a lo
+    # que el docente de verdad hizo.
+    onboarding_estado = Column(String(20), nullable=False, default="pendiente")
+    onboarding_paso = Column(Integer, nullable=False, default=1)
+
     # Relaciones
     grupos = relationship("Grupo", back_populates="docente", cascade="all, delete")
     suscripcion = relationship("Suscripcion", back_populates="docente", uselist=False, cascade="all, delete")
@@ -315,6 +331,12 @@ class Grupo(Base):
     cantidad_estudiantes = Column(Integer, nullable=False)
     recursos_disponibles = Column(JSON)
     fecha_creacion = Column(DateTime, default=datetime.utcnow)
+    # Sprint primer-uso, Parte D3 — grupo de ejemplo creado por
+    # "Explorar un grupo de ejemplo" en el onboarding. Marcado también
+    # en la UI (badge "Ejemplo") y usado para EXCLUIR estos grupos de la
+    # métrica de activación del Sprint E — crear una planeación acá NO
+    # cuenta como que el docente activó de verdad.
+    es_ejemplo = Column(Boolean, nullable=False, default=False)
 
     # Relaciones
     docente = relationship("Docente", back_populates="grupos")

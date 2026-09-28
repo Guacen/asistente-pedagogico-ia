@@ -11,13 +11,16 @@ NO pasa por verify_trial_active — si lo hiciera, un docente con trial
 vencido nunca podría enterarse de que venció (recibiría 402 en el mismo
 endpoint que debería explicarle el 402).
 """
-from fastapi import APIRouter, Depends
+from typing import Literal
+
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from auth import get_current_docente, trial_vencido
 from database import get_db
 from models import Docente
-from schemas import PlanStatusOut, _dias_restantes_trial
+from schemas import DocenteOut, PlanStatusOut, _dias_restantes_trial
 
 router = APIRouter(prefix="/api/perfil", tags=["perfil"])
 
@@ -38,3 +41,36 @@ def get_plan(
         dias_restantes=_dias_restantes_trial(docente.plan, docente.trial_ends_at),
         expirado=expirado,
     )
+
+
+# ============================================================
+# ONBOARDING DE PRIMER USO — sprint primer-uso, Parte D3
+# ============================================================
+
+class OnboardingUpdate(BaseModel):
+    # Sólo "pendiente" (saltar → retomar) y "omitido" (saltar) son
+    # setteables por el cliente. "completado" lo decide el backend solo
+    # (ver onboarding.py / socket_events.py) — no tendría sentido que el
+    # docente pudiera "marcar completado" sin haber creado nada de
+    # verdad, y onboarding_paso tampoco es parte de este payload por el
+    # mismo motivo: sólo avanza como efecto de acciones reales.
+    estado: Literal["pendiente", "omitido"]
+
+
+@router.put("/onboarding", response_model=DocenteOut)
+def actualizar_onboarding(
+    data: OnboardingUpdate,
+    docente: Docente = Depends(get_current_docente),
+    db: Session = Depends(get_db),
+):
+    """
+    "Saltar por ahora" (estado=omitido) y "retomar el recorrido"
+    (estado=pendiente, el link discreto post-skip) — nada más. Si el
+    docente ya completó el onboarding de verdad, este endpoint no hace
+    nada: no tiene sentido "saltar" o "retomar" algo que ya terminó.
+    """
+    if docente.onboarding_estado != "completado":
+        docente.onboarding_estado = data.estado
+        db.commit()
+        db.refresh(docente)
+    return docente

@@ -76,6 +76,9 @@ class DocenteOut(BaseModel):
     plan: str = "activo"
     trial_ends_at: Optional[datetime] = None
     es_admin: bool = False
+    # ── Onboarding de primer uso — sprint primer-uso, Parte D3 ──
+    onboarding_estado: str = "completado"
+    onboarding_paso: int = 1
 
     model_config = {"from_attributes": True}
 
@@ -203,6 +206,7 @@ class GrupoOut(BaseModel):
     cantidad_estudiantes: int
     recursos_disponibles: Optional[Any]
     fecha_creacion: datetime
+    es_ejemplo: bool = False
 
     model_config = {"from_attributes": True}
 

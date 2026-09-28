@@ -70,6 +70,9 @@ COLUMNAS_MIGRADAS_MANUALMENTE = [
     ("respuestas_presentacion", "puntos_obtenidos"),
     ("presentaciones", "secciones"),
     ("sesiones_presentacion", "slide_abierto_en"),
+    ("docentes", "onboarding_estado"),
+    ("docentes", "onboarding_paso"),
+    ("grupos", "es_ejemplo"),
 ]
 
 

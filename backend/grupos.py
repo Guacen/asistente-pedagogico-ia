@@ -2,6 +2,7 @@ import csv
 import io
 import os
 import uuid
+from datetime import datetime
 from typing import List
 
 import aiofiles
@@ -14,6 +15,7 @@ from config import settings
 from database import get_db
 from errores import error_manejable
 from models import Archivo, Calificacion, EvaluacionColumna, Estudiante, Grupo, Mensaje, Nota
+from onboarding import avanzar_onboarding_si_aplica
 from permisos import (
     es_admin_institucion,
     ids_docentes_institucion,
@@ -103,6 +105,69 @@ def create_grupo(
             400, "No pudimos crear el grupo con esos estudiantes. Revisa los datos e intenta nuevamente.",
             contexto="grupos.py create_grupo estudiantes_iniciales", exc=exc,
         )
+
+    # Onboarding, Parte D3: crear un grupo es el paso 1. Si ya vinieron
+    # estudiantes en la misma llamada, el docente se saltó el paso 2 sin
+    # ayuda de nadie — el onboarding no debe hacerle repetir algo que ya
+    # hizo.
+    avanzar_onboarding_si_aplica(docente, 3 if estudiantes_iniciales else 2)
+    db.commit()
+
+    db.refresh(grupo)
+    return grupo
+
+
+@router.post("/grupos/ejemplo", response_model=GrupoOut, status_code=status.HTTP_201_CREATED)
+def crear_grupo_ejemplo(
+    docente=Depends(verify_trial_active),
+    db: Session = Depends(get_db),
+):
+    """
+    Sprint primer-uso, Parte D3 — "Explorar un grupo de ejemplo" del
+    onboarding. Idempotente: si el docente ya tiene un grupo de ejemplo,
+    devuelve ESE en vez de crear otro (evita duplicados si hace clic más
+    de una vez). Nombres y diagnósticos claramente ficticios a
+    propósito — "Estudiante Ejemplo N", nunca nombres ni datos de
+    estudiantes reales de ningún colegio. Trae grupo Y estudiantes ya
+    creados, así que salta directo al paso 3 del onboarding (crear la
+    primera planeación) en vez de hacer repetir pasos ya cubiertos.
+    """
+    existente = db.query(Grupo).filter(
+        Grupo.id_docente == docente.id_docente,
+        Grupo.es_ejemplo.is_(True),
+    ).first()
+    if existente:
+        return existente
+
+    grupo = Grupo(
+        id_docente=docente.id_docente,
+        nombre_grupo="Grupo de Ejemplo — 6°A",
+        grado="6°",
+        asignatura="Matemáticas",
+        anio_lectivo=datetime.utcnow().year,
+        periodo_actual=1,
+        cantidad_estudiantes=5,
+        es_ejemplo=True,
+    )
+    db.add(grupo)
+    db.flush()  # materializa grupo.id_grupo sin cerrar la transacción
+
+    estudiantes_ejemplo = [
+        {"codigo_estudiante": "Estudiante Ejemplo 1", "genero": "M", "tiene_piar": False},
+        {"codigo_estudiante": "Estudiante Ejemplo 2", "genero": "F", "tiene_piar": False},
+        {
+            "codigo_estudiante": "Estudiante Ejemplo 3", "genero": "M", "tiene_piar": True,
+            "diagnostico": "Diagnóstico de ejemplo — déficit de atención (TDAH)",
+            "ajustes": "Ajuste de ejemplo — tiempo adicional en evaluaciones e instrucciones cortas",
+        },
+        {"codigo_estudiante": "Estudiante Ejemplo 4", "genero": "F", "tiene_piar": False},
+        {"codigo_estudiante": "Estudiante Ejemplo 5", "genero": "M", "tiene_piar": False},
+    ]
+    for datos in estudiantes_ejemplo:
+        db.add(Estudiante(id_grupo=grupo.id_grupo, **datos))
+
+    avanzar_onboarding_si_aplica(docente, 3)
+    db.commit()
     db.refresh(grupo)
     return grupo
 
@@ -214,6 +279,7 @@ def create_estudiante(
     _get_grupo_or_404(grupo_id, docente, db, permitir_admin_institucion=False)
     estudiante = Estudiante(id_grupo=grupo_id, **data.model_dump())
     db.add(estudiante)
+    avanzar_onboarding_si_aplica(docente, 3)  # Onboarding, Parte D3: agregar un estudiante es el paso 2.
     db.commit()
     db.refresh(estudiante)
     return estudiante
@@ -430,6 +496,8 @@ async def importar_estudiantes_csv(
             fallidos += 1
             errores.append(f"Fila {i}: {exc}")
 
+    if creados > 0 or actualizados > 0:
+        avanzar_onboarding_si_aplica(docente, 3)  # Onboarding, Parte D3
     db.commit()
     return ImportEstudiantesResult(
         creados=creados,
