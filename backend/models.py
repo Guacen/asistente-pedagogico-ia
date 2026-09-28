@@ -400,6 +400,16 @@ class ChatSesion(Base):
     archivada = Column(Boolean, nullable=False, default=False, index=True)
 
     grupo = relationship("Grupo", back_populates="chat_sesiones")
+    # Sprint F, Parte B2: sin esto, borrar un ChatSesion (directo, o en
+    # cascada desde Estudiante.chat_sesiones) fallaba con
+    # ForeignKeyViolation en Postgres si tenía Mensaje.id_sesion
+    # apuntándole — SQLAlchemy no puede inferir por sí solo que hay que
+    # borrar los mensajes de la sesión ANTES que la sesión si esa
+    # relación no está declarada en el grafo del ORM, aunque ambos
+    # DELETE estén en el mismo flush. `id_sesion` es nullable en Mensaje
+    # (mensajes previos a la introducción de sesiones), así que esto
+    # sólo borra los que sí pertenecen a esta sesión.
+    mensajes = relationship("Mensaje", cascade="all, delete")
 
 
 class Mensaje(Base):
