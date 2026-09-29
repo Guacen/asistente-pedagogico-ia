@@ -834,14 +834,17 @@ class RespuestaPresentacion(Base):
     input de este proyecto que llega sin ningún JWT de por medio).
 
     SPRINT 6: `tiempo_limite_ms` y `puntos_obtenidos` quedan FIJOS al
-    momento de responder — nunca se recalculan después. Si el docente
-    cambia el factor PIAR de un estudiante o el estudiante deja de estar
-    marcado con PIAR más adelante, las respuestas ya registradas no
-    cambian de puntaje retroactivamente. (Corrección Sprint F: un
-    comentario anterior acá decía que esto era "dato de investigación
-    para la tesis" — la tesis de Jorge se hace aparte, con sus propios
-    estudiantes, y NO usa datos de la beta comercial. Esta tabla se
-    purgó por completo en Sprint F, Parte B2.)
+    momento de responder — nunca se recalculan después. Existen sólo
+    para calcular el puntaje por velocidad de esa respuesta (modo
+    `competencia`) y sostener el podio en vivo; si el docente cambia el
+    factor PIAR de un estudiante o el estudiante deja de estar marcado
+    con PIAR más adelante, las respuestas ya registradas no cambian de
+    puntaje retroactivamente. Esta tabla se purgó por completo en
+    Sprint F, Parte B2.
+
+    Si en el futuro se quiere instrumentar esto para investigación, es
+    un diseño aparte — con aval de comité de ética e informed consent
+    propio — no un campo reaprovechado de la función de puntaje.
 
     REQUISITO BLOQUEANTE DEL SPRINT 8 (reactivación de Presentaciones,
     hoy detrás de FEATURE_PRESENTACIONES=False): `nombre_estudiante`
