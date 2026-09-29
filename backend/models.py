@@ -968,3 +968,31 @@ class ReporteProblema(Base):
     creado_en = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
 
     docente = relationship("Docente")
+
+
+class MigracionAplicada(Base):
+    """
+    Sprint F, Parte B2 — ledger de migraciones de DATOS de una sola vez
+    (no de esquema). El resto de migrate.py es idempotente "por
+    inspección": un `_tiene_columna()` antes de cada ALTER TABLE hace
+    que correr el mismo paso mil veces sea seguro, porque el estado de
+    la columna ES la señal de si ya corrió. Un DELETE/UPDATE que corrige
+    datos no tiene un equivalente confiable — "la tabla está vacía" NO
+    sirve como señal de "ya se purgó", porque una vez que la causa raíz
+    se arregle (ver Sprint 8 en RespuestaPresentacion/PuntajeEstudiante)
+    esa misma tabla va a volver a tener filas LEGÍTIMAS, y un chequeo
+    basado en el estado de los datos borraría producción real sin darse
+    cuenta.
+
+    Por eso este ledger existe: cada paso de datos de una sola vez se
+    registra ACÁ por nombre antes de correr, y `_paso_datos_una_vez()`
+    lo salta si ya está. No es un mecanismo de migraciones tipo
+    Alembic (no versiona esquema, no hace rollback) — sólo asegura que
+    un DELETE/UPDATE de corrección de datos corra exactamente una vez
+    en la vida de cada base de datos, sin importar cuántas veces
+    reinicie el proceso.
+    """
+    __tablename__ = "migraciones_aplicadas"
+
+    nombre = Column(String(200), primary_key=True)
+    aplicada_en = Column(DateTime, default=datetime.utcnow, nullable=False)

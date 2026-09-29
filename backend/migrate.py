@@ -79,6 +79,27 @@ def _tiene_columna(tabla: str, columna: str) -> bool:
 
 
 # ============================================================
+# LEDGER DE MIGRACIONES DE DATOS DE UNA SOLA VEZ
+# ============================================================
+# Ver MigracionAplicada en models.py para el porqué: `_tiene_columna()`
+# arriba sirve para migraciones de ESQUEMA (el estado de la columna ES
+# la señal de si ya corrió); un DELETE/UPDATE de corrección de DATOS no
+# tiene un equivalente confiable, así que se registra por nombre acá.
+
+def _migracion_ya_aplicada(nombre: str) -> bool:
+    from models import MigracionAplicada
+    with SessionLocal() as db:
+        return db.query(MigracionAplicada).filter_by(nombre=nombre).first() is not None
+
+
+def _marcar_migracion_aplicada(nombre: str) -> None:
+    from models import MigracionAplicada
+    with SessionLocal() as db:
+        db.add(MigracionAplicada(nombre=nombre))
+        db.commit()
+
+
+# ============================================================
 # MIGRACIONES DE ESQUEMA
 # ============================================================
 
@@ -89,6 +110,15 @@ def apply_migrations():
     aislado — ver _paso() y el docstring del módulo.
     """
     MIGRATION_ERRORS.clear()
+
+    # ── tabla migraciones_aplicadas — debe existir antes que cualquier
+    # paso de datos de una sola vez que dependa de ella (ver más abajo
+    # "purga puntajes_estudiante/respuestas_presentacion"). create_all
+    # es idempotente por sí solo, no necesita _tiene_columna().
+    def _paso_tabla_migraciones_aplicadas():
+        from models import MigracionAplicada
+        Base.metadata.create_all(bind=engine, tables=[MigracionAplicada.__table__])
+    _paso("tabla migraciones_aplicadas", _paso_tabla_migraciones_aplicadas)
 
     # ── calificaciones.id_columna ──────────────────────────────────
     def _paso_calificaciones_id_columna():
@@ -504,37 +534,49 @@ def apply_migrations():
     # nombre (que sí tendría riesgo de falso positivo si hubiera algo
     # legítimo que conservar — no lo hay).
     #
-    # DELETE simple, sin condición — a propósito. Una vez vacías, correr
-    # este paso de nuevo en cada arranque es un no-op (DELETE sobre 0
-    # filas), mismo patrón que el resto de este archivo: no hace falta
-    # una tabla de "migraciones ya aplicadas", cada paso es idempotente
-    # por construcción.
+    # CRÍTICO — por qué esto NO es un DELETE sin condición corriendo en
+    # cada arranque: una vez que Sprint 8 arregle la causa raíz (FK real
+    # o dejar de persistir el nombre), estas mismas tablas van a volver
+    # a tener filas LEGÍTIMAS de uso real. "La tabla está vacía" no es
+    # una señal válida de "ya se purgó" — un DELETE incondicional
+    # corriendo para siempre en la ruta de arranque borraría esos datos
+    # reales sin que nadie se diera cuenta, el mismo día que Presentaciones
+    # se reactive. Por eso este paso se registra en `migraciones_aplicadas`
+    # (ver MigracionAplicada en models.py) ANTES de terminar, y se salta
+    # por completo — ni siquiera ejecuta el DELETE — si ya corrió una vez
+    # en esta base de datos.
+    #
+    # NO reutilizar NOMBRE_MIGRACION para nada más, y NO borrar esta fila
+    # de `migraciones_aplicadas` manualmente: es la única barrera entre
+    # este paso y un borrado accidental de datos reales post-Sprint 8.
     #
     # REQUISITO BLOQUEANTE DEL SPRINT 8 (reactivación de Presentaciones):
-    # este vaciado es un parche de una sola vez, NO una solución — si
-    # Presentaciones se reactiva sin arreglar la causa, el problema
-    # vuelve a acumularse desde cero. Antes de quitar
-    # FEATURE_PRESENTACIONES, Sprint 8 tiene que resolver uno de los
-    # dos (ver también la nota en models.py sobre RespuestaPresentacion/
-    # PuntajeEstudiante):
+    # este vaciado es un parche de una sola vez, NO una solución — antes
+    # de quitar FEATURE_PRESENTACIONES, Sprint 8 tiene que resolver uno
+    # de los dos (ver también la nota en models.py sobre
+    # RespuestaPresentacion/PuntajeEstudiante):
     #   (a) agregar un FK real a estudiantes.id_estudiante, con cascada; o
     #   (b) dejar de persistir el nombre — usar un identificador de
     #       participante por sesión, con el nombre visible sólo en
     #       memoria durante la sesión en vivo (nunca en DB).
     def _paso_purgar_datos_presentaciones_archivada():
+        NOMBRE_MIGRACION = "sprint_f_b2_purga_presentaciones_archivada"
+        if _migracion_ya_aplicada(NOMBRE_MIGRACION):
+            return
         with engine.connect() as conn:
             r1 = conn.execute(text("DELETE FROM respuestas_presentacion"))
             r2 = conn.execute(text("DELETE FROM puntajes_estudiante"))
             conn.commit()
-        if r1.rowcount or r2.rowcount:
-            print(
-                f"✅ Migración: purgadas {r1.rowcount} fila(s) de "
-                f"'respuestas_presentacion' y {r2.rowcount} de "
-                f"'puntajes_estudiante' (Sprint F, Parte B2 — dato de "
-                f"prueba de función archivada, sin FK a estudiantes)"
-            )
+        _marcar_migracion_aplicada(NOMBRE_MIGRACION)
+        print(
+            f"✅ Migración (una sola vez): purgadas {r1.rowcount} fila(s) de "
+            f"'respuestas_presentacion' y {r2.rowcount} de "
+            f"'puntajes_estudiante' (Sprint F, Parte B2 — dato de "
+            f"prueba de función archivada, sin FK a estudiantes). "
+            f"Registrada en migraciones_aplicadas — no vuelve a correr."
+        )
     _paso(
-        "purga puntajes_estudiante/respuestas_presentacion",
+        "purga puntajes_estudiante/respuestas_presentacion (una sola vez)",
         _paso_purgar_datos_presentaciones_archivada,
     )
 
