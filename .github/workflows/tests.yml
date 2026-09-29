@@ -2,8 +2,21 @@ name: tests
 
 on:
   push:
-    branches: [main]
   pull_request:
+
+# Dedup real: una rama con PR abierto dispara push Y pull_request para el
+# mismo commit — sin esto, corren las dos corridas completas en paralelo.
+# El riesgo es que la clave del grupo termine siendo distinta entre los
+# dos eventos (y entonces no deduplica nada): en push, github.head_ref
+# está vacío y github.ref es refs/heads/<rama>; en pull_request,
+# github.head_ref SÍ trae el nombre corto de la rama origen, pero
+# github.ref es refs/pull/<N>/merge (no el nombre de la rama). Por eso la
+# clave usa head_ref con fallback a ref_name (nombre corto, no la ref
+# completa) — ese fallback es lo que hace que ambos eventos calculen
+# exactamente el mismo string para la misma rama.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
 
 jobs:
   pytest:
