@@ -837,10 +837,24 @@ class RespuestaPresentacion(Base):
     momento de responder — nunca se recalculan después. Si el docente
     cambia el factor PIAR de un estudiante o el estudiante deja de estar
     marcado con PIAR más adelante, las respuestas ya registradas no
-    cambian de puntaje retroactivamente (dato de investigación para la
-    tesis: tiempo_respuesta_ms/tiempo_limite_ms permiten reconstruir
-    exactamente qué límite de tiempo tenía cada estudiante en cada
-    pregunta).
+    cambian de puntaje retroactivamente. (Corrección Sprint F: un
+    comentario anterior acá decía que esto era "dato de investigación
+    para la tesis" — la tesis de Jorge se hace aparte, con sus propios
+    estudiantes, y NO usa datos de la beta comercial. Esta tabla se
+    purgó por completo en Sprint F, Parte B2.)
+
+    REQUISITO BLOQUEANTE DEL SPRINT 8 (reactivación de Presentaciones,
+    hoy detrás de FEATURE_PRESENTACIONES=False): `nombre_estudiante`
+    NO tiene FK a `estudiantes` — es texto libre sin ninguna forma de
+    cascadear un borrado. migrate.py purgó los datos de prueba
+    existentes una sola vez (Sprint F, Parte B2), pero eso es un parche,
+    no una solución: si Presentaciones se reactiva sin resolver esto,
+    el problema de habeas data vuelve a acumularse desde cero. Antes de
+    quitar el flag, Sprint 8 tiene que elegir uno de los dos:
+      (a) agregar id_estudiante como FK real, con cascada; o
+      (b) dejar de persistir el nombre — un identificador de
+          participante por sesión, con el nombre visible sólo en
+          memoria durante la sesión en vivo, nunca en DB.
     """
     __tablename__ = "respuestas_presentacion"
 
@@ -872,6 +886,11 @@ class PuntajeEstudiante(Base):
     Reconexión: como la clave es (id_sesion, nombre_estudiante) — no un
     sid de socket — un estudiante que se desconecta y vuelve a entrar
     con el mismo nombre sigue acumulando sobre la MISMA fila.
+
+    REQUISITO BLOQUEANTE DEL SPRINT 8 — mismo problema y misma solución
+    que en RespuestaPresentacion (ver su docstring): `nombre_estudiante`
+    sin FK, purgado una sola vez en Sprint F Parte B2, no resuelto de
+    raíz. No reactivar FEATURE_PRESENTACIONES sin resolverlo antes.
     """
     __tablename__ = "puntajes_estudiante"
     __table_args__ = (

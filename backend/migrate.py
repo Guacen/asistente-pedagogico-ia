@@ -487,6 +487,57 @@ def apply_migrations():
     # Institucion nueva a su nombre. Idempotente — si ya tiene, no toca.
     _paso("backfill instituciones unipersonales", _backfill_instituciones_unipersonales)
 
+    # ── Sprint F, Parte B2 — purga de puntajes_estudiante/
+    # respuestas_presentacion (aprobado explícitamente por el owner,
+    # no ejecutado por decisión unilateral) ──
+    #
+    # Estas dos tablas guardan `nombre_estudiante` como texto libre de
+    # participantes sin cuenta en sesiones en vivo de Presentaciones,
+    # SIN ningún FK a `estudiantes` — no hay cascada posible cuando se
+    # borra un estudiante o un docente (ver auditoría Sprint F, Parte
+    # A/B2). Presentaciones lleva un sprint entero detrás de
+    # FEATURE_PRESENTACIONES=False (archivada) y todo lo que hay hoy en
+    # estas tablas es dato de prueba de esa función, sin finalidad
+    # vigente — datos de menores sin propósito, exactamente lo que
+    # habeas data prohíbe retener. Decisión del owner: vaciarlas por
+    # completo, una sola vez, en vez de intentar un emparejamiento por
+    # nombre (que sí tendría riesgo de falso positivo si hubiera algo
+    # legítimo que conservar — no lo hay).
+    #
+    # DELETE simple, sin condición — a propósito. Una vez vacías, correr
+    # este paso de nuevo en cada arranque es un no-op (DELETE sobre 0
+    # filas), mismo patrón que el resto de este archivo: no hace falta
+    # una tabla de "migraciones ya aplicadas", cada paso es idempotente
+    # por construcción.
+    #
+    # REQUISITO BLOQUEANTE DEL SPRINT 8 (reactivación de Presentaciones):
+    # este vaciado es un parche de una sola vez, NO una solución — si
+    # Presentaciones se reactiva sin arreglar la causa, el problema
+    # vuelve a acumularse desde cero. Antes de quitar
+    # FEATURE_PRESENTACIONES, Sprint 8 tiene que resolver uno de los
+    # dos (ver también la nota en models.py sobre RespuestaPresentacion/
+    # PuntajeEstudiante):
+    #   (a) agregar un FK real a estudiantes.id_estudiante, con cascada; o
+    #   (b) dejar de persistir el nombre — usar un identificador de
+    #       participante por sesión, con el nombre visible sólo en
+    #       memoria durante la sesión en vivo (nunca en DB).
+    def _paso_purgar_datos_presentaciones_archivada():
+        with engine.connect() as conn:
+            r1 = conn.execute(text("DELETE FROM respuestas_presentacion"))
+            r2 = conn.execute(text("DELETE FROM puntajes_estudiante"))
+            conn.commit()
+        if r1.rowcount or r2.rowcount:
+            print(
+                f"✅ Migración: purgadas {r1.rowcount} fila(s) de "
+                f"'respuestas_presentacion' y {r2.rowcount} de "
+                f"'puntajes_estudiante' (Sprint F, Parte B2 — dato de "
+                f"prueba de función archivada, sin FK a estudiantes)"
+            )
+    _paso(
+        "purga puntajes_estudiante/respuestas_presentacion",
+        _paso_purgar_datos_presentaciones_archivada,
+    )
+
     # ── Sprint primer-uso, Parte D — "Reportar un problema" ──
     # Tabla nueva, sin ALTER TABLE necesario — create_all idempotente. A
     # propósito: create_all usa los tipos de SQLAlchemy (DateTime, etc.),
