@@ -30,7 +30,65 @@ falla, se registra con detalle completo (traceback) en MIGRATION_ERRORS y
 el arranque CONTINÚA con los demás — nunca vuelve a morir por una sola
 migración rota. MIGRATION_ERRORS se expone en GET /health y GET
 /api/version (ver main.py) para que un fallo sea visible sin entrar a los
-logs de Railway.
+logs de Railway. IMPORTANTE: GET /health devuelve 200 SIEMPRE, aunque
+haya fallos registrados — a propósito, ver el porqué más abajo. El canal
+de detección de una migración rota NO es /health, es GET /api/version
+(mismo MIGRATION_ERRORS) más el banner visible en el dashboard admin
+(mostrarBannerMigracionesFallidasSiAplica en dashboard.html, sólo
+es_admin=true).
+
+Sprint F, Parte G3 — por qué "migración fallida no mata el arranque" es
+correcto ACÁ, y bajo qué condición dejaría de serlo
+─────────────────────────────────────────────────────────────────────
+Una revisión externa independiente de este proyecto señaló, con razón
+en el caso GENERAL, que una migración fallida debería matar el
+arranque: en un despliegue con varias réplicas detrás de un balanceador,
+eso hace que el healthcheck de la réplica nueva (con el esquema a medio
+migrar) nunca pase, el balanceador nunca le enruta tráfico, y la réplica
+VIEJA (buena) sigue sirviendo mientras alguien arregla la migración —
+rollback automático, gratis, sin intervención humana.
+
+Ese argumento depende de dos piezas de infraestructura que este
+proyecto NO tiene hoy:
+
+  1. Más de una réplica corriendo a la vez. Acá hay UN solo servicio en
+     Railway. Si el proceso muere al arrancar, no existe una réplica
+     sana detrás sirviendo tráfico mientras la nueva se recupera — el
+     sitio completo cae. No hay "la versión anterior sigue viva", sólo
+     hay "nada responde".
+
+  2. Un Health Check Path configurado en Railway que efectivamente
+     dispare un rollback automático a la build anterior cuando el
+     healthcheck del nuevo deploy falla. Hoy ese campo está vacío — no
+     hay ningún mecanismo automático que "atrape" un proceso que muere
+     al arrancar y vuelva a la versión buena.
+
+Sin esas dos piezas, "matar el arranque si falla una migración" no
+compra el beneficio que la recomendación asume — compra exactamente el
+incidente que ya vivimos una vez: 40 minutos de caída TOTAL (login,
+chat, grupos, absolutamente todo) por una sola columna con un tipo
+inválido en una migración de una función (Presentaciones) que ni
+siquiera estaba activa. Aislar cada paso convirtió ese mismo tipo de
+fallo en algo LOCALIZADO (una entrada en MIGRATION_ERRORS, visible en
+/api/version y en el banner de admin) en vez de CATASTRÓFICO (nada
+responde, hay que enterarse por un usuario reportando o por los logs de
+Railway).
+
+Revisar esta decisión — volver a que una migración fallida tumbe el
+arranque — tiene sentido SI Y SOLO SI se cumple, de forma VERIFICADA
+(no asumida, no "debería estar configurado así"), alguna de estas dos
+condiciones:
+
+  (a) el servicio pasa a correr con más de una réplica en Railway; o
+  (b) se configura un Health Check Path en Railway Y se confirma con
+      una prueba real (desplegar algo que falle el healthcheck a
+      propósito y observar qué hace Railway) que efectivamente dispara
+      rollback automático a la versión anterior sin intervención manual.
+
+Sin ninguna de las dos, no cambiar este comportamiento. Alguien va a
+volver a proponer "esto debería matar el arranque" — es una buena
+práctica real, en el contexto correcto. El contexto correcto no es
+éste, todavía.
 """
 
 import traceback

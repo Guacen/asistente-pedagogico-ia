@@ -54,9 +54,22 @@ import suscripciones
 
 # Importar Socket.io (el objeto sio vive en socket_events)
 from socket_events import sio
-# Registra los handlers de Presentaciones Interactivas sobre `sio` — se
-# importa sólo por su efecto lateral, no se usa ningún símbolo suyo acá.
-import presentacion_events  # noqa: F401
+# Sprint F, Parte G1 — la puerta lateral que el flag NO cerraba: el
+# router HTTP de presentaciones (línea de arriba) sí gatea cada request
+# con FEATURE_PRESENTACIONES vía _verificar_feature_habilitada(), pero
+# los handlers de Socket.io se registran UNA VEZ al importar el módulo
+# (el decorador @sio.on(...) corre en el import, no en cada conexión) —
+# `import presentacion_events` sin condición los registraba siempre,
+# flag prendido o no. Con el flag apagado, un cliente podía seguir
+# haciendo socket.emit('presentacion:unirse', {...}) y el handler
+# respondía y consultaba la base de datos igual, aunque
+# POST /api/presentaciones/generar diera 404 — confirmado en producción.
+# Por eso el import (que ES el registro, no un uso de símbolos: de ahí
+# el noqa) va detrás del mismo flag que ya gatea el router — si está
+# apagado, los 6 eventos "presentacion:*" no quedan respondiendo con un
+# error: no se registran, no existen para python-socketio en absoluto.
+if settings.FEATURE_PRESENTACIONES:
+    import presentacion_events  # noqa: F401
 
 # Carpeta del frontend, dentro de /backend para que Railway la incluya
 # en el contenedor cuando el service tiene Root Directory=backend/.
