@@ -400,6 +400,17 @@ class ApiClient {
     }
 
     // ==========================================
+    // ONBOARDING DE PRIMER USO
+    // ==========================================
+    
+    async actualizarOnboarding(estado) {
+        return this.request('/api/perfil/onboarding', {
+            method: 'PUT',
+            body: JSON.stringify({ estado })
+        });
+    }
+
+    // ==========================================
     // GRUPOS
     // ==========================================
     
@@ -415,6 +426,12 @@ class ApiClient {
         return this.request('/api/grupos', {
             method: 'POST',
             body: JSON.stringify(data)
+        });
+    }
+
+    async crearGrupoEjemplo() {
+        return this.request('/api/grupos/ejemplo', {
+            method: 'POST'
         });
     }
     

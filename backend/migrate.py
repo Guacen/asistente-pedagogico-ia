@@ -513,6 +513,55 @@ def apply_migrations():
         print("✅ Migración: columna 'slide_abierto_en' agregada a 'sesiones_presentacion'")
     _paso("sesiones_presentacion.slide_abierto_en", _paso_sesiones_slide_abierto_en)
 
+    # ── Sprint primer-uso, Parte D3 — onboarding de primer uso ──
+    # IMPORTANTE: estos 3 pasos van ANTES de _backfill_instituciones_unipersonales
+    # (igual que 'docentes.rol' y el bloque de verificación de email más
+    # arriba, ver esos comentarios) — ese backfill hace `db.query(Docente)`
+    # por el ORM, que siempre pide TODAS las columnas del modelo actual,
+    # onboarding_estado/onboarding_paso incluidas. Si el backfill corre
+    # antes de que estas columnas existan de verdad en la tabla, Postgres
+    # tira "column docentes.onboarding_estado does not exist" — SQLite no
+    # lo atrapa (create_all ya las declaró ahí desde el arranque de los
+    # tests), sólo Postgres real. Esto reventó en CI la primera vez que
+    # esta rama corrió contra Postgres; el orden correcto es este.
+    #
+    # Grandfathered: docentes que ya existían al momento del deploy
+    # quedan en onboarding_estado='completado' — ya conocen el producto,
+    # no tiene sentido mostrarles el recorrido de bienvenida. El ALTER
+    # TABLE con DEFAULT 'pendiente' backfillea 'pendiente' en TODAS las
+    # filas existentes automáticamente, así que el UPDATE a 'completado'
+    # es obligatorio, no defensivo — mismo patrón que 'email_verificado'
+    # y 'plan' más arriba en este archivo.
+    def _paso_docentes_onboarding_estado():
+        if _tiene_columna("docentes", "onboarding_estado"):
+            return
+        with engine.connect() as conn:
+            conn.execute(text(
+                "ALTER TABLE docentes ADD COLUMN onboarding_estado VARCHAR(20) NOT NULL DEFAULT 'pendiente'"
+            ))
+            conn.execute(text("UPDATE docentes SET onboarding_estado = 'completado'"))
+            conn.commit()
+        print("✅ Migración: 'onboarding_estado' agregada a 'docentes' + backfill grandfathered a 'completado'")
+    _paso("docentes.onboarding_estado", _paso_docentes_onboarding_estado)
+
+    def _paso_docentes_onboarding_paso():
+        if _tiene_columna("docentes", "onboarding_paso"):
+            return
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE docentes ADD COLUMN onboarding_paso INTEGER NOT NULL DEFAULT 1"))
+            conn.commit()
+        print("✅ Migración: 'onboarding_paso' agregada a 'docentes'")
+    _paso("docentes.onboarding_paso", _paso_docentes_onboarding_paso)
+
+    def _paso_grupos_es_ejemplo():
+        if _tiene_columna("grupos", "es_ejemplo"):
+            return
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE grupos ADD COLUMN es_ejemplo BOOLEAN NOT NULL DEFAULT FALSE"))
+            conn.commit()
+        print("✅ Migración: columna 'es_ejemplo' agregada a 'grupos' (default FALSE)")
+    _paso("grupos.es_ejemplo", _paso_grupos_es_ejemplo)
+
     # Backfill uni-personal: cada docente sin id_institucion recibe una
     # Institucion nueva a su nombre. Idempotente — si ya tiene, no toca.
     _paso("backfill instituciones unipersonales", _backfill_instituciones_unipersonales)

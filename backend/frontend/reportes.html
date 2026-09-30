@@ -44,10 +44,17 @@
             <i class="fas fa-spinner fa-spin text-2xl"></i>
         </div>
 
-        <div id="sin-reportes" class="hidden bg-white border border-gray-200 rounded-xl p-10 text-center">
-            <i class="fas fa-circle-check text-3xl text-green-500 mb-3"></i>
-            <p class="text-gray-700 font-medium">Todavía no hay reportes.</p>
-            <p class="text-sm text-gray-500 mt-1">Cuando un docente reporte un problema, aparece acá.</p>
+        <div id="sin-reportes" class="hidden text-center py-16">
+            <div class="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4" style="background: var(--brand-mint, #E1F5EE);">
+                <i class="fas fa-check-circle text-4xl" style="color: var(--brand-primary, #1D9E75);"></i>
+            </div>
+            <p class="text-gray-900 font-bold mb-2 text-xl">No hay reportes de problemas.</p>
+            <p class="text-gray-500 text-sm mb-6 max-w-md mx-auto">No hay usuarios registrados con reportes actualmente.</p>
+            <button onclick="window.location.href='dashboard.html'"
+                class="text-white px-6 py-2.5 rounded-lg font-medium shadow-sm hover:opacity-90 transition-opacity"
+                style="background: var(--brand-primary, #1D9E75);">
+                Volver al dashboard
+            </button>
         </div>
 
         <div id="tabla-wrap" class="hidden bg-white border border-gray-200 rounded-xl overflow-hidden overflow-x-auto">

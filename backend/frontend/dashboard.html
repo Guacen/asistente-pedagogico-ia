@@ -150,6 +150,37 @@
             <!-- Contenido -->
             <main class="flex-1 overflow-y-auto p-6">
 
+                <!-- ── Onboarding ────────────────────────────────────────────── -->
+                <div id="onboarding-progress" class="hidden mb-6 rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+                    <div class="p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                        <div>
+                            <div class="flex items-center gap-2 mb-1">
+                                <h3 class="font-bold text-gray-900">Bienvenido a Maestr.ia</h3>
+                                <span class="text-xs font-semibold px-2 py-0.5 rounded-full" style="background: var(--brand-mint, #E1F5EE); color: var(--brand-dark, #0B3D2E);">Paso <span id="onboarding-step-num">1</span> de 3</span>
+                            </div>
+                            <p id="onboarding-step-desc" class="text-sm text-gray-500">Comienza a organizar tu trabajo. Siguiente paso: Crear tu primer grupo.</p>
+                        </div>
+                        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+                            <button onclick="actualizarOnboardingUI('omitido')" class="text-sm text-gray-500 hover:text-gray-700 px-3 py-2 text-center">
+                                Saltar por ahora
+                            </button>
+                            <button id="btn-onboarding-action" onclick="abrirOnboardingAction()" class="text-white px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity shadow-sm text-center" style="background: var(--brand-primary, #1D9E75);">
+                                Continuar
+                            </button>
+                        </div>
+                    </div>
+                    <div class="h-1.5 w-full bg-gray-100">
+                        <div id="onboarding-progress-bar" class="h-1.5 rounded-r-full transition-all duration-500" style="width: 33%; background: var(--brand-primary, #1D9E75);"></div>
+                    </div>
+                </div>
+
+                <div id="onboarding-resumed-link" class="hidden mb-6 flex justify-end">
+                    <button onclick="actualizarOnboardingUI('pendiente')" class="text-sm text-gray-500 hover:text-gray-800 flex items-center gap-1.5">
+                        <i class="fas fa-play-circle text-gray-400"></i>Retomar recorrido de bienvenida
+                    </button>
+                </div>
+
+
                 <!-- Banner de migraciones fallidas — sprint migraciones-aisladas.
                      SOLO para es_admin=true (ver mostrarBannerMigracionesFallidasSiAplica).
                      Un docente normal nunca debe ver esto — es una alerta
@@ -354,15 +385,23 @@
 
                     <!-- Sin grupos -->
                     <div id="no-grupos-msg" class="hidden text-center py-16">
-                        <div class="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <i class="fas fa-inbox text-4xl text-gray-400"></i>
+                        <div class="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4" style="background: var(--brand-mint, #E1F5EE);">
+                            <i class="fas fa-users text-4xl" style="color: var(--brand-primary, #1D9E75);"></i>
                         </div>
-                        <p class="text-gray-600 font-medium mb-2">Aún no tienes grupos</p>
-                        <p class="text-gray-400 text-sm mb-5">Crea tu primer grupo para comenzar a usar el asistente</p>
-                        <button onclick="window.location.href='grupos.html?action=nuevo'"
-                            class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium">
-                            <i class="fas fa-plus mr-2"></i>Crear Mi Primer Grupo
-                        </button>
+                        <p class="text-gray-900 font-bold mb-2 text-xl">Todavía no tienes grupos.</p>
+                        <p class="text-gray-500 text-sm mb-6 max-w-md mx-auto">Crea tu primer grupo para comenzar a trabajar con tus estudiantes y planificar tus clases.</p>
+                        <div class="flex flex-col sm:flex-row items-center justify-center gap-3">
+                            <button onclick="window.location.href='grupos.html?action=nuevo'"
+                                class="w-full sm:w-auto text-white px-6 py-2.5 rounded-lg font-medium shadow-sm hover:opacity-90 transition-opacity"
+                                style="background: var(--brand-primary, #1D9E75);">
+                                <i class="fas fa-plus mr-2"></i>Crear mi primer grupo
+                            </button>
+                            <button onclick="window.crearGrupoEjemploUI && window.crearGrupoEjemploUI()"
+                                class="w-full sm:w-auto px-6 py-2.5 rounded-lg font-medium shadow-sm border transition-colors hover:bg-gray-50"
+                                style="border-color: var(--brand-primary, #1D9E75); color: var(--brand-primary, #1D9E75);">
+                                <i class="fas fa-magic mr-2"></i>Explorar un grupo de ejemplo
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -382,6 +421,49 @@
                 </button>
             </div>
             <div id="modal-grupo-lista" class="p-4 max-h-80 overflow-y-auto space-y-2"></div>
+        </div>
+    </div>
+
+    <!-- ── Modal: onboarding completado ────────────────────────────── -->
+    <div id="modal-onboarding-done" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden text-center">
+            <div class="p-8 flex justify-center" style="background: var(--brand-primary, #1D9E75);">
+                <div class="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center">
+                    <i class="fas fa-check-circle text-5xl text-white"></i>
+                </div>
+            </div>
+            <div class="p-6 sm:p-8">
+                <h3 class="text-2xl font-bold text-gray-900 mb-2">¡Recorrido completado!</h3>
+                <p class="text-gray-600 mb-6">Ya diste tus primeros pasos en Maestr.ia. Aquí tienes otras herramientas para explorar:</p>
+
+                <div class="space-y-3 mb-8 text-left">
+                    <div class="flex items-start gap-3">
+                        <div class="w-8 h-8 rounded flex items-center justify-center flex-shrink-0 mt-0.5" style="background: var(--brand-mint, #E1F5EE); color: var(--brand-dark, #0B3D2E);"><i class="fas fa-comments"></i></div>
+                        <div>
+                            <p class="font-bold text-gray-900 text-sm">Chat con IA</p>
+                            <p class="text-xs text-gray-500">Sigue generando planeaciones y consultas en otros grupos.</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-3">
+                        <div class="w-8 h-8 rounded flex items-center justify-center flex-shrink-0 mt-0.5" style="background: var(--brand-mint, #E1F5EE); color: var(--brand-dark, #0B3D2E);"><i class="fas fa-book-open"></i></div>
+                        <div>
+                            <p class="font-bold text-gray-900 text-sm">Libro de notas</p>
+                            <p class="text-xs text-gray-500">Registra y calcula calificaciones por grupo.</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-3">
+                        <div class="w-8 h-8 rounded flex items-center justify-center flex-shrink-0 mt-0.5" style="background: var(--brand-mint, #E1F5EE); color: var(--brand-dark, #0B3D2E);"><i class="fas fa-chalkboard-teacher"></i></div>
+                        <div>
+                            <p class="font-bold text-gray-900 text-sm">Panel Docente</p>
+                            <p class="text-xs text-gray-500">Maneja tu calendario, seguimiento y tareas pendientes.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <button onclick="document.getElementById('modal-onboarding-done').classList.add('hidden')" class="w-full text-white font-medium py-3 rounded-xl hover:opacity-90 transition-opacity" style="background: var(--brand-primary, #1D9E75);">
+                    Continuar al Dashboard
+                </button>
+            </div>
         </div>
     </div>
 
@@ -498,6 +580,7 @@
             mostrarBannerSeguimientosPendientes();
             mostrarBannerTrialSiAplica();
             mostrarBannerMigracionesFallidasSiAplica(u);
+            mostrarOnboardingSiAplica(u);
 
         } catch (err) {
             console.error(err);
@@ -732,7 +815,10 @@
                         <i class="fas ${s.icon} text-xl ${s.color}"></i>
                     </div>
                     <div class="min-w-0 flex-1">
-                        <h3 class="font-semibold text-gray-900 truncate leading-tight">${g.nombre_grupo}</h3>
+                        <div class="flex items-center gap-2">
+                            <h3 class="font-semibold text-gray-900 truncate leading-tight">${g.nombre_grupo}</h3>
+                            ${g.es_ejemplo ? '<span class="bg-gray-100 text-gray-600 text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wide border border-gray-200">Ejemplo</span>' : ''}
+                        </div>
                         <p class="text-xs text-gray-500 mt-0.5 truncate">${g.grado} · ${g.asignatura}</p>
                     </div>
                     <button onclick="eliminarGrupoDashboard('${g.id_grupo}', '${escapeAttrGrupo(g.nombre_grupo)}')"
@@ -827,6 +913,83 @@
         const inp = document.getElementById('search-grupos');
         if (inp) inp.value = '';
         renderGrupos();
+    }
+
+    // ── Onboarding ────────────────────────────────────────────────────
+    window.crearGrupoEjemploUI = async function() {
+        const btn = event.currentTarget;
+        const originalHtml = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Creando...';
+        btn.disabled = true;
+        try {
+            await api.crearGrupoEjemplo();
+            window.location.reload();
+        } catch (err) {
+            toast('Error al crear grupo de ejemplo: ' + err.message, 'error');
+            btn.innerHTML = originalHtml;
+            btn.disabled = false;
+        }
+    };
+
+    window.actualizarOnboardingUI = async function(estado) {
+        try {
+            const u = await api.actualizarOnboarding(estado);
+            Auth.setUser(u);
+            window.location.reload();
+        } catch (err) {
+            toast('Error al actualizar: ' + err.message, 'error');
+        }
+    };
+
+    window.abrirOnboardingAction = function() {
+        if (!dashUser) return;
+        if (dashUser.onboarding_paso === 1) window.location.href = 'grupos.html?action=nuevo';
+        else if (dashUser.onboarding_paso === 2) window.location.href = 'grupos.html';
+        else if (dashUser.onboarding_paso === 3) abrirChatIA();
+    };
+
+    function mostrarOnboardingSiAplica(u) {
+        if (!u) return;
+        const progress = document.getElementById('onboarding-progress');
+        const resumedLink = document.getElementById('onboarding-resumed-link');
+        
+        if (u.onboarding_estado === 'completado') {
+            if (sessionStorage.getItem('onboarding_just_finished')) {
+                sessionStorage.removeItem('onboarding_just_finished');
+                document.getElementById('modal-onboarding-done').classList.remove('hidden');
+            }
+            return;
+        }
+
+        if (u.onboarding_estado === 'omitido') {
+            resumedLink.classList.remove('hidden');
+            return;
+        }
+
+        if (u.onboarding_estado === 'pendiente') {
+            progress.classList.remove('hidden');
+            const stepNum = document.getElementById('onboarding-step-num');
+            const stepDesc = document.getElementById('onboarding-step-desc');
+            const bar = document.getElementById('onboarding-progress-bar');
+            const btn = document.getElementById('btn-onboarding-action');
+            
+            stepNum.textContent = u.onboarding_paso;
+            bar.style.width = (u.onboarding_paso * 33.33) + '%';
+            
+            if (u.onboarding_paso === 1) {
+                stepDesc.textContent = 'Comienza a organizar tu trabajo. Siguiente paso: Crear tu primer grupo.';
+                btn.textContent = 'Crear grupo';
+            } else if (u.onboarding_paso === 2) {
+                stepDesc.textContent = 'Grupo creado. Siguiente paso: Agrega estudiantes a tu grupo.';
+                btn.textContent = 'Agregar estudiantes';
+            } else if (u.onboarding_paso === 3) {
+                stepDesc.textContent = '¡Casi listo! El paso final es probar el chat creando tu primera planeación con IA.';
+                btn.textContent = 'Ir al Chat IA';
+                // Note: we need a way to trigger the end modal when they come back.
+                // It will be triggered when onboarding_estado becomes 'completado'.
+                sessionStorage.setItem('onboarding_just_finished', 'true');
+            }
+        }
     }
 
     // ── Acciones rápidas ──────────────────────────────────────────────

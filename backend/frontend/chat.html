@@ -428,12 +428,17 @@ function pintarHistorial(historial, modo) {
     if (!historial || historial.length === 0) {
         const div = document.createElement('div');
         div.id = 'empty-modo';
-        div.className = 'text-center text-gray-400 text-sm py-8';
+        div.className = 'text-center py-16';
         const label = MODO_LABEL[modo] || 'este modo';
+        const msg = modo === 'planeacion' ? 'Todavía no hay planeaciones generadas.' : `Aún no has hecho consultas de ${label}.`;
+        const sub = modo === 'planeacion' ? 'Escríbele al asistente abajo para crear la planeación de tu próxima clase.' : `Escribe tu primera consulta abajo para comenzar en modo ${label}.`;
+        
         div.innerHTML = `
-            <i class="fas fa-comments text-3xl text-gray-300 mb-2"></i>
-            <p>Aún no has hecho consultas de <strong>${label}</strong> en este grupo.</p>
-            <p class="text-xs mt-1">Escribí tu primera consulta abajo — el asistente entra en modo ${label}.</p>
+            <div class="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4" style="background: var(--brand-mint, #E1F5EE);">
+                <i class="fas fa-robot text-4xl" style="color: var(--brand-primary, #1D9E75);"></i>
+            </div>
+            <p class="text-gray-900 font-bold mb-2 text-xl">${msg}</p>
+            <p class="text-gray-500 text-sm max-w-md mx-auto">${sub}</p>
         `;
         cont.appendChild(div);
         return;

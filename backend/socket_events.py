@@ -23,6 +23,7 @@ from auth import trial_vencido, verify_token_for_socket
 from database import SessionLocal
 from errores import loggear_error, nuevo_correlation_id
 from ia import generar_respuesta
+from onboarding import completar_onboarding_si_aplica
 from models import (
     Calificacion,
     ChatSesion,
@@ -42,6 +43,7 @@ from prompts import (
     MODO_DEFAULT,
     MODO_OBSERVACIONES,
     MODO_PIAR,
+    MODO_PLANEACION,
     MODO_SOCIOEMOCIONAL,
     MODOS_ACTIVOS,
     normalizar_modo,
@@ -654,6 +656,18 @@ async def send_message(sid, data):
         )
         db.add(msg_ia)
         sesion.ultimo_mensaje_en = msg_ia.timestamp or datetime.utcnow()
+        # Onboarding, Parte D3: esto es "creó su primera planeación con
+        # IA de verdad" — la señal real de que entendió el producto, no
+        # un checkbox que el frontend marque solo. Gateado a modo ==
+        # MODO_PLANEACION específicamente: el sprint pide "primera
+        # planeación", no "primer mensaje de chat de cualquier tipo"
+        # (calificación, PIAR, etc. no cuentan). Sí corre dentro del
+        # grupo de ejemplo a propósito — completar el recorrido de
+        # bienvenida es un concepto distinto de "activación" (Sprint E,
+        # que sí va a distinguir por grupo.es_ejemplo; ver nota en el
+        # PR sobre esta decisión).
+        if docente_actual and modo == MODO_PLANEACION:
+            completar_onboarding_si_aplica(docente_actual)
         db.commit()
         db.refresh(msg_ia)
         db.refresh(sesion)
