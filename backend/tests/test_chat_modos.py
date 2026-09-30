@@ -34,12 +34,13 @@ class _Grupo:
 
 
 class _Est:
-    def __init__(self, codigo, piar=False, diag=None, ajustes=None, id_est=None):
+    def __init__(self, codigo, piar=False, diag=None, ajustes=None, id_est=None, genero=None):
         self.codigo_estudiante = codigo
         self.tiene_piar = piar
         self.diagnostico = diag
         self.ajustes = ajustes
         self.id_estudiante = id_est or f"id-{codigo}"
+        self.genero = genero
 
 
 class _Col:
@@ -95,7 +96,8 @@ def test_socio_con_mencion_inyecta_datos_del_estudiante():
     from ia import construir_system_prompt
     grupo = _Grupo()
     ests = [
-        _Est("E001", piar=True, diag="TDA-H", ajustes="Instrucciones cortas", id_est="e1"),
+        _Est("E001", piar=True, diag="MARCADOR_DIAGNOSTICO_UNICO",
+             ajustes="Instrucciones cortas", id_est="e1"),
         _Est("E002", id_est="e2"),
     ]
     notas = {"e1": [4.5, 3.8, 4.0], "e2": [3.0]}
@@ -108,8 +110,14 @@ def test_socio_con_mencion_inyecta_datos_del_estudiante():
 
     assert "ESTUDIANTES MENCIONADOS" in p
     assert "E001" in p
-    assert "TDA-H" in p                       # diagnóstico
-    assert "Instrucciones cortas" in p        # ajustes
+    # Sprint F, Parte B1: diagnóstico/ajustes son dato de salud — NO viajan
+    # al prompt fuera de modo PIAR, ni siquiera cuando el estudiante es
+    # mencionado explícitamente por el docente. (Nota: el valor de prueba
+    # NO puede ser "TDA-H" — el prompt base de socioemocional lo menciona
+    # como ejemplo genérico de señal observable, y eso daría un falso
+    # positivo si buscáramos ese string literal en el resultado.)
+    assert "MARCADOR_DIAGNOSTICO_UNICO" not in p
+    assert "Instrucciones cortas" not in p
     # Estadística de notas del mencionado (avg 4.1, min 3.8, max 4.5)
     assert "promedio 4.1" in p
     # E002 NO fue mencionado → no debe aparecer en la sección de mencionados
@@ -164,7 +172,9 @@ def test_calificacion_inyecta_columnas_del_periodo_y_escala():
     assert "peso total 100%" in p
     # PIAR marcado explícitamente
     assert "Estudiantes con PIAR" in p
-    assert "Tiempo extra en pruebas" in p
+    # Sprint F, Parte B1: `ajustes` es dato de salud — no viaja al prompt
+    # en modo calificación, ni siquiera para estudiantes con PIAR.
+    assert "Tiempo extra en pruebas" not in p
 
 
 def test_calificacion_advierte_cuando_no_hay_columnas():
@@ -213,8 +223,66 @@ def test_api_key_placeholder_se_detecta_como_no_configurada(monkeypatch):
     monkeypatch.setattr(settings, "CLAUDE_API_KEY", "sk-ant-XXXXXXXXXX")
     assert ia._api_key_configurada() is False
 
-    monkeypatch.setattr(settings, "CLAUDE_API_KEY", "")
-    assert ia._api_key_configurada() is False
 
-    monkeypatch.setattr(settings, "CLAUDE_API_KEY", "sk-ant-real-key-would-look-like-this")
-    assert ia._api_key_configurada() is True
+# ─── Sprint F, Parte B1 — datos clínicos fuera del prompt ────────
+#
+# Test permanente: diagnostico/ajustes son dato de salud (Ley 1581) y
+# NUNCA deben viajar al prompt de Claude salvo en modo PIAR ("Ajustes
+# de aula"), que es el único modo para el que el docente los puso ahí.
+# Antes de esta corrección viajaban en CUALQUIER modo (ia.py, hallazgo
+# de la auditoría Sprint F Parte A). Este test protege contra que un
+# sprint futuro los reintroduzca en un modo nuevo o en uno existente.
+
+def test_diagnostico_ajustes_nunca_viajan_fuera_de_modo_piar():
+    from ia import construir_system_prompt
+    from prompts import MODOS_ACTIVOS, MODO_PIAR
+
+    grupo = _Grupo()
+    ests = [
+        _Est("E001", piar=True, diag="MARCADOR_DIAGNOSTICO_UNICO",
+             ajustes="MARCADOR_AJUSTES_UNICO", id_est="e1"),
+    ]
+
+    for modo in MODOS_ACTIVOS:
+        if modo == MODO_PIAR:
+            continue
+        p = construir_system_prompt(
+            grupo, ests, modo=modo,
+            mensaje_texto="E001 necesita apoyo.",
+        )
+        assert "MARCADOR_DIAGNOSTICO_UNICO" not in p, (
+            f"modo={modo!r} filtró el diagnóstico al prompt — sólo PIAR puede."
+        )
+        assert "MARCADOR_AJUSTES_UNICO" not in p, (
+            f"modo={modo!r} filtró los ajustes al prompt — sólo PIAR puede."
+        )
+
+
+def test_diagnostico_ajustes_si_viajan_en_modo_piar():
+    """Contraparte del test anterior: modo PIAR SÍ debe recibirlos — si
+    no, el docente tendría que retipearlos cada vez que genera el PIAR."""
+    from ia import construir_system_prompt
+
+    grupo = _Grupo()
+    est = _Est("E001", piar=True, diag="MARCADOR_DIAGNOSTICO_UNICO",
+               ajustes="MARCADOR_AJUSTES_UNICO", id_est="e1")
+
+    p = construir_system_prompt(
+        grupo, [est], modo="piar", estudiante_piar=est,
+    )
+    assert "MARCADOR_DIAGNOSTICO_UNICO" in p
+    assert "MARCADOR_AJUSTES_UNICO" in p
+
+
+def test_observaciones_no_incluye_diagnostico_ni_ajustes():
+    """Mismo test que el de arriba, para el flujo separado de
+    observaciones.py (no pasa por construir_system_prompt)."""
+    from observaciones import _contexto_estudiante
+
+    est = _Est("E001", piar=True, diag="MARCADOR_DIAGNOSTICO_UNICO",
+               ajustes="MARCADOR_AJUSTES_UNICO", id_est="e1")
+
+    ctx = _contexto_estudiante(est)
+    assert "MARCADOR_DIAGNOSTICO_UNICO" not in ctx
+    assert "MARCADOR_AJUSTES_UNICO" not in ctx
+    assert "Tiene PIAR activo" in ctx

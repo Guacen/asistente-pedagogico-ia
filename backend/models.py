@@ -351,6 +351,20 @@ class Estudiante(Base):
 
     grupo = relationship("Grupo", back_populates="estudiantes")
     calificaciones = relationship("Calificacion", back_populates="estudiante", cascade="all, delete")
+    # Sprint F, Parte B2: sin estas 4, borrar un Estudiante dejaba huérfanos
+    # en piar/observaciones/mensajes/chat_sesiones — ninguna tenía cascada
+    # de ORM ni `ondelete` en la FK, así que en Postgres real el borrado
+    # directamente fallaba con ForeignKeyViolation si el estudiante tenía
+    # historial (en SQLite, sin PRAGMA foreign_keys=ON, el borrado "pasaba"
+    # pero dejaba las filas hijas apuntando a un id_estudiante inexistente
+    # — el mismo patrón SQLite-permisivo/Postgres-estricto de otros
+    # incidentes de este proyecto, nunca antes probado contra Postgres
+    # real para este endpoint). "Todo lo asociado" del estudiante se borra
+    # con él, a propósito — es lo que pide habeas data.
+    piars = relationship("PIAR", cascade="all, delete")
+    observaciones = relationship("Observacion", cascade="all, delete")
+    mensajes = relationship("Mensaje", cascade="all, delete")
+    chat_sesiones = relationship("ChatSesion", cascade="all, delete")
 
 
 class ChatSesion(Base):
@@ -386,6 +400,16 @@ class ChatSesion(Base):
     archivada = Column(Boolean, nullable=False, default=False, index=True)
 
     grupo = relationship("Grupo", back_populates="chat_sesiones")
+    # Sprint F, Parte B2: sin esto, borrar un ChatSesion (directo, o en
+    # cascada desde Estudiante.chat_sesiones) fallaba con
+    # ForeignKeyViolation en Postgres si tenía Mensaje.id_sesion
+    # apuntándole — SQLAlchemy no puede inferir por sí solo que hay que
+    # borrar los mensajes de la sesión ANTES que la sesión si esa
+    # relación no está declarada en el grafo del ORM, aunque ambos
+    # DELETE estén en el mismo flush. `id_sesion` es nullable en Mensaje
+    # (mensajes previos a la introducción de sesiones), así que esto
+    # sólo borra los que sí pertenecen a esta sesión.
+    mensajes = relationship("Mensaje", cascade="all, delete")
 
 
 class Mensaje(Base):
@@ -810,13 +834,30 @@ class RespuestaPresentacion(Base):
     input de este proyecto que llega sin ningún JWT de por medio).
 
     SPRINT 6: `tiempo_limite_ms` y `puntos_obtenidos` quedan FIJOS al
-    momento de responder — nunca se recalculan después. Si el docente
-    cambia el factor PIAR de un estudiante o el estudiante deja de estar
-    marcado con PIAR más adelante, las respuestas ya registradas no
-    cambian de puntaje retroactivamente (dato de investigación para la
-    tesis: tiempo_respuesta_ms/tiempo_limite_ms permiten reconstruir
-    exactamente qué límite de tiempo tenía cada estudiante en cada
-    pregunta).
+    momento de responder — nunca se recalculan después. Existen sólo
+    para calcular el puntaje por velocidad de esa respuesta (modo
+    `competencia`) y sostener el podio en vivo; si el docente cambia el
+    factor PIAR de un estudiante o el estudiante deja de estar marcado
+    con PIAR más adelante, las respuestas ya registradas no cambian de
+    puntaje retroactivamente. Esta tabla se purgó por completo en
+    Sprint F, Parte B2.
+
+    Si en el futuro se quiere instrumentar esto para investigación, es
+    un diseño aparte — con aval de comité de ética e informed consent
+    propio — no un campo reaprovechado de la función de puntaje.
+
+    REQUISITO BLOQUEANTE DEL SPRINT 8 (reactivación de Presentaciones,
+    hoy detrás de FEATURE_PRESENTACIONES=False): `nombre_estudiante`
+    NO tiene FK a `estudiantes` — es texto libre sin ninguna forma de
+    cascadear un borrado. migrate.py purgó los datos de prueba
+    existentes una sola vez (Sprint F, Parte B2), pero eso es un parche,
+    no una solución: si Presentaciones se reactiva sin resolver esto,
+    el problema de habeas data vuelve a acumularse desde cero. Antes de
+    quitar el flag, Sprint 8 tiene que elegir uno de los dos:
+      (a) agregar id_estudiante como FK real, con cascada; o
+      (b) dejar de persistir el nombre — un identificador de
+          participante por sesión, con el nombre visible sólo en
+          memoria durante la sesión en vivo, nunca en DB.
     """
     __tablename__ = "respuestas_presentacion"
 
@@ -848,6 +889,11 @@ class PuntajeEstudiante(Base):
     Reconexión: como la clave es (id_sesion, nombre_estudiante) — no un
     sid de socket — un estudiante que se desconecta y vuelve a entrar
     con el mismo nombre sigue acumulando sobre la MISMA fila.
+
+    REQUISITO BLOQUEANTE DEL SPRINT 8 — mismo problema y misma solución
+    que en RespuestaPresentacion (ver su docstring): `nombre_estudiante`
+    sin FK, purgado una sola vez en Sprint F Parte B2, no resuelto de
+    raíz. No reactivar FEATURE_PRESENTACIONES sin resolverlo antes.
     """
     __tablename__ = "puntajes_estudiante"
     __table_args__ = (
@@ -922,3 +968,31 @@ class ReporteProblema(Base):
     creado_en = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
 
     docente = relationship("Docente")
+
+
+class MigracionAplicada(Base):
+    """
+    Sprint F, Parte B2 — ledger de migraciones de DATOS de una sola vez
+    (no de esquema). El resto de migrate.py es idempotente "por
+    inspección": un `_tiene_columna()` antes de cada ALTER TABLE hace
+    que correr el mismo paso mil veces sea seguro, porque el estado de
+    la columna ES la señal de si ya corrió. Un DELETE/UPDATE que corrige
+    datos no tiene un equivalente confiable — "la tabla está vacía" NO
+    sirve como señal de "ya se purgó", porque una vez que la causa raíz
+    se arregle (ver Sprint 8 en RespuestaPresentacion/PuntajeEstudiante)
+    esa misma tabla va a volver a tener filas LEGÍTIMAS, y un chequeo
+    basado en el estado de los datos borraría producción real sin darse
+    cuenta.
+
+    Por eso este ledger existe: cada paso de datos de una sola vez se
+    registra ACÁ por nombre antes de correr, y `_paso_datos_una_vez()`
+    lo salta si ya está. No es un mecanismo de migraciones tipo
+    Alembic (no versiona esquema, no hace rollback) — sólo asegura que
+    un DELETE/UPDATE de corrección de datos corra exactamente una vez
+    en la vida de cada base de datos, sin importar cuántas veces
+    reinicie el proceso.
+    """
+    __tablename__ = "migraciones_aplicadas"
+
+    nombre = Column(String(200), primary_key=True)
+    aplicada_en = Column(DateTime, default=datetime.utcnow, nullable=False)

@@ -49,10 +49,18 @@ def _api_key_configurada() -> bool:
 # CONTEXTO DEL GRUPO — común a todos los modos
 # ============================================================
 
-def _bloque_contexto_grupo(grupo: Grupo, estudiantes: List[Estudiante]) -> str:
+def _bloque_contexto_grupo(
+    grupo: Grupo, estudiantes: List[Estudiante], modo: Optional[str] = None
+) -> str:
     """
     Sección de contexto del grupo que se inyecta después del system prompt del modo.
     Incluye datos del grupo + resumen de estudiantes con PIAR.
+
+    Sprint F, Parte B1: `diagnostico`/`ajustes` son dato de salud (Ley 1581)
+    y sólo pueden viajar al prompt en modo PIAR ("Ajustes de aula") — es el
+    único modo que los necesita y para el que el docente los puso ahí. En
+    cualquier otro modo (incluido éste, que corre para TODOS) sólo se dice
+    que el estudiante tiene PIAR, sin el contenido clínico.
     """
     piar = [e for e in estudiantes if e.tiene_piar]
     recursos = grupo.recursos_disponibles or []
@@ -75,11 +83,17 @@ ESTUDIANTES CON PIAR ({len(piar)} estudiante{'s' if len(piar) > 1 else ''})
 ═══════════════════════════════════════════
 """
         for e in piar:
-            ctx += (
-                f"\n• Estudiante {e.codigo_estudiante}"
-                f"\n  - Diagnóstico : {e.diagnostico or 'No especificado'}"
-                f"\n  - Ajustes PIAR: {e.ajustes or 'No especificados'}\n"
-            )
+            ctx += f"\n• Estudiante {e.codigo_estudiante}"
+            if modo == MODO_PIAR:
+                ctx += (
+                    f"\n  - Diagnóstico : {e.diagnostico or 'No especificado'}"
+                    f"\n  - Ajustes PIAR: {e.ajustes or 'No especificados'}\n"
+                )
+            else:
+                ctx += (
+                    "\n  - Diagnóstico y ajustes no se comparten fuera del "
+                    "modo Ajustes de aula.\n"
+                )
     else:
         ctx += "\n• Ningún estudiante tiene PIAR registrado actualmente.\n"
 
@@ -137,8 +151,12 @@ def _bloque_socioemocional(
     """
     Contexto adicional para modo socioemocional:
     - Si el docente menciona códigos de estudiantes → detalle enriquecido
-      (diagnóstico, ajustes, tiene_piar, resumen de notas)
+      (tiene_piar, resumen de notas)
     - Si no menciona a nadie → estadísticas agregadas del grupo
+
+    Sprint F, Parte B1: diagnóstico/ajustes NO se incluyen acá — son dato
+    de salud (Ley 1581) y sólo viajan al prompt en modo PIAR ("Ajustes de
+    aula"). Este modo sólo necesita saber SI el estudiante tiene PIAR.
     """
     codigos = [e.codigo_estudiante for e in estudiantes if e.codigo_estudiante]
     mencionados = _detectar_codigos_mencionados(mensaje_texto, codigos)
@@ -155,9 +173,6 @@ def _bloque_socioemocional(
                 continue
             bloque += f"\n• Código: {e.codigo_estudiante}"
             bloque += f"\n  - PIAR: {'Sí' if e.tiene_piar else 'No'}"
-            if e.tiene_piar:
-                bloque += f"\n  - Diagnóstico: {e.diagnostico or 'No especificado'}"
-                bloque += f"\n  - Ajustes actuales: {e.ajustes or 'No especificados'}"
             notas = notas_por_estudiante.get(e.id_estudiante, [])
             if notas:
                 prom = round(sum(notas) / len(notas), 2)
@@ -212,6 +227,11 @@ def _bloque_calificacion(
     - Columnas de evaluación del periodo actual (nombre, tipo, peso ponderado)
     - Estudiantes con PIAR (para que la rúbrica los considere)
     - Recordatorio de escala colombiana
+
+    Sprint F, Parte B1: no se incluye el texto de `ajustes` — dato de
+    salud (Ley 1581) que sólo viaja al prompt en modo PIAR. Este modo
+    sólo necesita saber CUÁLES estudiantes tienen PIAR, para que la
+    rúbrica los marque a criterio del docente.
     """
     bloque = "\n═══════════════════════════════════════════\n"
     bloque += "CONTEXTO DE EVALUACIÓN\n"
@@ -242,8 +262,6 @@ def _bloque_calificacion(
         )
         for e in piar:
             bloque += f"\n  - {e.codigo_estudiante}"
-            if e.ajustes:
-                bloque += f" · ajustes actuales: {e.ajustes[:80]}"
     bloque += "\n"
     return bloque
 
@@ -348,7 +366,7 @@ def construir_system_prompt(
     """
     modo_final = normalizar_modo(modo)
     base_y_modo = prompt_para_modo(modo_final)
-    contexto_grupo = _bloque_contexto_grupo(grupo, estudiantes)
+    contexto_grupo = _bloque_contexto_grupo(grupo, estudiantes, modo_final)
 
     # Bloque específico por modo (opcional)
     contexto_extra = ""
