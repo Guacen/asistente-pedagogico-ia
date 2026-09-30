@@ -75,3 +75,57 @@ Tailwind CDN, Font Awesome CDN o `brand.css` externo carguen. Esa página
 inlinea todo su CSS y usa SVG inline en vez de iconos de fuente. Cualquier
 página nueva con ese mismo perfil de riesgo (estudiante, sin cuenta,
 dispositivo/red no controlados) debe seguir el mismo criterio.
+
+## Un flag que apaga una función debe cerrar TODAS sus vías de entrada, no sólo la HTTP
+
+`FEATURE_PRESENTACIONES=False` gateaba el router HTTP
+(`/api/presentaciones/*` → 404 vía una dependency que se re-evalúa en
+cada request) pero no los handlers de Socket.io de la misma función:
+`@sio.on("presentacion:...")` se registra UNA VEZ, en el momento en que
+se importa el módulo que los define — no en cada conexión — así que
+`import presentacion_events` sin condición en `main.py` los dejaba
+activos sin importar el flag. Confirmado en producción (Sprint F, Parte
+G1): con el flag apagado, `POST /api/presentaciones/generar` daba 404,
+pero `socket.emit('presentacion:unirse', {...})` seguía respondiendo y
+consultando la base de datos.
+
+**Regla:** cuando una función se apaga con un flag, auditar TODAS sus
+vías de entrada — HTTP, Socket.io, tareas en background, cron — no sólo
+la que se probó primero. Un mecanismo de request-por-request
+(`Depends()` de FastAPI) no protege un mecanismo de registro-al-importar
+(`@sio.on(...)`); cada uno necesita su propio gate, en el punto donde
+efectivamente se evalúa. Ver `main.py` (el `import presentacion_events`
+ahora vive detrás de `if settings.FEATURE_PRESENTACIONES:`) y
+`tests/test_socketio_flag_presentaciones.py`.
+
+## Migraciones fallidas no tumban el arranque — no es un default, es una decisión con condición de reversa
+
+Una migración de `migrate.py` que falla nunca mata el proceso: se
+registra en `MIGRATION_ERRORS` con traceback completo y el arranque
+sigue. `GET /health` responde 200 siempre, a propósito — **no es el
+canal para detectar una migración rota**. El canal es `GET /api/version`
+(mismo `MIGRATION_ERRORS`) y el banner de admin en el dashboard
+(`mostrarBannerMigracionesFallidasSiAplica`, sólo `es_admin=true`).
+
+**Por qué** (razonamiento completo en el docstring de `migrate.py`,
+Sprint F Parte G3): la recomendación estándar de la industria —
+migración fallida mata el arranque, así el balanceador conserva la
+réplica anterior — asume múltiples réplicas y un healthcheck con
+rollback automático verificado. Este proyecto no tiene ninguna de las
+dos: un solo servicio en Railway, Health Check Path vacío. El 16 de
+septiembre de 2026, una sola columna con tipo inválido en una migración
+de una función archivada (Presentaciones, ni siquiera activa) tumbó
+TODO el sitio 40 minutos porque el proceso moría al arrancar y no había
+ninguna réplica sana detrás. Aislar cada migración (`_paso()`) convirtió
+ese mismo tipo de fallo en algo localizado y visible en vez de total y
+silencioso.
+
+**Cuándo reconsiderar esto** (verificado, no supuesto — no antes):
+- el servicio pasa a correr con más de una réplica en Railway; o
+- se configura un Health Check Path en Railway y se confirma con una
+  prueba real (no leyendo documentación) que un healthcheck fallido
+  dispara rollback automático sin intervención manual.
+
+Sin ninguna de las dos, no cambiar este comportamiento — volver a
+"migración fallida mata el arranque" sin esas piezas reintroduciría el
+incidente del 16 de septiembre, no lo previene.
