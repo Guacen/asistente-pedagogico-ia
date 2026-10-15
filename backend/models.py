@@ -111,12 +111,29 @@ class Docente(Base):
     #                manualmente). trial_ends_at queda NULL para estos.
     #   'expirado' → la ventana de 7 días venció; verify_trial_active()
     #                devuelve 402 en los endpoints de producto.
+    #   'beta'     → Sprint H: acceso otorgado por código de invitación
+    #                (ver CodigoInvitacion). Límites generosos pero NO
+    #                infinitos (config.LIMITES_PLAN["beta"]) y NUNCA ve
+    #                prompts de upgrade/Wompi (ver verify_trial_active,
+    #                socket_events._verificar_limite_plan,
+    #                suscripciones.get_suscripcion). A diferencia de
+    #                'expirado', cuando beta_vencimiento pasa el docente
+    #                NO queda bloqueado por completo — conserva lectura/
+    #                exportación; sólo se bloquean acciones de escritura
+    #                (crear/generar), y con un mensaje de contacto, nunca
+    #                una pantalla de pago (Wompi sigue en sandbox).
     # trial_ends_at es naive UTC (no tz-aware) a propósito — TODAS las
     # demás columnas de fecha en este modelo (fecha_registro, etc.) son
     # naive UTC comparadas con datetime.utcnow(); mezclar aware/naive acá
     # sólo introduce un TypeError latente al comparar.
     trial_ends_at = Column(DateTime, nullable=True)
     plan = Column(String(20), nullable=False, default="trial")
+    # Sprint H, Parte A — sólo tiene sentido cuando plan == 'beta'. Copiado
+    # desde CodigoInvitacion.fecha_vencimiento_beta en el momento del
+    # registro (no se recalcula si el código se edita después: cada
+    # docente conserva la fecha que tenía vigente cuando se registró).
+    # NULL = acceso beta sin fecha de vencimiento (código creado sin una).
+    beta_vencimiento = Column(DateTime, nullable=True)
 
     # ── Onboarding de primer uso — sprint primer-uso, Parte D3 ──
     # 'pendiente' (banner visible) | 'completado' (creó su primera
@@ -143,6 +160,37 @@ class Docente(Base):
     # NO colisionar con la columna legacy `institucion` (string libre) que
     # documento.py y piar.py leen como texto para el encabezado DOCX.
     institucion_obj = relationship("Institucion", back_populates="docentes")
+
+
+class CodigoInvitacion(Base):
+    """
+    Sprint H, Parte A — códigos de invitación a la beta cerrada (2 a 20
+    docentes). Dos fechas con roles distintos, a propósito:
+      - fecha_expiracion: deadline para REDIMIR el código en el
+        registro. Pasada esa fecha, el código ya no otorga nada aunque
+        le queden usos — un código "viejo" no debe quedar reutilizable
+        indefinidamente sólo porque nadie lo desactivó a mano.
+      - fecha_vencimiento_beta: hasta cuándo dura el ACCESO que el
+        código otorga una vez redimido. Se copia a
+        Docente.beta_vencimiento en el momento del registro — editar el
+        código después NO cambia la fecha de quienes ya se registraron
+        con él (cada docente conserva lo que tenía vigente ese día).
+
+    `usos_actuales` se incrementa atómicamente en el mismo commit que
+    crea el Docente (auth.py::register) — nunca se recalcula contando
+    docentes, porque un código desactivado o editado no debe perder la
+    cuenta de cuántas veces se usó mientras estuvo activo.
+    """
+    __tablename__ = "codigos_invitacion"
+
+    codigo = Column(String(50), primary_key=True)
+    descripcion = Column(String(200), nullable=True)
+    fecha_expiracion = Column(DateTime, nullable=False)
+    fecha_vencimiento_beta = Column(DateTime, nullable=True)
+    usos_maximos = Column(Integer, nullable=False, default=1)
+    usos_actuales = Column(Integer, nullable=False, default=0)
+    activo = Column(Boolean, nullable=False, default=True)
+    creado_en = Column(DateTime, default=datetime.utcnow, nullable=False)
 
 
 class Suscripcion(Base):

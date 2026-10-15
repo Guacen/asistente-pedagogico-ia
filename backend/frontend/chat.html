@@ -869,6 +869,13 @@ function connectSocket() {
             window.location.href = 'trial-expirado.html';
             return;
         }
+        // Sprint H, Parte C: beta vencida — NUNCA la pantalla de bloqueo
+        // (eso es el embudo de pago, Wompi sigue en sandbox). Un aviso
+        // puntual sin link a "ver planes", el docente sigue en el chat.
+        if (data && data.code === 'beta_vencida') {
+            mostrarRateLimit(data.message || 'Tu acceso al piloto beta venció. Escríbenos.');
+            return;
+        }
         // Rate limit diario por modo → banner rojo específico
         if (data && data.code === 'rate_limit_diario') {
             mostrarRateLimit(data.message || 'Alcanzaste el límite diario.');

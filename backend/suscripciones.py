@@ -50,7 +50,13 @@ def get_suscripcion(
     docente: Docente = Depends(get_current_docente),
     db: Session = Depends(get_db),
 ):
-    plan = docente.suscripcion.plan if docente.suscripcion else "free"
+    # Sprint H, Parte A — Docente.plan == 'beta' manda por encima de
+    # Suscripcion.plan (que para un docente beta sigue en 'free', nunca
+    # se toca): este endpoint es lo que alimenta el banner del sidebar
+    # (dashboard.html) y la pestaña de suscripción (cuenta.html), así
+    # que un docente beta tiene que ver "beta" acá, no "Free" con un
+    # botón de upgrade.
+    plan = "beta" if docente.plan == "beta" else (docente.suscripcion.plan if docente.suscripcion else "free")
     limites = LIMITES_PLAN.get(plan, LIMITES_PLAN["free"])
 
     uso = _get_uso_mes_actual(docente.id_docente, db)

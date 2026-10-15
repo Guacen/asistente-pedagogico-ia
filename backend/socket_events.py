@@ -20,6 +20,7 @@ from datetime import datetime
 import socketio
 
 from auth import trial_vencido, verify_token_for_socket
+from config import LIMITES_PLAN
 from database import SessionLocal
 from errores import loggear_error, nuevo_correlation_id
 from ia import generar_respuesta
@@ -174,6 +175,20 @@ def _consumir_rate_limit(db, docente_id: str, modo: str, *, es_admin: bool = Fal
 
 def _verificar_limite_plan(docente: Docente, db) -> bool:
     """Retorna True si el docente puede enviar más mensajes IA este mes."""
+    # Sprint H, Parte A: Docente.plan == 'beta' manda por encima de
+    # Suscripcion.plan (que para un docente beta nunca se toca, sigue
+    # en 'free') — usa el tope propio de config.LIMITES_PLAN["beta"],
+    # no el de free ni el ilimitado de pro.
+    if docente.plan == "beta":
+        ahora = datetime.utcnow()
+        uso = db.query(UsoMensual).filter(
+            UsoMensual.id_docente == docente.id_docente,
+            UsoMensual.mes == ahora.month,
+            UsoMensual.anio == ahora.year,
+        ).first()
+        usados = uso.mensajes_ia_usados if uso else 0
+        return usados < LIMITES_PLAN["beta"]["mensajes"]
+
     plan = docente.suscripcion.plan if docente.suscripcion else "free"
     if plan == "pro":
         return True
@@ -420,10 +435,22 @@ async def send_message(sid, data):
         # REST, ANTES de gastar cuota de rate limit.
         docente_actual = db.query(Docente).filter(Docente.id_docente == docente_id).first()
         if docente_actual and trial_vencido(docente_actual, db):
-            await sio.emit("ia_error", {
-                "message": "Tu prueba gratuita de 7 días terminó. Elige un plan para seguir usando Maestr.ia.",
-                "code": "trial_expirado",
-            }, to=sid)
+            # Sprint H, Parte C: generar un mensaje nuevo es escritura —
+            # se bloquea igual para beta vencida, pero con code/mensaje
+            # propios (nunca "elige un plan", Wompi sigue en sandbox).
+            if docente_actual.plan == "beta":
+                await sio.emit("ia_error", {
+                    "message": (
+                        "Tu acceso al piloto beta venció. Puedes seguir viendo y "
+                        "exportando tu información. Escríbenos para continuar."
+                    ),
+                    "code": "beta_vencida",
+                }, to=sid)
+            else:
+                await sio.emit("ia_error", {
+                    "message": "Tu prueba gratuita de 7 días terminó. Elige un plan para seguir usando Maestr.ia.",
+                    "code": "trial_expirado",
+                }, to=sid)
             return
 
         # 1. Verificar que el grupo pertenece al docente
@@ -475,10 +502,20 @@ async def send_message(sid, data):
         # de un paywall, ni siquiera el tope mensual del plan free.
         docente = db.query(Docente).filter(Docente.id_docente == docente_id).first()
         if modo != MODO_OBSERVACIONES and not _verificar_limite_plan(docente, db):
-            await sio.emit("ia_error", {
-                "message": "Alcanzaste el límite de 10 mensajes/mes del plan Free. "
-                           "Actualiza a Pro para mensajes ilimitados."
-            }, to=sid)
+            if docente.plan == "beta":
+                # Sprint H, Parte A: nunca "Actualiza a Pro" para beta —
+                # el tope es de protección de costo, no un embudo de venta.
+                await sio.emit("ia_error", {
+                    "message": (
+                        f"Alcanzaste el límite de {LIMITES_PLAN['beta']['mensajes']} "
+                        "mensajes/mes del piloto beta. Escríbenos si necesitas más."
+                    ),
+                }, to=sid)
+            else:
+                await sio.emit("ia_error", {
+                    "message": "Alcanzaste el límite de 10 mensajes/mes del plan Free. "
+                               "Actualiza a Pro para mensajes ilimitados."
+                }, to=sid)
             return
 
         # 2b. Verificar rate limit diario POR MODO — se consume al iniciar

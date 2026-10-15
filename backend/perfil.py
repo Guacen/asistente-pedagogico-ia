@@ -20,7 +20,9 @@ from sqlalchemy.orm import Session
 from auth import get_current_docente, trial_vencido
 from database import get_db
 from models import Docente
-from schemas import DocenteOut, PlanStatusOut, _dias_restantes_trial
+from schemas import (
+    DocenteOut, PlanStatusOut, _dias_restantes_beta, _dias_restantes_trial,
+)
 
 router = APIRouter(prefix="/api/perfil", tags=["perfil"])
 
@@ -34,12 +36,22 @@ def get_plan(
     # endpoint gateado desde que venció el trial, `plan` en DB puede
     # seguir en 'trial' aunque la fecha ya pasó. Lo corregimos acá
     # también para que la respuesta (y el banner) reflejen la realidad.
-    expirado = trial_vencido(docente, db)
+    bloqueado = trial_vencido(docente, db)
+    # Sprint H, Parte C: `expirado` dispara el redirect de página
+    # completa a trial-expirado.html en el frontend — eso NUNCA debe
+    # pasarle a un plan beta, venza o no (conserva lectura/exportación).
+    # `beta_vencida` es la señal aparte, no bloqueante, para que el
+    # frontend avise con un banner propio en vez del muro duro.
+    expirado_para_frontend = bloqueado if docente.plan != "beta" else False
+    beta_vencida = bloqueado if docente.plan == "beta" else False
     return PlanStatusOut(
         plan=docente.plan,
         trial_ends_at=docente.trial_ends_at,
         dias_restantes=_dias_restantes_trial(docente.plan, docente.trial_ends_at),
-        expirado=expirado,
+        expirado=expirado_para_frontend,
+        beta_vencimiento=docente.beta_vencimiento,
+        dias_restantes_beta=_dias_restantes_beta(docente.plan, docente.beta_vencimiento),
+        beta_vencida=beta_vencida,
     )
 
 

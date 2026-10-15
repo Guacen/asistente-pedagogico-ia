@@ -171,12 +171,33 @@
                                         <p class="text-sm text-gray-600">Próximo cobro: <span id="proxima-fecha">01/03/2026</span></p>
                                     </div>
                                 </div>
-                                <button 
+                                <button
                                     onclick="cancelarSuscripcion()"
                                     class="text-red-600 hover:text-red-700 text-sm font-medium"
                                 >
                                     Cancelar suscripción
                                 </button>
+                            </div>
+                        </div>
+
+                        <!-- Sección Beta (sprint H, Parte A) — oculta si no es
+                             plan beta. Nunca muestra upgrade, precio ni ningún
+                             enlace a Wompi: estás invitado al piloto, no es un
+                             tier que se compra ni se cancela. -->
+                        <div id="beta-section" class="hidden mt-6">
+                            <div class="p-4 rounded-lg border" style="background:#F0FDF4; border-color:#BBF7D0;">
+                                <div class="flex items-start gap-3">
+                                    <i class="fas fa-flask text-2xl mt-1" style="color:#1D9E75;"></i>
+                                    <div>
+                                        <p class="font-semibold text-gray-900">Estás en el piloto beta de Maestr.ia</p>
+                                        <p class="text-sm text-gray-600 mt-1" id="beta-vencimiento-texto">
+                                            Acceso sin fecha de vencimiento configurada.
+                                        </p>
+                                        <p class="text-xs text-gray-500 mt-2">
+                                            No hay nada que pagar ni cancelar — si tienes preguntas, escríbenos.
+                                        </p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -604,13 +625,22 @@
 
         // ── Render suscripción ────────────────────────────────────────
         function renderSuscripcion() {
-            const esPro = subscription.plan === 'pro';
+            const esPro  = subscription.plan === 'pro';
+            // Sprint H, Parte A — CRÍTICO: nunca "Free" con upgrade para
+            // un docente beta. subscription.plan ya viene corregido desde
+            // el backend (suscripciones.get_suscripcion) cuando
+            // Docente.plan === 'beta', así que basta leerlo acá.
+            const esBeta = subscription.plan === 'beta';
 
-            document.getElementById('plan-nombre').textContent = esPro ? '⭐ Plan Pro' : 'Plan Free';
-            document.getElementById('plan-precio').textContent = esPro ? '$45.000 COP/mes' : '$0';
+            document.getElementById('plan-nombre').textContent =
+                esPro ? '⭐ Plan Pro' : esBeta ? '🧪 Plan Beta' : 'Plan Free';
+            document.getElementById('plan-precio').textContent =
+                esPro ? '$45.000 COP/mes' : esBeta ? 'Sin costo' : '$0';
             document.getElementById('plan-descripcion').textContent = esPro
                 ? 'Acceso ilimitado a todas las funciones'
-                : 'Perfecto para empezar';
+                : esBeta
+                    ? 'Acceso al piloto beta — gracias por ayudarnos a probar Maestr.ia'
+                    : 'Perfecto para empezar';
 
             // Mensajes — usar campos planos de SuscripcionOut
             const mensajesUsados = subscription.mensajes_usados_mes || 0;
@@ -639,16 +669,34 @@
                 ? [`${ok}Mensajes <strong>ILIMITADOS</strong>`, `${ok}Grupos ilimitados`,
                    `${ok}Seguimiento longitudinal (4 años)`, `${ok}Análisis socioemocional`,
                    `${ok}Alertas proactivas`, `${ok}5 GB de almacenamiento`, `${ok}Soporte prioritario`]
-                : [`${ok}10 interacciones IA al mes`, `${ok}1 grupo de estudiantes`,
-                   `${ok}Planificación de clases`, `${ok}Libro de calificaciones`,
-                   `${no}Sin seguimiento longitudinal`, `${no}Sin análisis avanzado`];
+                : esBeta
+                    ? [`${ok}${msgLimiteDisplay} interacciones IA al mes`, `${ok}Grupos ilimitados`,
+                       `${ok}Planificación de clases`, `${ok}Libro de calificaciones`,
+                       `${ok}Acceso directo al equipo de Maestr.ia`]
+                    : [`${ok}10 interacciones IA al mes`, `${ok}1 grupo de estudiantes`,
+                       `${ok}Planificación de clases`, `${ok}Libro de calificaciones`,
+                       `${no}Sin seguimiento longitudinal`, `${no}Sin análisis avanzado`];
 
             document.getElementById('plan-features').innerHTML =
                 features.map(f => `<li class="flex items-center text-sm">${f}</li>`).join('');
 
-            // Mostrar/ocultar secciones
-            document.getElementById('upgrade-section').classList.toggle('hidden', esPro);
+            // Mostrar/ocultar secciones — mutuamente excluyentes.
+            document.getElementById('upgrade-section').classList.toggle('hidden', esPro || esBeta);
             document.getElementById('pro-section').classList.toggle('hidden', !esPro);
+            document.getElementById('beta-section').classList.toggle('hidden', !esBeta);
+
+            if (esBeta) {
+                // beta_vencimiento vive en DocenteOut (api.getMe()), no en
+                // SuscripcionOut — subscription.plan es lo único que ese
+                // endpoint necesitaba corregir para esta pantalla.
+                const texto = document.getElementById('beta-vencimiento-texto');
+                if (user && user.beta_vencimiento) {
+                    const d = new Date(user.beta_vencimiento);
+                    texto.textContent = `Acceso hasta el ${d.toLocaleDateString('es-CO')}.`;
+                } else {
+                    texto.textContent = 'Acceso sin fecha de vencimiento configurada.';
+                }
+            }
 
             if (esPro && subscription.fecha_fin) {
                 const d = new Date(subscription.fecha_fin);

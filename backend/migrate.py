@@ -620,6 +620,28 @@ def apply_migrations():
         print("✅ Migración: columna 'es_ejemplo' agregada a 'grupos' (default FALSE)")
     _paso("grupos.es_ejemplo", _paso_grupos_es_ejemplo)
 
+    # ── Sprint H, Parte A — acceso beta por código de invitación ──
+    # IMPORTANTE: igual que docentes.onboarding_estado/onboarding_paso
+    # arriba, esta columna va ANTES de _backfill_instituciones_unipersonales
+    # — ese backfill hace db.query(Docente) por el ORM, que pide TODAS
+    # las columnas del modelo actual, beta_vencimiento incluida.
+    def _paso_docentes_beta_vencimiento():
+        if _tiene_columna("docentes", "beta_vencimiento"):
+            return
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE docentes ADD COLUMN beta_vencimiento TIMESTAMP"))
+            conn.commit()
+        print("✅ Migración: columna 'beta_vencimiento' agregada a 'docentes'")
+    _paso("docentes.beta_vencimiento", _paso_docentes_beta_vencimiento)
+
+    # Tabla nueva, sin ALTER TABLE — create_all idempotente (mismo
+    # criterio que reportes_problema: tipos de SQLAlchemy, nunca SQL
+    # crudo con un nombre de tipo que sólo exista en un motor).
+    def _paso_tabla_codigos_invitacion():
+        from models import CodigoInvitacion
+        Base.metadata.create_all(bind=engine, tables=[CodigoInvitacion.__table__])
+    _paso("tabla codigos_invitacion", _paso_tabla_codigos_invitacion)
+
     # Backfill uni-personal: cada docente sin id_institucion recibe una
     # Institucion nueva a su nombre. Idempotente — si ya tiene, no toca.
     _paso("backfill instituciones unipersonales", _backfill_instituciones_unipersonales)
