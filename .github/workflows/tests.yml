@@ -113,10 +113,57 @@ jobs:
           # olvido: si alguna reaparece (regresión de versión, o un CVE
           # nuevo con el mismo ID por error), este --strict debe cortar
           # el pipeline en vez de seguir ignorándola en silencio.
+          #
+          #   - PYSEC-2026-4298 / CVE-2026-85394 / GHSA-3qf3-8w2g-rqmx
+          #     (python-jose, severidad crítica 9.1-9.3): "algorithm
+          #     confusion" — python-jose acepta una clave pública
+          #     asimétrica DER (sin armadura PEM ni prefijo SSH) como si
+          #     fuera un secreto HMAC. Si el código no fija el algoritmo
+          #     al decodificar, un atacante que tenga la clave pública
+          #     del servicio puede forjar tokens HS256 válidos. Fix
+          #     incompleto de CVE-2024-33663.
+          #
+          #     CONFIRMADO (2026-10-15): no existe versión corregida —
+          #     GitHub Advisory Database lista "first_patched_version:
+          #     null" para TODO el rango "<= 3.5.0" (3.5.0 es la última
+          #     release en PyPI, 2025-05-28). El issue del propio
+          #     proyecto (mpdavis/python-jose#414) está abierto desde
+          #     julio de 2026 sin ninguna respuesta del mantenedor —
+          #     repo con 125 issues abiertos y sin push desde abril de
+          #     2026. No hay upgrade posible, sólo evaluar la
+          #     exposición real.
+          #
+          #     Exposición real de ESTE proyecto: el ataque exige (a)
+          #     que el código NO fije `algorithms=` al decodificar, y
+          #     (b) que exista una clave asimétrica (RSA/EC) dando
+          #     vueltas como si pudiera ser un secreto HMAC. Ninguna de
+          #     las dos aplica acá — auditado el repo completo, no sólo
+          #     auth.py (incluye socket_events.py, que no decodifica
+          #     tokens por su cuenta: llama a
+          #     auth.verify_token_for_socket, y cualquier middleware de
+          #     main.py, ninguno de los cuales toca JWT):
+          #       - Los 7 sitios que llaman a jwt.decode()/jwt.encode()
+          #         en todo el repo (todos en auth.py: 5 decode + 2
+          #         encode) fijan algorithms=["HS256"] / algorithm=
+          #         "HS256" de forma explícita — nunca "cualquier
+          #         algoritmo". Conteo verificado por AST, no a mano —
+          #         ver test_todo_jwt_decode_fija_algorithms_explicitamente.
+          #       - settings.SECRET_KEY es siempre un secreto simétrico
+          #         real (random), nunca una clave pública/privada
+          #         RSA/EC — este proyecto no tiene NINGÚN material de
+          #         clave asimétrica para JWT en absoluto.
+          #     Ver tests/test_python_jose_sin_confusion_de_algoritmo.py
+          #     — ancla esta suposición: falla si algún jwt.decode()
+          #     deja de fijar algorithms=["HS256"], o si aparece
+          #     cualquier algoritmo asimétrico (RS256/ES256/etc.) en el
+          #     código. Si ese test se rompe, esta supresión queda
+          #     inválida y hay que revisarla de nuevo — no basta con
+          #     quitar la línea de --ignore-vuln de acá.
           pip-audit --strict \
             --ignore-vuln PYSEC-2026-1325 \
             --ignore-vuln PYSEC-2026-1845 \
-            --ignore-vuln PYSEC-2026-3447
+            --ignore-vuln PYSEC-2026-3447 \
+            --ignore-vuln PYSEC-2026-4298
 
       - name: Dependency vulnerability scan (safety)
         working-directory: backend

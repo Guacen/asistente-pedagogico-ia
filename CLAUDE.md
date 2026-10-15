@@ -129,3 +129,32 @@ silencioso.
 Sin ninguna de las dos, no cambiar este comportamiento — volver a
 "migración fallida mata el arranque" sin esas piezas reintroduciría el
 incidente del 16 de septiembre, no lo previene.
+
+## Deuda técnica real, no bloqueante para la beta: evaluar migrar python-jose → PyJWT
+
+`python-jose` (usado en `auth.py` para firmar/verificar el JWT de
+sesión) lleva años con mantenimiento irregular: al 2026-10-15, la
+última release en PyPI es 3.5.0 (2025-05-28), el repo no tiene push
+desde abril de 2026, tiene 125 issues abiertos, y la vulnerabilidad
+crítica PYSEC-2026-4298/CVE-2026-85394 (ver supresión en
+`.github/workflows/tests.yml` y
+`tests/test_python_jose_sin_confusion_de_algoritmo.py`) lleva desde
+julio de 2026 sin ninguna respuesta del mantenedor y sin versión
+corregida publicada.
+
+Esta vez la supresión es segura porque auditamos el repo entero y
+confirmamos que el escenario de ataque no aplica acá (algoritmo
+siempre fijado, cero material de clave asimétrica) — pero es la
+segunda vez que este proyecto termina triando/suprimiendo un hallazgo
+de esta librería en vez de poder actualizarla (ver también
+PYSEC-2026-1325 arriba, el de `ecdsa`, transitiva de
+`python-jose[cryptography]`). Eso es la señal, no el hallazgo
+puntual: depender de una librería que ya no recibe parches para la
+pieza más sensible del sistema (sesiones) es un riesgo que se acumula
+con el tiempo, no uno que se resuelve suprimiendo cada CVE nuevo uno
+por uno.
+
+**No es bloqueante para la beta** — el software de hoy no es
+explotable por lo que se auditó. Pero es deuda real: evaluar migrar a
+`PyJWT` (activamente mantenido, API similar) en un sprint dedicado
+post-beta, no como parche apurado a mitad de otro sprint.
