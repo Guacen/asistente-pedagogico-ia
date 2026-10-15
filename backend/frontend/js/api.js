@@ -162,6 +162,23 @@ class ApiClient {
                 // siempre lo incluyen), lo guardamos — es lo que "Reportar un
                 // problema" adjunta sin que el docente tenga que hacer nada.
                 this._capturarCorrelationId(error);
+                // Sprint H, Parte A/C: beta vencida en un endpoint de
+                // escritura (403, code="beta_vencida") — NUNCA el muro de
+                // trial-expirado.html, pero tampoco un toast con el JSON
+                // crudo: extraemos el mensaje limpio que preparó
+                // verify_trial_active() para mostrarlo tal cual.
+                if (response.status === 403) {
+                    let mensajeBetaVencida = null;
+                    try {
+                        const body = JSON.parse(error);
+                        if (body && body.detail && body.detail.code === 'beta_vencida') {
+                            mensajeBetaVencida = body.detail.message;
+                        }
+                    } catch (_) {
+                        // No era JSON con ese shape — sigue al throw genérico de abajo.
+                    }
+                    if (mensajeBetaVencida) throw new Error(mensajeBetaVencida);
+                }
                 throw new Error(error || `Error ${response.status}`);
             }
 
@@ -318,7 +335,7 @@ class ApiClient {
         return data;
     }
 
-    async register(nombre, email, password, consentimientoDatos = false) {
+    async register(nombre, email, password, consentimientoDatos = false, codigoInvitacion = null) {
         const data = await this.request('/api/auth/register', {
             method: 'POST',
             body: JSON.stringify({
@@ -326,6 +343,7 @@ class ApiClient {
                 email,
                 password,
                 consentimiento_datos: consentimientoDatos,
+                codigo_invitacion: codigoInvitacion,
             })
         });
         this.setToken(data.access_token);
@@ -891,6 +909,32 @@ class ApiClient {
     // cualquier otro docente.
     async listarReportesProblema() {
         return this.request('/api/reportes');
+    }
+
+    // ==========================================
+    // ADMIN — BETA: CÓDIGOS DE INVITACIÓN + COHORTE (sprint H)
+    // ==========================================
+
+    async listarCodigosInvitacion() {
+        return this.request('/api/admin/codigos');
+    }
+
+    async crearCodigoInvitacion(data) {
+        return this.request('/api/admin/codigos', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        });
+    }
+
+    async actualizarCodigoInvitacion(codigo, activo) {
+        return this.request(`/api/admin/codigos/${encodeURIComponent(codigo)}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ activo }),
+        });
+    }
+
+    async getCohorteBeta() {
+        return this.request('/api/admin/cohorte');
     }
 
     // ==========================================

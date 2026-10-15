@@ -7,14 +7,15 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 from passlib.context import CryptContext
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from config import settings
 from database import get_db
 from email_service import enviar_correo_reset_password, enviar_correo_verificacion
 from models import (
-    Docente, EmailVerification, PasswordResetToken, Suscripcion,
-    TokenBlacklist, UsoMensual,
+    CodigoInvitacion, Docente, EmailVerification, PasswordResetToken,
+    Suscripcion, TokenBlacklist, UsoMensual,
 )
 from rate_limiter import limiter
 from schemas import (
@@ -176,9 +177,22 @@ def trial_vencido(docente: Docente, db: Session) -> bool:
     llamadores comparten esta función para no duplicar la lógica:
     verify_trial_active() (REST, vía Depends) y send_message() en
     socket_events.py (el chat en tiempo real, que NO pasa por Depends).
+
+    Para plan == "beta" (Sprint H), este bool significa "¿venció el
+    acceso beta?" — el chat en tiempo real lo usa tal cual (generar un
+    mensaje nuevo es una acción de escritura, se bloquea igual que para
+    trial vencido). PERO verify_trial_active() NO delega ciegamente este
+    valor para decidir si redirige al muro duro: una beta vencida debe
+    conservar lectura/exportación, algo que esta función no distingue
+    por sí sola (no tiene el método HTTP). Ver verify_trial_active() y
+    perfil.get_plan() para dónde se abre esa distinción.
     """
     if docente.plan == "activo":
         return False
+    if docente.plan == "beta":
+        if docente.beta_vencimiento is None or docente.beta_vencimiento > datetime.utcnow():
+            return False
+        return True
     if docente.plan == "trial":
         if docente.trial_ends_at and docente.trial_ends_at > datetime.utcnow():
             return False
@@ -190,6 +204,7 @@ def trial_vencido(docente: Docente, db: Session) -> bool:
 
 
 def verify_trial_active(
+    request: Request,
     response: Response,
     docente: Docente = Depends(get_current_docente),
     db: Session = Depends(get_db),
@@ -207,8 +222,34 @@ def verify_trial_active(
     docente.es_admin == True bypasea esta verificación por completo —
     pensado para cuentas de fundador/staff que no deben depender del
     estado de plan/trial.
+
+    Sprint H, Parte A — plan == "beta" tiene su propia rama, separada
+    del resto a propósito: una beta vencida NUNCA debe devolver 402
+    (eso dispara el redirect global a trial-expirado.html en api.js,
+    pensado para el embudo de pago — Wompi sigue en sandbox, no hay
+    pantalla de pago que mostrar). En vez de eso:
+      - request.method == "GET" → siempre pasa, vencida o no. "El
+        docente no pierde acceso de lectura" es un requisito explícito.
+      - cualquier otro método (crear/generar/escribir) con la beta ya
+        vencida → 403 con code="beta_vencida", que el frontend muestra
+        como un aviso puntual ("escríbenos"), no una redirección de
+        página completa.
     """
     if docente.es_admin:
+        return docente
+    if docente.plan == "beta":
+        if trial_vencido(docente, db) and request.method != "GET":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "code": "beta_vencida",
+                    "message": (
+                        "Tu acceso al piloto beta venció. Puedes seguir viendo y "
+                        "exportando tu información. Escríbenos para continuar "
+                        "usando Maestr.ia."
+                    ),
+                },
+            )
         return docente
     if trial_vencido(docente, db):
         raise HTTPException(
@@ -306,10 +347,34 @@ def register(
         )
 
     ahora = datetime.utcnow()
+
+    # Sprint H, Parte A — código de invitación a la beta (opcional). Si
+    # se manda uno, tiene que ser válido o el registro se rechaza — no
+    # cae en silencio a trial normal (ver DocenteCreate.codigo_invitacion).
+    codigo_obj: Optional[CodigoInvitacion] = None
+    if data.codigo_invitacion:
+        codigo_normalizado = data.codigo_invitacion.strip().upper()
+        codigo_obj = db.query(CodigoInvitacion).filter(
+            CodigoInvitacion.codigo == codigo_normalizado
+        ).first()
+        codigo_invalido = (
+            not codigo_obj
+            or not codigo_obj.activo
+            or codigo_obj.fecha_expiracion < ahora
+            or codigo_obj.usos_actuales >= codigo_obj.usos_maximos
+        )
+        if codigo_invalido:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El código de invitación no es válido, venció o ya se agotó.",
+            )
+
     # Crear docente — email_verificado=False (default); el docente no
     # puede acceder a /api/auth/me hasta clicar el link del correo.
-    # Prueba gratuita: arranca en 'trial' con 7 días desde el registro,
-    # sin pedir tarjeta ni aprobación manual (sprint trial-7-dias).
+    # Sin código válido: prueba gratuita de 7 días (sprint trial-7-dias),
+    # sin pedir tarjeta ni aprobación manual. Con código válido: plan
+    # beta directo, sin pasar por trial — el vencimiento (si el código
+    # tiene uno) se copia tal cual estaba el día del registro.
     docente = Docente(
         nombre_completo=data.nombre_completo,
         email=data.email,
@@ -317,11 +382,31 @@ def register(
         consentimiento_datos=True,
         fecha_consentimiento=ahora,
         ip_consentimiento=_obtener_ip_cliente(request),
-        plan="trial",
-        trial_ends_at=ahora + timedelta(days=settings.TRIAL_DIAS),
+        plan="beta" if codigo_obj else "trial",
+        trial_ends_at=None if codigo_obj else ahora + timedelta(days=settings.TRIAL_DIAS),
+        beta_vencimiento=codigo_obj.fecha_vencimiento_beta if codigo_obj else None,
     )
     db.add(docente)
     db.flush()
+
+    if codigo_obj:
+        # Incremento atómico con guarda de concurrencia en el WHERE: si
+        # dos registros llegan casi al mismo tiempo con el mismo código
+        # a un uso de agotarse, esto asegura que como máximo uno de los
+        # dos gane el cupo que queda — nunca pasarse de usos_maximos.
+        resultado = db.execute(
+            text(
+                "UPDATE codigos_invitacion SET usos_actuales = usos_actuales + 1 "
+                "WHERE codigo = :codigo AND usos_actuales < usos_maximos"
+            ),
+            {"codigo": codigo_obj.codigo},
+        )
+        if resultado.rowcount == 0:
+            db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El código de invitación se agotó justo ahora. Intenta de nuevo o escríbenos.",
+            )
 
     # Crear suscripción gratuita
     suscripcion = Suscripcion(id_docente=docente.id_docente, plan="free")

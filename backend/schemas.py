@@ -20,6 +20,14 @@ class DocenteCreate(BaseModel):
     # que sea True antes de crear el docente. Docentes existentes al
     # momento del deploy quedan con NULL y aceptan via banner post-login.
     consentimiento_datos: bool = False
+    # Sprint H, Parte A — opcional. Si se manda y es válido, el docente
+    # queda con plan='beta' en vez de 'trial'. Si se manda y NO es
+    # válido (no existe, inactivo, vencido, agotado), auth.register
+    # RECHAZA el registro — no cae en silencio a trial normal, porque
+    # eso dejaría a alguien creyendo que entró a la beta sin haber
+    # entrado de verdad. Un registro sin código (campo vacío/ausente)
+    # sigue el flujo normal de trial, sin cambios.
+    codigo_invitacion: Optional[str] = Field(default=None, max_length=50)
 
     @field_validator("nombre_completo")
     @classmethod
@@ -62,6 +70,19 @@ def _dias_restantes_trial(plan: str, trial_ends_at: Optional[datetime]) -> int:
     return max(0, math.ceil(restante / 86400))
 
 
+def _dias_restantes_beta(plan: str, beta_vencimiento: Optional[datetime]) -> int:
+    """
+    Igual que _dias_restantes_trial pero para plan == 'beta'. 0 si no
+    aplica, si el código no tenía fecha de vencimiento (beta_vencimiento
+    NULL = indefinida), o si ya venció — un número negativo confundiría
+    al frontend (sprint H, Parte C, banner de aviso previo al vencimiento).
+    """
+    if plan != "beta" or not beta_vencimiento:
+        return 0
+    restante = (beta_vencimiento - datetime.utcnow()).total_seconds()
+    return max(0, math.ceil(restante / 86400))
+
+
 class DocenteOut(BaseModel):
     id_docente: str
     nombre_completo: str
@@ -79,6 +100,8 @@ class DocenteOut(BaseModel):
     # ── Onboarding de primer uso — sprint primer-uso, Parte D3 ──
     onboarding_estado: str = "completado"
     onboarding_paso: int = 1
+    # ── Acceso beta por invitación — sprint H, Parte A ──
+    beta_vencimiento: Optional[datetime] = None
 
     model_config = {"from_attributes": True}
 
@@ -86,6 +109,11 @@ class DocenteOut(BaseModel):
     @property
     def dias_restantes(self) -> int:
         return _dias_restantes_trial(self.plan, self.trial_ends_at)
+
+    @computed_field
+    @property
+    def dias_restantes_beta(self) -> int:
+        return _dias_restantes_beta(self.plan, self.beta_vencimiento)
 
 
 class ChangePassword(BaseModel):
@@ -126,7 +154,16 @@ class PlanStatusOut(BaseModel):
     plan: str
     trial_ends_at: Optional[datetime] = None
     dias_restantes: int
+    # `expirado` significa específicamente "redirigir al muro duro de
+    # trial-expirado.html" — para plan == 'beta' SIEMPRE es False, aunque
+    # beta_vencida sea True (sprint H, Parte C: una beta vencida conserva
+    # lectura/exportación, nunca el muro completo de pago). Ver
+    # perfil.get_plan().
     expirado: bool
+    # ── Sprint H, Parte A/C ──
+    beta_vencimiento: Optional[datetime] = None
+    dias_restantes_beta: int = 0
+    beta_vencida: bool = False
 
 
 # ── Sprint email-verification-consent ──

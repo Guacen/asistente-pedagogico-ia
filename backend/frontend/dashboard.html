@@ -137,6 +137,12 @@
                                class="flex items-center px-4 py-2 hover:bg-gray-50 text-sm text-gray-700 transition-colors">
                                 <i class="fas fa-flag mr-3 text-gray-400 w-4"></i>Reportes de problemas
                             </a>
+                            <!-- Sprint H, Parte A/B — sólo es_admin=true, mismo
+                                 criterio que el link de arriba. -->
+                            <a id="link-admin-beta" href="admin-beta.html" hidden
+                               class="flex items-center px-4 py-2 hover:bg-gray-50 text-sm text-gray-700 transition-colors">
+                                <i class="fas fa-flask mr-3 text-gray-400 w-4"></i>Beta: códigos y cohorte
+                            </a>
                             <hr class="my-1">
                             <button onclick="cerrarSesion()"
                                 class="w-full flex items-center px-4 py-2 hover:bg-red-50 text-sm text-red-600 transition-colors">
@@ -201,6 +207,18 @@
                         <i id="banner-trial-icon" class="fas text-xl"></i>
                         <p id="banner-trial-msg" class="text-sm font-medium flex-1"></p>
                         <a id="banner-trial-cta" href="precios.html" class="hidden text-sm font-semibold underline whitespace-nowrap">Ver planes</a>
+                    </div>
+                </div>
+
+                <!-- Banner de vencimiento de la beta — sprint H, Parte C.
+                     A diferencia del de arriba, NUNCA enlaza a precios.html
+                     ni a ningún flujo de pago — "escríbenos" es la única
+                     salida mientras Wompi siga en sandbox. Se completa/
+                     oculta en JS vía mostrarBannerBetaSiAplica(). -->
+                <div id="banner-beta" class="hidden mb-6 rounded-xl border-l-4 p-4">
+                    <div class="flex items-center gap-3">
+                        <i id="banner-beta-icon" class="fas fa-flask text-xl"></i>
+                        <p id="banner-beta-msg" class="text-sm font-medium flex-1"></p>
                     </div>
                 </div>
 
@@ -576,9 +594,11 @@
             if (sub) renderPlan();
             renderStats();
             document.getElementById('link-reportes-admin').hidden = !u.es_admin;
+            document.getElementById('link-admin-beta').hidden = !u.es_admin;
             mostrarBannerConsentimientoSiAplica(u);
             mostrarBannerSeguimientosPendientes();
             mostrarBannerTrialSiAplica();
+            mostrarBannerBetaSiAplica();
             mostrarBannerMigracionesFallidasSiAplica(u);
             mostrarOnboardingSiAplica(u);
 
@@ -728,6 +748,46 @@
         }
     }
 
+    // ── Banner de vencimiento de la beta (sprint H, Parte C) ───────────
+    // Nunca redirige (a diferencia del de trial): una beta vencida
+    // conserva lectura/exportación, así que esto es sólo un aviso, no
+    // un muro. Sin fecha de vencimiento configurada (beta_vencimiento
+    // null) no hay nada que avisar — el banner simplemente no aparece.
+    async function mostrarBannerBetaSiAplica() {
+        try {
+            const estado = await api.getPlanStatus();
+            if (estado.plan !== 'beta' || !estado.beta_vencimiento) return;
+
+            const banner = document.getElementById('banner-beta');
+            const icon = document.getElementById('banner-beta-icon');
+            const msg = document.getElementById('banner-beta-msg');
+            const n = estado.dias_restantes_beta;
+
+            if (estado.beta_vencida) {
+                banner.style.background = '#FFF7ED';
+                banner.style.borderLeftColor = '#F97316';
+                icon.className = 'fas fa-flask text-xl';
+                icon.style.color = '#F97316';
+                msg.className = 'text-sm font-medium flex-1 text-orange-900';
+                msg.textContent = 'Tu acceso al piloto beta venció. Puedes seguir viendo y exportando tu información — escríbenos para seguir generando contenido nuevo.';
+            } else if (n <= 7) {
+                banner.style.background = '#F0FDF4';
+                banner.style.borderLeftColor = '#1D9E75';
+                icon.className = 'fas fa-flask text-xl';
+                icon.style.color = '#1D9E75';
+                msg.className = 'text-sm font-medium flex-1 text-green-900';
+                msg.textContent = n > 0
+                    ? `Tu acceso al piloto beta termina en ${n} día${n === 1 ? '' : 's'}. Escríbenos si quieres seguir usando Maestr.ia.`
+                    : 'Tu acceso al piloto beta termina hoy. Escríbenos si quieres seguir usando Maestr.ia.';
+            } else {
+                return; // falta más de una semana — no hace falta avisar todavía
+            }
+            banner.classList.remove('hidden');
+        } catch (err) {
+            console.warn('[dashboard] no pude cargar el estado de la beta:', err);
+        }
+    }
+
     // ── Header ────────────────────────────────────────────────────────
     function actualizarHeader(u) {
         if (!u) return;
@@ -765,13 +825,22 @@
         const lbl  = document.getElementById('plan-label');
         const box  = document.getElementById('plan-usage');
         const upg  = document.getElementById('upgrade-link');
+        // Sprint H, Parte A — CRÍTICO: un docente beta nunca ve "Upgrade"
+        // ni ningún enlace hacia Wompi/pagos, en ninguna pantalla.
+        const esBeta = dashSub.plan === 'beta';
         if (esPro) {
             lbl.innerHTML   = '<i class="fas fa-star" style="color:#F5B731"></i> Plan Pro';
             lbl.className   = 'font-semibold text-purple-800 text-xs';
-            box.className   = box.className.replace('bg-blue-50','bg-purple-50');
+            box.className   = box.className.replace('bg-blue-50','bg-purple-50').replace('bg-green-50','bg-purple-50');
+            upg.classList.add('hidden');
+        } else if (esBeta) {
+            lbl.innerHTML   = '<i class="fas fa-flask" style="color:#1D9E75"></i> Plan Beta';
+            lbl.className   = 'font-semibold text-green-800 text-xs';
+            box.className   = box.className.replace('bg-blue-50','bg-green-50').replace('bg-purple-50','bg-green-50');
             upg.classList.add('hidden');
         } else {
             lbl.textContent = 'Plan Free';
+            box.className   = box.className.replace('bg-green-50','bg-blue-50').replace('bg-purple-50','bg-blue-50');
             upg.classList.remove('hidden');
         }
     }

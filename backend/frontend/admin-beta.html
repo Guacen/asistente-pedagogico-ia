@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Beta: códigos y cohorte · Maestr.ia</title>
+    <link rel="icon" type="image/png" href="assets/icon.png">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0B3D2E">
+    <link rel="apple-touch-icon" href="/assets/icon.png">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/main.css?v=20261015">
+    <link rel="stylesheet" href="css/brand.css?v=20261015">
+
+    <style>
+        body { background: #F9FAFB; min-height: 100vh; }
+    </style>
+</head>
+<body>
+
+    <nav class="bg-white border-b border-gray-200 shadow-sm">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+            <a href="dashboard.html" class="flex items-center gap-3">
+                <img src="assets/logo.png" alt="Maestr.ia" class="brand-logo-sm">
+            </a>
+            <a href="dashboard.html" class="text-sm text-gray-500 hover:text-gray-800 inline-flex items-center">
+                <i class="fas fa-arrow-left mr-2"></i>Volver al dashboard
+            </a>
+        </div>
+    </nav>
+
+    <main class="max-w-6xl mx-auto px-4 py-8">
+        <h1 class="text-xl font-bold text-gray-900 mb-1">Beta: códigos de invitación y cohorte</h1>
+        <p class="text-sm text-gray-500 mb-6">
+            Sólo visible para administradores. Nunca muestra datos de estudiantes — sólo conteos y metadatos del docente.
+        </p>
+
+        <div id="sin-permiso" class="hidden bg-amber-50 border border-amber-200 rounded-xl p-6 text-center mb-6">
+            <i class="fas fa-lock text-amber-500 text-2xl mb-2"></i>
+            <p class="text-amber-800 font-medium">No tenés permiso para ver esta página.</p>
+        </div>
+
+        <div id="contenido" class="hidden">
+
+            <!-- ── Resumen de cohorte ──────────────────────────────── -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                <div class="bg-white rounded-xl border border-gray-200 p-4">
+                    <p class="text-xs text-gray-500 uppercase tracking-wider mb-1">Invitados</p>
+                    <p class="text-3xl font-bold text-gray-900" id="resumen-invitados">—</p>
+                </div>
+                <div class="bg-white rounded-xl border border-gray-200 p-4">
+                    <p class="text-xs text-gray-500 uppercase tracking-wider mb-1">Registraron</p>
+                    <p class="text-3xl font-bold text-gray-900" id="resumen-registrados">—</p>
+                </div>
+                <div class="bg-white rounded-xl border border-gray-200 p-4">
+                    <p class="text-xs text-gray-500 uppercase tracking-wider mb-1">Verificaron correo</p>
+                    <p class="text-3xl font-bold text-gray-900" id="resumen-verificados">—</p>
+                </div>
+                <div class="bg-white rounded-xl border border-gray-200 p-4" style="border-color:#BBF7D0;">
+                    <p class="text-xs uppercase tracking-wider mb-1" style="color:#1D9E75;">Activados</p>
+                    <p class="text-3xl font-bold" style="color:#1D9E75;" id="resumen-activados">—</p>
+                </div>
+            </div>
+
+            <!-- ── Códigos de invitación ──────────────────────────── -->
+            <div class="bg-white rounded-xl border border-gray-200 p-6 mb-8">
+                <h2 class="text-lg font-bold text-gray-900 mb-4">Códigos de invitación</h2>
+
+                <form id="form-codigo" class="grid md:grid-cols-6 gap-3 mb-5 items-end">
+                    <div class="md:col-span-1">
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Código</label>
+                        <input id="nuevo-codigo" type="text" required placeholder="PILOTO-ANA"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                    </div>
+                    <div class="md:col-span-1">
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Descripción</label>
+                        <input id="nuevo-descripcion" type="text" placeholder="Opcional"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                    </div>
+                    <div class="md:col-span-1">
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Vence para redimir</label>
+                        <input id="nuevo-fecha-expiracion" type="date" required
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                    </div>
+                    <div class="md:col-span-1">
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Acceso beta hasta</label>
+                        <input id="nuevo-fecha-vencimiento-beta" type="date"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                    </div>
+                    <div class="md:col-span-1">
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Usos máximos</label>
+                        <input id="nuevo-usos-maximos" type="number" min="1" value="1" required
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                    </div>
+                    <div class="md:col-span-1">
+                        <button type="submit"
+                            class="w-full text-white px-4 py-2 rounded-lg font-medium shadow-sm hover:opacity-90 transition-opacity"
+                            style="background: var(--brand-primary, #1D9E75);">
+                            <i class="fas fa-plus mr-1"></i>Crear código
+                        </button>
+                    </div>
+                </form>
+                <p id="codigo-error" class="hidden text-sm text-red-600 mb-3"></p>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead class="bg-gray-50 text-gray-500 text-xs uppercase">
+                            <tr>
+                                <th class="px-3 py-2 text-left">Código</th>
+                                <th class="px-3 py-2 text-left">Descripción</th>
+                                <th class="px-3 py-2 text-left">Vence para redimir</th>
+                                <th class="px-3 py-2 text-left">Acceso beta hasta</th>
+                                <th class="px-3 py-2 text-left">Usos</th>
+                                <th class="px-3 py-2 text-left">Estado</th>
+                                <th class="px-3 py-2 text-left"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-codigos" class="divide-y divide-gray-100"></tbody>
+                    </table>
+                </div>
+                <p id="sin-codigos" class="hidden text-center text-gray-400 text-sm py-6">Todavía no has creado ningún código.</p>
+            </div>
+
+            <!-- ── Tablero de cohorte ──────────────────────────────── -->
+            <div class="bg-white rounded-xl border border-gray-200 p-6">
+                <h2 class="text-lg font-bold text-gray-900 mb-4">Cohorte beta</h2>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead class="bg-gray-50 text-gray-500 text-xs uppercase">
+                            <tr>
+                                <th class="px-3 py-2 text-left">Correo</th>
+                                <th class="px-3 py-2 text-left">Registro</th>
+                                <th class="px-3 py-2 text-left">Verificó</th>
+                                <th class="px-3 py-2 text-left">Onboarding</th>
+                                <th class="px-3 py-2 text-left">Grupos</th>
+                                <th class="px-3 py-2 text-left">Estudiantes</th>
+                                <th class="px-3 py-2 text-left">Planeaciones</th>
+                                <th class="px-3 py-2 text-left">Último acceso</th>
+                                <th class="px-3 py-2 text-left">Activado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-cohorte" class="divide-y divide-gray-100"></tbody>
+                    </table>
+                </div>
+                <p id="sin-cohorte" class="hidden text-center text-gray-400 text-sm py-6">Todavía no hay docentes con plan beta.</p>
+            </div>
+
+        </div>
+
+        <div id="cargando" class="text-center py-16 text-gray-400">
+            <i class="fas fa-spinner fa-spin text-2xl"></i>
+        </div>
+    </main>
+
+    <script src="js/config.js?v=20261015"></script>
+    <script src="js/api.js?v=20261015"></script>
+    <script src="js/auth.js?v=20261015"></script>
+    <script>
+        requireAuth();
+
+        function escapeHtml(str) {
+            return String(str ?? '')
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        function fechaCorta(iso) {
+            return iso ? new Date(iso).toLocaleDateString('es-CO') : '—';
+        }
+
+        async function cargarCodigos() {
+            const codigos = await api.listarCodigosInvitacion();
+            const tbody = document.getElementById('tabla-codigos');
+            if (codigos.length === 0) {
+                document.getElementById('sin-codigos').classList.remove('hidden');
+                tbody.innerHTML = '';
+                return;
+            }
+            document.getElementById('sin-codigos').classList.add('hidden');
+            tbody.innerHTML = codigos.map(c => `
+                <tr>
+                    <td class="px-3 py-2 font-mono font-medium">${escapeHtml(c.codigo)}</td>
+                    <td class="px-3 py-2 text-gray-600">${escapeHtml(c.descripcion) || '—'}</td>
+                    <td class="px-3 py-2 text-gray-500">${fechaCorta(c.fecha_expiracion)}</td>
+                    <td class="px-3 py-2 text-gray-500">${c.fecha_vencimiento_beta ? fechaCorta(c.fecha_vencimiento_beta) : 'Sin vencer'}</td>
+                    <td class="px-3 py-2 text-gray-700">${c.usos_actuales} / ${c.usos_maximos}</td>
+                    <td class="px-3 py-2">
+                        ${c.activo
+                            ? '<span class="text-emerald-700 text-xs font-bold">● Activo</span>'
+                            : '<span class="text-gray-400 text-xs font-bold">● Inactivo</span>'}
+                    </td>
+                    <td class="px-3 py-2 text-right">
+                        <button onclick="toggleCodigo('${escapeHtml(c.codigo)}', ${!c.activo})"
+                            class="text-xs font-medium ${c.activo ? 'text-red-600 hover:text-red-700' : 'text-emerald-700 hover:text-emerald-800'}">
+                            ${c.activo ? 'Desactivar' : 'Reactivar'}
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        window.toggleCodigo = async function(codigo, nuevoEstado) {
+            try {
+                await api.actualizarCodigoInvitacion(codigo, nuevoEstado);
+                cargarCodigos();
+            } catch (err) {
+                alert('No se pudo actualizar el código: ' + (err.message || ''));
+            }
+        };
+
+        document.getElementById('form-codigo').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const errEl = document.getElementById('codigo-error');
+            errEl.classList.add('hidden');
+
+            const fechaExp = document.getElementById('nuevo-fecha-expiracion').value;
+            const fechaBeta = document.getElementById('nuevo-fecha-vencimiento-beta').value;
+
+            const payload = {
+                codigo: document.getElementById('nuevo-codigo').value.trim(),
+                descripcion: document.getElementById('nuevo-descripcion').value.trim() || null,
+                fecha_expiracion: fechaExp ? `${fechaExp}T23:59:59` : null,
+                fecha_vencimiento_beta: fechaBeta ? `${fechaBeta}T23:59:59` : null,
+                usos_maximos: parseInt(document.getElementById('nuevo-usos-maximos').value, 10) || 1,
+            };
+
+            try {
+                await api.crearCodigoInvitacion(payload);
+                e.target.reset();
+                document.getElementById('nuevo-usos-maximos').value = 1;
+                await cargarCodigos();
+                await cargarResumen();
+            } catch (err) {
+                errEl.textContent = err.message || 'No se pudo crear el código.';
+                errEl.classList.remove('hidden');
+            }
+        });
+
+        async function cargarResumen() {
+            const cohorte = await api.getCohorteBeta();
+            document.getElementById('resumen-invitados').textContent = cohorte.resumen.invitados;
+            document.getElementById('resumen-registrados').textContent = cohorte.resumen.registrados;
+            document.getElementById('resumen-verificados').textContent = cohorte.resumen.verificados;
+            document.getElementById('resumen-activados').textContent = cohorte.resumen.activados;
+
+            const ONBOARDING_LABEL = {
+                completado: 'Completado', omitido: 'Saltado', pendiente: 'En curso',
+            };
+
+            const tbody = document.getElementById('tabla-cohorte');
+            if (cohorte.docentes.length === 0) {
+                document.getElementById('sin-cohorte').classList.remove('hidden');
+                tbody.innerHTML = '';
+                return;
+            }
+            document.getElementById('sin-cohorte').classList.add('hidden');
+            tbody.innerHTML = cohorte.docentes.map(d => `
+                <tr>
+                    <td class="px-3 py-2 font-medium">${escapeHtml(d.email)}</td>
+                    <td class="px-3 py-2 text-gray-500 whitespace-nowrap">${fechaCorta(d.fecha_registro)}</td>
+                    <td class="px-3 py-2">${d.email_verificado
+                        ? '<i class="fas fa-check text-emerald-600"></i>'
+                        : '<i class="fas fa-xmark text-gray-400"></i>'}</td>
+                    <td class="px-3 py-2 text-gray-600">${ONBOARDING_LABEL[d.onboarding_estado] || d.onboarding_estado}</td>
+                    <td class="px-3 py-2 text-center">${d.grupos_creados}</td>
+                    <td class="px-3 py-2 text-center">${d.estudiantes_agregados}</td>
+                    <td class="px-3 py-2 text-center">${d.planeaciones_generadas}</td>
+                    <td class="px-3 py-2 text-gray-500 whitespace-nowrap">${d.ultimo_acceso ? new Date(d.ultimo_acceso).toLocaleString('es-CO') : 'Nunca'}</td>
+                    <td class="px-3 py-2">
+                        ${d.activado
+                            ? '<span class="text-emerald-700 text-xs font-bold">✅ Sí</span>'
+                            : '<span class="text-gray-400 text-xs font-bold">— No</span>'}
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        async function cargarTodo() {
+            try {
+                await Promise.all([cargarCodigos(), cargarResumen()]);
+                document.getElementById('cargando').classList.add('hidden');
+                document.getElementById('contenido').classList.remove('hidden');
+            } catch (err) {
+                document.getElementById('cargando').classList.add('hidden');
+                const msg = err.message || '';
+                if (msg.includes('403')) {
+                    document.getElementById('sin-permiso').classList.remove('hidden');
+                } else {
+                    document.getElementById('sin-permiso').classList.remove('hidden');
+                    document.getElementById('sin-permiso').querySelector('p').textContent =
+                        'No pudimos cargar la página. Intenta recargar.';
+                }
+            }
+        }
+
+        cargarTodo();
+    </script>
+</body>
+</html>

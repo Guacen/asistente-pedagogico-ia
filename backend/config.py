@@ -150,6 +150,21 @@ settings = Settings()
 LIMITES_PLAN: dict = {
     "free": {"mensajes": 10, "grupos": 1},
     "pro": {"mensajes": 999999, "grupos": 999999},
+    # Sprint H, Parte A — beta cerrada (2 a 20 docentes invitados).
+    # "Generoso pero no infinito": 300/mes equivale a ~10 mensajes IA
+    # por día si el docente lo usara TODOS los días del mes — bastante
+    # por encima de lo que un docente real genera en uso normal
+    # (planeaciones semanales por materia/grupo, más alguna consulta de
+    # calificación u observación puntual), así que nadie debería
+    # chocar contra esto en el uso esperado del piloto. Al mismo tiempo
+    # pone un techo real: protege contra un bug de reintento o un loop
+    # del frontend que dispare llamadas a Claude sin parar, sin
+    # depender de que el tope de "pro" (999999, pensado para clientes
+    # que pagan) sea el único freno de costo en una cuenta gratuita.
+    # Ajustable con un cambio de una línea si el piloto demuestra que
+    # el número está mal calibrado — no hay nada más que depende de
+    # este valor específico.
+    "beta": {"mensajes": 300, "grupos": 999999},
 }
 
 

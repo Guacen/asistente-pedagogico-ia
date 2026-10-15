@@ -73,6 +73,7 @@ COLUMNAS_MIGRADAS_MANUALMENTE = [
     ("docentes", "onboarding_estado"),
     ("docentes", "onboarding_paso"),
     ("grupos", "es_ejemplo"),
+    ("docentes", "beta_vencimiento"),
 ]
 
 
