@@ -21,3 +21,11 @@
 # Node (si se usa en el futuro)
 node_modules/
 backend/asistente_pedagogico.db
+
+# Material de video (backend/scripts/capturar_maestria.py) — la sesión
+# guardada contiene tokens de sesión, nunca debe subirse.
+.sesion_maestria.json
+assets_video/
+
+# Entorno virtual local
+.venv/

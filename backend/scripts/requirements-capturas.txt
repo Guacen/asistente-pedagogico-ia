@@ -1,0 +1,3 @@
+# Sólo para backend/scripts/capturar_maestria.py (uso interno, no producción).
+# Después de instalar: python -m playwright install chromium
+playwright==1.64.0
