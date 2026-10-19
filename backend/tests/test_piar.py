@@ -44,14 +44,13 @@ CT_DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.docume
 # ─── Helpers ──────────────────────────────────────────────────────
 
 def _seed_estudiante_con_piar(db_session, id_grupo, codigo="EPIAR01",
-                              piar=True, diag="TDA-H",
+                              piar=True,
                               ajustes="Instrucciones cortas"):
     from models import Estudiante
     est = Estudiante(
         id_grupo=id_grupo,
         codigo_estudiante=codigo,
         tiene_piar=piar,
-        diagnostico=diag,
         ajustes=ajustes,
     )
     db_session.add(est)
@@ -81,7 +80,7 @@ def _seed_conversacion_piar(db_session, id_grupo, id_estudiante,
 def _contenido_canned() -> dict:
     """JSON de PIAR mock que devuelve el mock de síntesis."""
     return {
-        "caracterizacion": "Estudiante de 8° con TDA-H diagnosticado.",
+        "caracterizacion": "Estudiante de 8°, se le facilita el aprendizaje con apoyos visuales.",
         "barreras": "Metodología uniforme, evaluaciones sin diversificación.",
         "ajustes_razonables": "Tiempo extra en pruebas, formatos alternativos.",
         "apoyos": "Orientación escolar, uso de agenda visual.",

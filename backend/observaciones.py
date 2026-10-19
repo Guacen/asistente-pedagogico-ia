@@ -39,16 +39,18 @@ from security_utils import sanitizar_texto
 
 router = APIRouter(prefix="/api/observaciones", tags=["observaciones"])
 
-TIPOS_VALIDOS = frozenset({
-    "academica", "convivencia", "familiar", "salud",
-    "asistencia", "piar", "logro",
-})
-NIVELES_ESCALACION_VALIDOS = frozenset({
-    "docente", "coordinador", "orientador", "externo", "icbf",
-})
+# Sprint F, Parte B3: se retiraron "salud" y "familiar" (información
+# sensible de menores que no le corresponde a esta herramienta — va por
+# orientación y los canales del colegio) y "piar". En escalación se
+# retiraron "externo" e "icbf": el docente escala dentro de la
+# institución, y es la institución la que activa la ruta y reporta a las
+# autoridades (Tipo III → "coordinador", ver PROMPT_MODO_OBSERVACIONES).
+TIPOS_VALIDOS = frozenset({"academica", "convivencia", "asistencia", "logro"})
+NIVELES_ESCALACION_VALIDOS = frozenset({"docente", "coordinador", "orientador"})
 ESTADOS_VALIDOS = frozenset({"abierta", "en_seguimiento", "cerrada"})
 
 _NIVEL_DEFAULT = "docente"
+_NIVELES_RETIRADOS_GRAVES = frozenset({"externo", "icbf"})
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -99,9 +101,8 @@ class ObservacionOut(BaseModel):
 
 def _contexto_estudiante(estudiante: Optional[Estudiante]) -> str:
     """
-    Sprint F, Parte B1: NO incluye `diagnostico`/`ajustes` — son dato de
-    salud (Ley 1581) que sólo puede viajar al prompt en modo PIAR ("Ajustes
-    de aula"). La generación de observaciones es un flujo separado, de un
+    Sprint F, Parte B1: NO incluye `ajustes` — sólo puede viajar al prompt
+    en modo PIAR ("Ajustes de aula"; B4 eliminó `diagnostico`). La generación de observaciones es un flujo separado, de un
     solo turno, que nunca es ese modo — sólo necesita saber SI el
     estudiante tiene PIAR activo.
     """
@@ -156,7 +157,7 @@ CONTEXTO
         "estas 3 claves, sin texto antes ni después, sin ```json:\n\n"
         "{\n"
         '  "observacion_generada": "...",\n'
-        '  "nivel_escalacion": "docente|coordinador|orientador|externo|icbf",\n'
+        '  "nivel_escalacion": "docente|coordinador|orientador",\n'
         '  "acciones_recomendadas": ["...", "..."]\n'
         "}\n\n"
         "Reglas:\n"
@@ -164,12 +165,16 @@ CONTEXTO
         "formato de salida indicado arriba (## Observación en el "
         "Observador del Alumno, con todas las secciones).\n"
         "- `nivel_escalacion`: tu clasificación según la Ley 1620 — "
-        "uno solo de los 5 valores listados, en minúsculas, sin texto extra.\n"
+        "uno solo de los 3 valores listados, en minúsculas, sin texto extra.\n"
         "- `acciones_recomendadas`: 2 a 5 acciones concretas y accionables, "
         "cada una un string corto (no un párrafo).\n"
         "- Si la situación es Tipo III (presunto delito), `nivel_escalacion` "
-        "debe ser \"icbf\" y `observacion_generada` debe citar el Art. 44 "
-        "de la Ley 1098 de 2006 y mencionar explícitamente ICBF."
+        "debe ser \"coordinador\" y `observacion_generada` debe indicar que "
+        "se informa hoy mismo a coordinación o rectoría para que la "
+        "institución active su ruta y haga el reporte que exige el Art. 44 "
+        "de la Ley 1098 de 2006.\n"
+        "- No incluyas diagnósticos ni información de salud o familiar "
+        "sensible del estudiante."
     )
 
     import llm
@@ -194,7 +199,12 @@ CONTEXTO
         parsed = {}
 
     nivel = str(parsed.get("nivel_escalacion", "")).strip().lower()
-    if nivel not in NIVELES_ESCALACION_VALIDOS:
+    if nivel in _NIVELES_RETIRADOS_GRAVES:
+        # Sprint F, B3: si el modelo devuelve un nivel retirado por
+        # costumbre, la situación era grave (Tipo III) — nunca debe caer
+        # al default "docente". Se escala al nivel institucional más alto.
+        nivel = "coordinador"
+    elif nivel not in NIVELES_ESCALACION_VALIDOS:
         nivel = _NIVEL_DEFAULT
 
     acciones = parsed.get("acciones_recomendadas")

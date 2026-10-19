@@ -67,7 +67,7 @@ def _generar_docx(json_llm: dict) -> "Document":
 
     datos_estudiante = {
         "nombre": "EST-01", "grado": "5°",
-        "docente": "María López", "diagnostico": "—",
+        "docente": "María López",
         "fecha": "29/07/2026",
     }
     md = _rellenar_template_markdown(json_llm, datos_estudiante)

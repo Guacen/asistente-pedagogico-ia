@@ -9,6 +9,8 @@ _sintetizar_conversacion_a_json.
 """
 from __future__ import annotations
 
+import pytest
+
 from datetime import date, timedelta
 from unittest.mock import AsyncMock
 
@@ -22,12 +24,11 @@ CT_DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.docume
 # ─── Helpers ──────────────────────────────────────────────────────
 
 def _seed_estudiante(db_session, id_grupo, codigo="EST01", piar=False,
-                      diag=None, ajustes=None):
+                      ajustes=None):
     est = Estudiante(
         id_grupo=id_grupo,
         codigo_estudiante=codigo,
         tiene_piar=piar,
-        diagnostico=diag,
         ajustes=ajustes,
     )
     db_session.add(est)
@@ -184,11 +185,24 @@ def test_actualizar_estado_invalido_devuelve_400(client, seed_docente, monkeypat
     _mock_ia(monkeypatch)
     creada = client.post("/api/observaciones", json={
         "id_grupo": seed_docente["grupo"].id_grupo,
-        "tipo": "salud",
+        "tipo": "academica",
         "situacion_descrita": "algo",
     }).json()
     r = client.patch(f"/api/observaciones/{creada['id_observacion']}", json={"estado": "no-existe"})
     assert r.status_code == 400
+
+
+@pytest.mark.parametrize("tipo_retirado", ["salud", "familiar", "piar"])
+def test_tipos_retirados_se_rechazan(client, seed_docente, monkeypatch, tipo_retirado):
+    """Sprint F, B3: sólo quedan academica/convivencia/asistencia/logro."""
+    _mock_ia(monkeypatch)
+    r = client.post("/api/observaciones", json={
+        "id_grupo": seed_docente["grupo"].id_grupo,
+        "tipo": tipo_retirado,
+        "situacion_descrita": "algo",
+    })
+    assert r.status_code == 400
+    assert tipo_retirado not in r.json()["detail"].split("aceptados:")[1]
 
 
 def test_docente_b_no_ve_observaciones_de_docente_a(client_as_b, seed_docente, seed_docente_b, monkeypatch, db_session):
@@ -214,14 +228,15 @@ def test_docente_b_no_ve_observaciones_de_docente_a(client_as_b, seed_docente, s
 
 
 # ═══════════════════════════════════════════════════════════════
-# Tipo III — alerta ICBF / Ley 1098
+# Tipo III — Ley 1098 Art. 44 (Sprint F, B3: escala a "coordinador")
 # ═══════════════════════════════════════════════════════════════
 
 def test_prompt_observaciones_cita_marco_legal_tipo3():
     """
     Compliance del prompt (mismo enfoque que test_piar_legal_compliance.py):
-    el system prompt del modo debe instruir explícitamente sobre el Art. 44
-    de la Ley 1098 y el reporte a ICBF para situaciones Tipo III.
+    el deber de reporte del Art. 44 de la Ley 1098 sigue explícito, pero
+    canalizado por la institución — la IA ya no propone "icbf"/"externo"
+    como nivel de escalación (Sprint F, B3).
     """
     from prompts import PROMPT_MODO_OBSERVACIONES
 
@@ -229,36 +244,36 @@ def test_prompt_observaciones_cita_marco_legal_tipo3():
     assert "Decreto 1965" in PROMPT_MODO_OBSERVACIONES
     assert "Ley 1098" in PROMPT_MODO_OBSERVACIONES
     assert "Art. 44" in PROMPT_MODO_OBSERVACIONES
-    assert "ICBF" in PROMPT_MODO_OBSERVACIONES
+    assert "autoridades competentes" in PROMPT_MODO_OBSERVACIONES
+    assert '"icbf"' not in PROMPT_MODO_OBSERVACIONES
+    assert '"externo"' not in PROMPT_MODO_OBSERVACIONES
     assert "Tipo III" in PROMPT_MODO_OBSERVACIONES
     assert "Tipo II" in PROMPT_MODO_OBSERVACIONES
     assert "Tipo I" in PROMPT_MODO_OBSERVACIONES
 
 
-def test_observaciones_tipo3_alerta(client, seed_docente, monkeypatch):
+@pytest.mark.parametrize("nivel_retirado", ["icbf", "externo"])
+def test_nivel_retirado_escala_a_coordinador_nunca_a_docente(monkeypatch, seed_docente, nivel_retirado):
     """
-    Si el proveedor de IA clasifica la situación como Tipo III (icbf), el
-    registro persistido debe conservar esa clasificación y el texto debe
-    mencionar ICBF y la Ley 1098 — sin que el backend los filtre o pierda.
+    Sprint F, B3: si el modelo devuelve por costumbre un nivel retirado,
+    la situación era grave (Tipo III) — debe quedar en "coordinador", el
+    nivel institucional más alto, y NUNCA caer al default "docente".
     """
-    texto_tipo3 = (
-        "## Observación en el Observador del Alumno\n\n"
-        "**Tipo de situación:** Tipo III\n\n"
-        "Conforme al Art. 44 de la Ley 1098 de 2006, se debe reportar "
-        "de inmediato al ICBF. No se debe investigar por cuenta propia."
-    )
-    _mock_ia(monkeypatch, _canned(nivel="icbf", texto=texto_tipo3))
+    import asyncio
+    from unittest.mock import AsyncMock
+    import llm as llm_module
 
-    r = client.post("/api/observaciones", json={
-        "id_grupo": seed_docente["grupo"].id_grupo,
-        "tipo": "convivencia",
-        "situacion_descrita": "Un estudiante reportó una situación grave en casa.",
-    })
-    assert r.status_code == 201
-    body = r.json()
-    assert body["nivel_escalacion"] == "icbf"
-    assert "ICBF" in body["observacion_generada"]
-    assert "Ley 1098" in body["observacion_generada"]
+    monkeypatch.setattr(
+        llm_module, "respuesta_completa",
+        AsyncMock(return_value=(
+            '{"observacion_generada": "Tipo III — Art. 44 Ley 1098.", '
+            f'"nivel_escalacion": "{nivel_retirado}", "acciones_recomendadas": []}}'
+        )),
+    )
+    resultado = asyncio.run(observaciones_module._generar_observacion_ia(
+        seed_docente["docente"], seed_docente["grupo"], None, "convivencia", "algo grave",
+    ))
+    assert resultado["nivel_escalacion"] == "coordinador"
 
 
 def test_generar_observacion_ia_nivel_invalido_cae_a_docente(monkeypatch, seed_docente, db_session):

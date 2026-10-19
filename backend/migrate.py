@@ -709,6 +709,30 @@ def apply_migrations():
         _paso_purgar_datos_presentaciones_archivada,
     )
 
+    # ── Sprint F, Parte B4 — elimina estudiantes.diagnostico ───────
+    # Dato de salud de menores (Ley 1581). El owner verificó la base de
+    # producción vacía (0 estudiantes) y aprobó el DROP. Guarda: si aun
+    # así hay algún diagnóstico guardado, NO se borra nada — se registra
+    # como error (visible en GET /api/version) para que se decida a mano
+    # en vez de destruir datos que nadie sabía que existían.
+    def _paso_estudiantes_drop_diagnostico():
+        if not _tiene_columna("estudiantes", "diagnostico"):
+            return
+        with engine.connect() as conn:
+            con_dato = conn.execute(text(
+                "SELECT COUNT(*) FROM estudiantes "
+                "WHERE diagnostico IS NOT NULL AND TRIM(diagnostico) <> ''"
+            )).scalar()
+            if con_dato:
+                raise RuntimeError(
+                    f"{con_dato} estudiante(s) tienen 'diagnostico' guardado — "
+                    "no se elimina la columna sin revisión manual"
+                )
+            conn.execute(text("ALTER TABLE estudiantes DROP COLUMN diagnostico"))
+            conn.commit()
+        print("✅ Migración: columna 'diagnostico' eliminada de 'estudiantes'")
+    _paso("estudiantes.diagnostico (drop)", _paso_estudiantes_drop_diagnostico)
+
     # ── Sprint primer-uso, Parte D — "Reportar un problema" ──
     # Tabla nueva, sin ALTER TABLE necesario — create_all idempotente. A
     # propósito: create_all usa los tipos de SQLAlchemy (DateTime, etc.),

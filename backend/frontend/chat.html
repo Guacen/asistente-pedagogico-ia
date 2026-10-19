@@ -248,10 +248,7 @@
                             <select id="observ-tipo-select" class="text-xs px-2 py-1 border border-teal-300 rounded bg-white">
                                 <option value="academica">Académica</option>
                                 <option value="convivencia">Convivencia</option>
-                                <option value="familiar">Familiar</option>
-                                <option value="salud">Salud</option>
                                 <option value="asistencia">Asistencia</option>
-                                <option value="piar">PIAR</option>
                                 <option value="logro">Logro</option>
                             </select>
                             <label class="text-xs font-semibold text-teal-900">Estudiante:</label>
@@ -1156,7 +1153,7 @@ function renderPiarPanel() {
         const opts = ['<option value="">— Selecciona un estudiante —</option>']
             .concat(piarEstudiantesConPiar.map(e =>
                 `<option value="${escapeHtml(e.id_estudiante)}"${e.id_estudiante === piarEstudianteId ? ' selected' : ''}>` +
-                `${escapeHtml(e.codigo_estudiante)}${e.diagnostico ? ' — ' + escapeHtml(e.diagnostico.slice(0, 40)) : ''}` +
+                `${escapeHtml(e.codigo_estudiante)}` +
                 `</option>`
             ));
         select.innerHTML = opts.join('');
@@ -1378,10 +1375,10 @@ function mostrarResultadoObservacion(obs) {
 
     const nivelLabels = {
         docente: ['Tipo I — resolvés vos', 'bg-green-100 text-green-800'],
-        coordinador: ['Tipo II — informá al coordinador', 'bg-amber-100 text-amber-800'],
+        // Sprint F, B3: Tipo III también escala a "coordinador" — la
+        // institución activa la ruta. El texto de la observación lo detalla.
+        coordinador: ['Informá a coordinación (si es Tipo III: hoy mismo)', 'bg-red-100 text-red-800'],
         orientador: ['Tipo II — derivá a orientación', 'bg-amber-100 text-amber-800'],
-        externo: ['Tipo III — autoridad externa', 'bg-red-100 text-red-800'],
-        icbf: ['Tipo III — ALERTA: reportar a ICBF', 'bg-red-100 text-red-800'],
     };
     const [label, cls] = nivelLabels[obs.nivel_escalacion] || [obs.nivel_escalacion, 'bg-gray-100 text-gray-800'];
     badge.textContent = label;

@@ -157,7 +157,6 @@ def crear_grupo_ejemplo(
         {"codigo_estudiante": "Estudiante Ejemplo 2", "genero": "F", "tiene_piar": False},
         {
             "codigo_estudiante": "Estudiante Ejemplo 3", "genero": "M", "tiene_piar": True,
-            "diagnostico": "Diagnóstico de ejemplo — déficit de atención (TDAH)",
             "ajustes": "Ajuste de ejemplo — tiempo adicional en evaluaciones e instrucciones cortas",
         },
         {"codigo_estudiante": "Estudiante Ejemplo 4", "genero": "F", "tiene_piar": False},
@@ -381,8 +380,10 @@ async def importar_estudiantes_csv(
       - `codigo_estudiante` (obligatorio)
       - `genero` (opcional)
       - `tiene_piar` (opcional — 1/0, true/false, sí/no)
-      - `diagnostico` (opcional)
-      - `ajustes` (opcional)
+      - `ajustes` (opcional — ajustes y estrategias de aula)
+
+    Una columna `diagnostico` (plantillas viejas) se IGNORA: Maestr.ia no
+    guarda información de salud (Sprint F, B4). Se avisa en `errores`.
 
     Upsert por `(id_grupo, codigo_estudiante)`. Devuelve conteo y errores por fila.
     """
@@ -408,6 +409,7 @@ async def importar_estudiantes_csv(
             status_code=400,
             detail="Falta columna obligatoria: 'codigo_estudiante'",
         )
+    aviso_diagnostico_ignorado = "diagnostico" in headers
 
     creados = 0
     actualizados = 0
@@ -448,7 +450,7 @@ async def importar_estudiantes_csv(
         # fila se rechaza ENTERA: no tiene sentido guardar el resto de la
         # fila "pelando" sólo la celda riesgosa.
         fila_rechazada = False
-        for campo in ("codigo_estudiante", "genero", "diagnostico", "ajustes"):
+        for campo in ("codigo_estudiante", "genero", "ajustes"):
             razon = celda_csv_es_riesgosa(r.get(campo))
             if razon:
                 fallidos += 1
@@ -468,7 +470,6 @@ async def importar_estudiantes_csv(
                 codigo_estudiante=codigo,
                 genero=r.get("genero") or None,
                 tiene_piar=piar_value,
-                diagnostico=r.get("diagnostico") or None,
                 ajustes=r.get("ajustes") or None,
             )
         except ValidationError as exc:
@@ -499,6 +500,11 @@ async def importar_estudiantes_csv(
     if creados > 0 or actualizados > 0:
         avanzar_onboarding_si_aplica(docente, 3)  # Onboarding, Parte D3
     db.commit()
+    if aviso_diagnostico_ignorado:
+        errores.insert(0, (
+            "La columna 'diagnostico' se ignoró: Maestr.ia no guarda "
+            "información de salud. Usa 'ajustes' para estrategias de aula."
+        ))
     return ImportEstudiantesResult(
         creados=creados,
         actualizados=actualizados,

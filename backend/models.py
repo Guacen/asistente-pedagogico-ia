@@ -415,7 +415,10 @@ class Estudiante(Base):
     codigo_estudiante = Column(String(100), nullable=False)
     genero = Column(String(20))
     tiene_piar = Column(Boolean, default=False)
-    diagnostico = Column(Text)
+    # Sprint F, Parte B4: `diagnostico` se eliminó (dato de salud de un
+    # menor, Ley 1581) — ver migrate.py "estudiantes.diagnostico (drop)".
+    # `ajustes` = "Ajustes y estrategias de aula": estrategias
+    # pedagógicas, disponibles para cualquier estudiante, nunca clínicas.
     ajustes = Column(Text)
     fecha_agregado = Column(DateTime, default=datetime.utcnow)
 
@@ -684,12 +687,14 @@ class Observacion(Base):
         nullable=False,
         index=True,
     )
-    # academica / convivencia / familiar / salud / asistencia / piar / logro
+    # academica / convivencia / asistencia / logro (Sprint F, B3 retiró
+    # salud, familiar y piar — ver observaciones.TIPOS_VALIDOS)
     tipo = Column(String(20), nullable=False)
     situacion_descrita = Column(Text, nullable=False)
     observacion_generada = Column(Text, nullable=True)
-    # docente / coordinador / orientador / externo / icbf — Ruta de
-    # Atención Integral, Ley 1620. "icbf" implica Tipo III (Art. 44 Ley 1098).
+    # docente / coordinador / orientador — Ruta de Atención Integral, Ley
+    # 1620. Sprint F, B3 retiró externo/icbf: Tipo III → "coordinador" y la
+    # institución reporta a las autoridades (Art. 44 Ley 1098).
     nivel_escalacion = Column(String(20), nullable=False, default="docente")
     acciones_recomendadas = Column(JSON, nullable=True, default=list)
     requiere_seguimiento = Column(Boolean, nullable=False, default=True)

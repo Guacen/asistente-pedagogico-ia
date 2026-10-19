@@ -141,9 +141,9 @@ from pathlib import Path
 _PIAR_TEMPLATE_PATH = Path(__file__).resolve().parent / "templates" / "piar_template.md"
 _piar_template_cache: Optional[str] = None
 
-# Las 14 claves que el LLM debe devolver. NO incluyen los 5 metadatos
-# del estudiante (nombre, grado, docente, diagnostico, fecha) porque
-# esos vienen del backend, no del LLM.
+# Las 14 claves que el LLM debe devolver. NO incluyen los 4 metadatos
+# del estudiante (nombre, grado, docente, fecha) porque esos vienen del
+# backend, no del LLM. (Sprint F, B4 quitó `diagnostico` del encabezado.)
 CLAVES_JSON_PIAR = (
     "contexto_escolar_familiar",
     "fortalezas_intereses",
@@ -210,7 +210,7 @@ def _rellenar_template_markdown(json_llm: dict, datos_estudiante: dict) -> str:
     rápido y explícito" en vez de generar un PIAR malformado.
 
     Datos del estudiante que el template espera:
-        nombre, grado, docente, diagnostico, fecha
+        nombre, grado, docente, fecha
     Si alguno no viene en datos_estudiante, se rellena con "—".
     """
     if not isinstance(json_llm, dict):
@@ -233,7 +233,6 @@ def _rellenar_template_markdown(json_llm: dict, datos_estudiante: dict) -> str:
         "nombre":      "—",
         "grado":       "—",
         "docente":     "—",
-        "diagnostico": "—",
         "fecha":       datetime.utcnow().strftime("%d/%m/%Y"),
     }
     meta = {**meta_defaults, **{k: v for k, v in (datos_estudiante or {}).items() if v}}
@@ -502,12 +501,10 @@ def _construir_piar_docx(
     if _es_esquema_json_14_claves(contenido):
         # ── Path NUEVO: template estático + JSON del LLM ──
         # Datos del estudiante que van INTO el template piar_template.md.
-        # `diagnostico` viene de estudiante (campo legacy en la ficha).
         datos_template = {
             "nombre":      estudiante.codigo_estudiante,
             "grado":       grado_display,
             "docente":     docente.nombre_completo,
-            "diagnostico": (getattr(estudiante, "diagnostico", "") or "—").strip(),
             "fecha":       datetime.now().strftime("%d/%m/%Y"),
         }
         markdown_final = _rellenar_template_markdown(contenido, datos_template)

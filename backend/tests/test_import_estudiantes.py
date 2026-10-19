@@ -29,9 +29,9 @@ def _upload(client, grupo_id: str, csv_text: str, filename: str = "test.csv"):
 def test_creacion_basica(client, seed_docente):
     gid = seed_docente["grupo"].id_grupo
     csv = (
-        "codigo_estudiante,genero,tiene_piar,diagnostico,ajustes\n"
-        "E001,M,0,,\n"
-        "E002,F,1,TDA,Instrucciones cortas\n"
+        "codigo_estudiante,genero,tiene_piar,ajustes\n"
+        "E001,M,0,\n"
+        "E002,F,1,Instrucciones cortas\n"
     )
     r = _upload(client, gid, csv)
     assert r.status_code == 200, r.text
@@ -50,8 +50,8 @@ def test_upsert_actualiza_existente(client, seed_docente, db_session):
 
     # Primer import
     csv1 = (
-        "codigo_estudiante,genero,tiene_piar,diagnostico,ajustes\n"
-        "E100,M,0,,\n"
+        "codigo_estudiante,genero,tiene_piar,ajustes\n"
+        "E100,M,0,\n"
     )
     r1 = _upload(client, gid, csv1)
     assert r1.status_code == 200
@@ -59,8 +59,8 @@ def test_upsert_actualiza_existente(client, seed_docente, db_session):
 
     # Segundo import: mismo código, otros campos → actualiza
     csv2 = (
-        "codigo_estudiante,genero,tiene_piar,diagnostico,ajustes\n"
-        "E100,F,1,TDA,Ajustes nuevos\n"
+        "codigo_estudiante,genero,tiene_piar,ajustes\n"
+        "E100,F,1,Ajustes nuevos\n"
     )
     r2 = _upload(client, gid, csv2)
     body2 = r2.json()
@@ -75,7 +75,6 @@ def test_upsert_actualiza_existente(client, seed_docente, db_session):
     assert est.codigo_estudiante == "E100"
     assert est.genero == "F"
     assert est.tiene_piar is True
-    assert est.diagnostico == "TDA"
     assert est.ajustes == "Ajustes nuevos"
 
 
@@ -83,10 +82,10 @@ def test_fila_con_codigo_vacio_es_fallida(client, seed_docente):
     """Fila con codigo_estudiante vacío debe reportarse como fallida con mensaje."""
     gid = seed_docente["grupo"].id_grupo
     csv = (
-        "codigo_estudiante,genero,tiene_piar,diagnostico,ajustes\n"
-        "E001,M,0,,\n"
-        ",F,1,,\n"  # fila con código vacío
-        "E002,F,0,,\n"
+        "codigo_estudiante,genero,tiene_piar,ajustes\n"
+        "E001,M,0,\n"
+        ",F,1,\n"  # fila con código vacío
+        "E002,F,0,\n"
     )
     body = _upload(client, gid, csv).json()
     assert body["creados"] == 2
@@ -105,9 +104,9 @@ def test_fila_con_tiene_piar_no_reconocido_es_fallida(client, seed_docente):
     """
     gid = seed_docente["grupo"].id_grupo
     csv = (
-        "codigo_estudiante,genero,tiene_piar,diagnostico,ajustes\n"
-        "E001,M,maybe,,\n"
-        "E002,F,1,,\n"
+        "codigo_estudiante,genero,tiene_piar,ajustes\n"
+        "E001,M,maybe,\n"
+        "E002,F,1,\n"
     )
     body = _upload(client, gid, csv).json()
     assert body["creados"] == 1
@@ -125,11 +124,11 @@ def test_filas_totalmente_vacias_se_ignoran(client, seed_docente):
     """
     gid = seed_docente["grupo"].id_grupo
     csv = (
-        "codigo_estudiante,genero,tiene_piar,diagnostico,ajustes\n"
-        "E001,M,0,,\n"
-        ",,,,\n"        # totalmente vacía → NO cuenta
-        "E002,F,1,,\n"
-        ",,,,\n"        # otra vacía
+        "codigo_estudiante,genero,tiene_piar,ajustes\n"
+        "E001,M,0,\n"
+        ",,,\n"        # totalmente vacía → NO cuenta
+        "E002,F,1,\n"
+        ",,,\n"        # otra vacía
     )
     body = _upload(client, gid, csv).json()
     assert body["creados"] == 2
@@ -169,8 +168,8 @@ def test_tiene_piar_es_case_insensitive(client, seed_docente, db_session, piar_r
     gid = seed_docente["grupo"].id_grupo
     codigo = f"P_{piar_raw or 'empty'}_{expected}"
     csv = (
-        "codigo_estudiante,genero,tiene_piar,diagnostico,ajustes\n"
-        f"{codigo},M,{piar_raw},,\n"
+        "codigo_estudiante,genero,tiene_piar,ajustes\n"
+        f"{codigo},M,{piar_raw},\n"
     )
     r = _upload(client, gid, csv)
     assert r.status_code == 200, r.text

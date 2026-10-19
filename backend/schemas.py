@@ -253,13 +253,14 @@ class GrupoOut(BaseModel):
 # ============================================================
 
 class EstudianteCreate(BaseModel):
+    # Sprint F, B4: sin `diagnostico`. Si un cliente viejo lo manda, Pydantic
+    # lo descarta (extra="ignore" por default) — nunca llega a la base.
     codigo_estudiante: str = Field(max_length=100)
     genero: Optional[str] = Field(default=None, max_length=20)
     tiene_piar: bool = False
-    diagnostico: Optional[str] = Field(default=None, max_length=5000)
     ajustes: Optional[str] = Field(default=None, max_length=5000)
 
-    @field_validator("codigo_estudiante", "genero", "diagnostico", "ajustes")
+    @field_validator("codigo_estudiante", "genero", "ajustes")
     @classmethod
     def _sanitizar(cls, v: Optional[str]) -> Optional[str]:
         return sanitizar_texto(v, 5000) if v is not None else v
@@ -269,10 +270,9 @@ class EstudianteUpdate(BaseModel):
     codigo_estudiante: Optional[str] = Field(default=None, max_length=100)
     genero: Optional[str] = Field(default=None, max_length=20)
     tiene_piar: Optional[bool] = None
-    diagnostico: Optional[str] = Field(default=None, max_length=5000)
     ajustes: Optional[str] = Field(default=None, max_length=5000)
 
-    @field_validator("codigo_estudiante", "genero", "diagnostico", "ajustes")
+    @field_validator("codigo_estudiante", "genero", "ajustes")
     @classmethod
     def _sanitizar(cls, v: Optional[str]) -> Optional[str]:
         return sanitizar_texto(v, 5000) if v is not None else v
@@ -284,7 +284,6 @@ class EstudianteOut(BaseModel):
     codigo_estudiante: str
     genero: Optional[str]
     tiene_piar: bool
-    diagnostico: Optional[str]
     ajustes: Optional[str]
     fecha_agregado: datetime
 

