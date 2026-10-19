@@ -23,7 +23,7 @@ import pytest
 def _datos_estudiante_minimos() -> dict:
     return {
         "nombre": "EST-01", "grado": "5°",
-        "docente": "M. L.", "diagnostico": "—",
+        "docente": "M. L.",
         "fecha": "29/07/2026",
     }
 

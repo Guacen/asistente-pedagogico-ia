@@ -222,15 +222,16 @@ def test_create_grupo_persiste_estudiantes_en_la_misma_operacion(client, db_sess
 
 def test_create_grupo_estudiantes_conservan_campos_piar(client):
     """
-    Los campos tiene_piar/diagnostico/ajustes tienen que llegar intactos —
-    no basta con guardar el código.
+    Los campos tiene_piar/ajustes tienen que llegar intactos — no basta con
+    guardar el código. (Sprint F, B4: `diagnostico` ya no existe; si un
+    cliente viejo lo manda, se descarta.)
     """
     payload = _payload_grupo_con_estudiantes([
         {
             "codigo_estudiante": "EST-CON-PIAR",
             "genero": "femenino",
             "tiene_piar": True,
-            "diagnostico": "Dislexia",
+            "diagnostico": "Dislexia",  # cliente viejo — se descarta (B4)
             "ajustes": "Tiempo adicional 50%",
         },
         {"codigo_estudiante": "EST-SIN-PIAR"},
@@ -245,12 +246,12 @@ def test_create_grupo_estudiantes_conservan_campos_piar(client):
     con = ests_por_codigo["EST-CON-PIAR"]
     assert con["tiene_piar"] is True
     assert con["genero"] == "femenino"
-    assert con["diagnostico"] == "Dislexia"
+    assert "diagnostico" not in con
     assert con["ajustes"] == "Tiempo adicional 50%"
 
     sin = ests_por_codigo["EST-SIN-PIAR"]
     assert sin["tiene_piar"] is False
-    assert sin["diagnostico"] is None
+    assert sin["ajustes"] is None
 
 
 def test_create_grupo_es_atomico_si_estudiante_falla(client, db_session):

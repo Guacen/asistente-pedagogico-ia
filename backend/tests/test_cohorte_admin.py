@@ -135,7 +135,7 @@ def test_cohorte_no_expone_ningun_dato_de_estudiantes(test_engine, db_session):
     grupo = _crear_grupo(db_session, docente_beta, nombre="MARCADOR_NOMBRE_DE_GRUPO_UNICO")
     estudiante = Estudiante(
         id_grupo=grupo.id_grupo, codigo_estudiante="MARCADOR_CODIGO_ESTUDIANTE_UNICO",
-        diagnostico="MARCADOR_DIAGNOSTICO_UNICO",
+        ajustes="MARCADOR_AJUSTES_UNICO",
     )
     db_session.add(estudiante)
     _crear_planeacion(db_session, grupo, contenido="MARCADOR_CONTENIDO_PLANEACION_UNICO")
@@ -148,7 +148,7 @@ def test_cohorte_no_expone_ningun_dato_de_estudiantes(test_engine, db_session):
     for marcador in (
         "MARCADOR_NOMBRE_DE_GRUPO_UNICO",
         "MARCADOR_CODIGO_ESTUDIANTE_UNICO",
-        "MARCADOR_DIAGNOSTICO_UNICO",
+        "MARCADOR_AJUSTES_UNICO",
         "MARCADOR_CONTENIDO_PLANEACION_UNICO",
     ):
         assert marcador not in crudo, (

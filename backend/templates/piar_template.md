@@ -6,8 +6,6 @@
 
 **Docente:** {docente}
 
-**Diagnóstico o condición (si aplica):** {diagnostico}
-
 **Fecha de elaboración:** {fecha}
 
 ## Contexto escolar y familiar

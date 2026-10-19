@@ -5,13 +5,16 @@ from __future__ import annotations
 
 
 def _create_est(client, gid, codigo="E001", piar=False, diag=None, ajustes=None):
-    return client.post(f"/api/grupos/{gid}/estudiantes", json={
+    payload = {
         "codigo_estudiante": codigo,
         "genero": "F",
         "tiene_piar": piar,
-        "diagnostico": diag,
         "ajustes": ajustes,
-    })
+    }
+    if diag is not None:
+        # Simula un cliente viejo (Sprint F, B4): el campo ya no existe.
+        payload["diagnostico"] = diag
+    return client.post(f"/api/grupos/{gid}/estudiantes", json=payload)
 
 
 def test_list_estudiantes_grupo_vacio(client, seed_docente):
@@ -32,7 +35,9 @@ def test_create_estudiante_ok(client, seed_docente):
     body = r.json()
     assert body["codigo_estudiante"] == "E001"
     assert body["tiene_piar"] is True
-    assert body["diagnostico"] == "TDA"
+    # Sprint F, B4: un `diagnostico` enviado por un cliente viejo se descarta
+    # — la API nunca lo guarda ni lo devuelve.
+    assert "diagnostico" not in body
     assert body["ajustes"] == "Instr cortas"
     assert body["id_grupo"] == gid
 
@@ -47,12 +52,14 @@ def test_update_estudiante_parcial(client, seed_docente):
     eid = _create_est(client, gid, codigo="E001").json()["id_estudiante"]
     r = client.put(f"/api/grupos/{gid}/estudiantes/{eid}", json={
         "tiene_piar": True,
-        "diagnostico": "Dislexia",
+        "diagnostico": "Dislexia",  # cliente viejo — se descarta (B4)
+        "ajustes": "Tiempo extra",
     })
     assert r.status_code == 200, r.text
     body = r.json()
     assert body["tiene_piar"] is True
-    assert body["diagnostico"] == "Dislexia"
+    assert body["ajustes"] == "Tiempo extra"
+    assert "diagnostico" not in body
     # Los campos no enviados se mantienen
     assert body["codigo_estudiante"] == "E001"
 
@@ -132,7 +139,7 @@ def test_delete_estudiante_no_deja_huerfanos(client, seed_docente, db_session):
 def test_list_devuelve_orden_natural_y_todos_los_campos(client, seed_docente):
     gid = seed_docente["grupo"].id_grupo
     _create_est(client, gid, codigo="E001", piar=False)
-    _create_est(client, gid, codigo="E002", piar=True, diag="Discalculia", ajustes="Calculadora")
+    _create_est(client, gid, codigo="E002", piar=True, ajustes="Calculadora")
     r = client.get(f"/api/grupos/{gid}/estudiantes")
     assert r.status_code == 200
     lst = r.json()
@@ -140,6 +147,6 @@ def test_list_devuelve_orden_natural_y_todos_los_campos(client, seed_docente):
     codigos = [e["codigo_estudiante"] for e in lst]
     assert set(codigos) == {"E001", "E002"}
     e002 = next(e for e in lst if e["codigo_estudiante"] == "E002")
-    assert e002["diagnostico"] == "Discalculia"
+    assert "diagnostico" not in e002
     assert e002["ajustes"] == "Calculadora"
     assert e002["tiene_piar"] is True

@@ -560,7 +560,6 @@ async function editarEstudiante(estudianteId) {
 
         if (estudiante.tiene_piar) {
             document.getElementById('piar-fields').classList.remove('hidden');
-            document.getElementById('estudiante-diagnostico').value = estudiante.diagnostico || '';
             document.getElementById('estudiante-ajustes').value = estudiante.ajustes || '';
         }
 
@@ -725,8 +724,6 @@ const _NIVEL_ESCALACION_BADGE = {
     docente: 'bg-green-100 text-green-800',
     coordinador: 'bg-amber-100 text-amber-800',
     orientador: 'bg-amber-100 text-amber-800',
-    externo: 'bg-red-100 text-red-800',
-    icbf: 'bg-red-100 text-red-800',
 };
 const _ESTADO_OBSERVACION_BADGE = {
     abierta: 'bg-blue-100 text-blue-800',
@@ -842,7 +839,6 @@ async function guardarEstudiante(event) {
     };
     
     if (data.tiene_piar) {
-        data.diagnostico = document.getElementById('estudiante-diagnostico').value.trim();
         data.ajustes = document.getElementById('estudiante-ajustes').value.trim();
     }
     

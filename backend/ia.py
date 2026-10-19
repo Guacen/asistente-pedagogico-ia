@@ -56,11 +56,10 @@ def _bloque_contexto_grupo(
     Sección de contexto del grupo que se inyecta después del system prompt del modo.
     Incluye datos del grupo + resumen de estudiantes con PIAR.
 
-    Sprint F, Parte B1: `diagnostico`/`ajustes` son dato de salud (Ley 1581)
-    y sólo pueden viajar al prompt en modo PIAR ("Ajustes de aula") — es el
-    único modo que los necesita y para el que el docente los puso ahí. En
-    cualquier otro modo (incluido éste, que corre para TODOS) sólo se dice
-    que el estudiante tiene PIAR, sin el contenido clínico.
+    Sprint F, Parte B1: `ajustes` sólo viaja al prompt en modo PIAR
+    ("Ajustes de aula") — es el único modo que lo necesita. En cualquier
+    otro modo (incluido éste, que corre para TODOS) sólo se dice que el
+    estudiante tiene PIAR, sin el contenido. B4 eliminó `diagnostico`.
     """
     piar = [e for e in estudiantes if e.tiene_piar]
     recursos = grupo.recursos_disponibles or []
@@ -85,13 +84,10 @@ ESTUDIANTES CON PIAR ({len(piar)} estudiante{'s' if len(piar) > 1 else ''})
         for e in piar:
             ctx += f"\n• Estudiante {e.codigo_estudiante}"
             if modo == MODO_PIAR:
-                ctx += (
-                    f"\n  - Diagnóstico : {e.diagnostico or 'No especificado'}"
-                    f"\n  - Ajustes PIAR: {e.ajustes or 'No especificados'}\n"
-                )
+                ctx += f"\n  - Ajustes de aula: {e.ajustes or 'No especificados'}\n"
             else:
                 ctx += (
-                    "\n  - Diagnóstico y ajustes no se comparten fuera del "
+                    "\n  - Los ajustes de aula no se comparten fuera del "
                     "modo Ajustes de aula.\n"
                 )
     else:
@@ -296,12 +292,8 @@ def _bloque_piar(
         bloque += f"\n• Género: {estudiante.genero}"
     bloque += f"\n• PIAR activo en la ficha: {'Sí' if estudiante.tiene_piar else 'No'}"
 
-    # Datos ya capturados en la ficha — usarlos como punto de partida
-    if estudiante.diagnostico:
-        bloque += (
-            f"\n\n• Diagnóstico registrado (usar como insumo, no repreguntarlo):\n"
-            f"  {estudiante.diagnostico}"
-        )
+    # Datos ya capturados en la ficha — usarlos como punto de partida.
+    # Sprint F, B4: ya no existe `diagnostico` en la ficha (dato de salud).
     if estudiante.ajustes:
         bloque += (
             f"\n\n• Ajustes actuales registrados (partir de estos y proponer mejoras):\n"

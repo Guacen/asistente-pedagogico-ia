@@ -206,3 +206,78 @@ def test_tabla_reportes_problema_se_crea_limpia_contra_postgres(postgres_engine,
     # alguien reemplaza el Column(DateTime) por SQL crudo con "DATETIME"
     # (el bug del #89), esto lo atrapa igual que a cualquier otra columna.
     assert "TIMESTAMP" in str(columnas["creado_en"]["type"]).upper()
+
+
+# ─── Sprint F, Parte B4 — DROP de estudiantes.diagnostico ──────────
+
+def _esquema_con_columna_diagnostico(postgres_engine):
+    """Esquema actual + la columna `diagnostico` que todavía existe en la
+    Postgres de producción antes de este sprint."""
+    from sqlalchemy import text as sa_text
+    from database import Base
+
+    Base.metadata.create_all(bind=postgres_engine)
+    with postgres_engine.connect() as conn:
+        conn.execute(sa_text("ALTER TABLE estudiantes ADD COLUMN diagnostico TEXT"))
+        conn.commit()
+
+
+def _apuntar_migrate_a(monkeypatch, postgres_engine):
+    import migrate
+    from sqlalchemy.orm import sessionmaker
+
+    monkeypatch.setattr(migrate, "engine", postgres_engine)
+    monkeypatch.setattr(
+        migrate, "SessionLocal",
+        sessionmaker(bind=postgres_engine, autocommit=False, autoflush=False),
+    )
+    return migrate
+
+
+def test_drop_diagnostico_corre_limpio_contra_postgres(postgres_engine, monkeypatch):
+    """Columna presente y vacía (el caso de producción: 0 estudiantes) →
+    se elimina sin errores, y una segunda corrida es no-op."""
+    from sqlalchemy import inspect
+
+    _esquema_con_columna_diagnostico(postgres_engine)
+    migrate = _apuntar_migrate_a(monkeypatch, postgres_engine)
+
+    migrate.apply_migrations()
+    assert migrate.MIGRATION_ERRORS == [], migrate.MIGRATION_ERRORS
+    cols = [c["name"] for c in inspect(postgres_engine).get_columns("estudiantes")]
+    assert "diagnostico" not in cols
+    assert "ajustes" in cols
+
+    migrate.apply_migrations()
+    assert migrate.MIGRATION_ERRORS == []
+
+
+def test_drop_diagnostico_no_borra_si_hay_datos_contra_postgres(postgres_engine, monkeypatch):
+    """Guarda: si algún estudiante tiene diagnóstico, NO se borra la
+    columna — queda como error visible para revisión manual."""
+    from sqlalchemy import inspect, text as sa_text
+
+    _esquema_con_columna_diagnostico(postgres_engine)
+    with postgres_engine.connect() as conn:
+        conn.execute(sa_text(
+            "INSERT INTO docentes (id_docente, nombre_completo, email, password_hash, "
+            "rol, es_admin, email_verificado, plan, onboarding_estado, onboarding_paso) "
+            "VALUES ('d1', 'D', 'd@test.com', 'x', 'docente', false, true, 'beta', 'completado', 1)"
+        ))
+        conn.execute(sa_text(
+            "INSERT INTO grupos (id_grupo, id_docente, nombre_grupo, grado, asignatura, "
+            "anio_lectivo, cantidad_estudiantes, es_ejemplo) "
+            "VALUES ('g1', 'd1', 'G', '8', 'Matemáticas', 2026, 1, false)"
+        ))
+        conn.execute(sa_text(
+            "INSERT INTO estudiantes (id_estudiante, id_grupo, codigo_estudiante, diagnostico) "
+            "VALUES ('e1', 'g1', 'E01', 'dato')"
+        ))
+        conn.commit()
+    migrate = _apuntar_migrate_a(monkeypatch, postgres_engine)
+
+    migrate.apply_migrations()
+    pasos = [e["paso"] for e in migrate.MIGRATION_ERRORS]
+    assert pasos == ["estudiantes.diagnostico (drop)"]
+    cols = [c["name"] for c in inspect(postgres_engine).get_columns("estudiantes")]
+    assert "diagnostico" in cols
